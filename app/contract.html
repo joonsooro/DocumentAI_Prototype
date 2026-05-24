@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Document AI Self-Improvement Flywheel — Contract (S2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=Newsreader:opsz,ital,wght@6..72,0,400;6..72,0,500;6..72,0,600;6..72,1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F7F3EC;
+    --paper-deep:#EFE8DB;
+    --ink:#1A1714;
+    --ink-soft:#3D362F;
+    --ink-faint:#6E6557;
+    --rule:#C8BCA4;
+    --rule-soft:#E0D6C0;
+    --accent:#8A3324;
+    --accent-deep:#5E2418;
+    --tint:rgba(138,51,36,0.06);
+    --grid:rgba(26,23,20,0.045);
+    --serif:"Fraunces", "Newsreader", Georgia, serif;
+    --body:"Newsreader", Georgia, serif;
+    --mono:"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--paper);color:var(--ink)}
+  body{
+    font-family:var(--body);font-size:14px;line-height:1.5;
+    font-feature-settings:"liga","onum","ss01";
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size:32px 32px, 32px 32px;
+    background-attachment:fixed;
+  }
+  .sheet{max-width:1180px;margin:0 auto;padding:48px 56px 96px;background:rgba(247,243,236,0.92);border-left:1px solid var(--rule-soft);border-right:1px solid var(--rule-soft);position:relative;min-height:100vh}
+  .corner{position:absolute;width:18px;height:18px;border:1.5px solid var(--ink)}
+  .corner.tl{top:18px;left:18px;border-right:none;border-bottom:none}
+  .corner.tr{top:18px;right:18px;border-left:none;border-bottom:none}
+  .corner.bl{bottom:18px;left:18px;border-right:none;border-top:none}
+  .corner.br{bottom:18px;right:18px;border-left:none;border-top:none}
+  .titleblock{display:grid;grid-template-columns:1fr auto;gap:32px;align-items:end;padding-bottom:18px;border-bottom:3px double var(--ink);margin-bottom:28px}
+  .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:0.26em;text-transform:uppercase;color:var(--accent);margin:0 0 14px}
+  h1{font-family:var(--serif);font-weight:400;font-variation-settings:"opsz" 144,"SOFT" 20,"WONK" 0;font-size:42px;line-height:1.02;letter-spacing:-0.018em;margin:0;color:var(--ink)}
+  h1 em{font-style:italic;font-variation-settings:"opsz" 144,"SOFT" 100,"WONK" 1;color:var(--accent)}
+  .sub{font-family:var(--mono);font-size:11px;letter-spacing:0.1em;color:var(--ink-soft);margin-top:14px}
+  .titlemeta{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);text-align:right;line-height:1.85;border:1px solid var(--ink);padding:10px 14px}
+  .titlemeta b{color:var(--accent);font-weight:500}
+  .stamp{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent-deep);border:2px solid var(--accent-deep);padding:10px 16px;background:var(--tint);transform:rotate(-1.2deg);margin:18px 0 26px;max-width:880px;line-height:1.55;position:relative}
+  .stamp::before{content:"◇ NOTICE";display:block;font-weight:700;color:var(--accent);letter-spacing:0.22em;font-size:10px;margin-bottom:6px}
+  .callouts{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:14px 0 38px}
+  .callout{border:1px solid var(--ink);padding:18px 20px;background:rgba(247,243,236,0.6)}
+  .callout.neg{border-color:var(--accent);border-left-width:4px;background:var(--tint)}
+  .callout .label{font-family:var(--mono);font-size:9.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px}
+  .callout.neg .label{color:var(--accent)}
+  .callout .body{font-family:var(--serif);font-style:italic;font-variation-settings:"opsz" 30;font-size:14px;line-height:1.55;color:var(--ink)}
+  section{margin:48px 0 0}
+  .sec-tag{display:flex;align-items:center;gap:14px;font-family:var(--mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+  .sec-tag .num{border:1.5px solid var(--accent);padding:4px 8px;letter-spacing:0.12em}
+  .sec-tag .rule{flex:1;height:1px;background:var(--ink)}
+  h2{font-family:var(--serif);font-weight:500;font-variation-settings:"opsz" 60,"SOFT" 10;font-size:24px;letter-spacing:-0.008em;margin:0 0 14px;color:var(--ink)}
+  .sec-blurb{font-family:var(--body);font-size:13px;color:var(--ink-soft);margin:0 0 16px;max-width:780px;line-height:1.5}
+  table{width:100%;border-collapse:collapse;font-size:11.5px;margin:4px 0 6px}
+  thead th{font-family:var(--mono);font-weight:500;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:8px 8px 10px;border-top:2px solid var(--ink);border-bottom:1.5px solid var(--ink);background:var(--paper-deep)}
+  tbody td{padding:9px 8px;vertical-align:top;border-bottom:1px solid var(--rule-soft);line-height:1.45}
+  tbody tr:hover{background:rgba(138,51,36,0.035)}
+  td.id{font-family:var(--mono);font-size:10.5px;color:var(--accent);font-weight:500;white-space:nowrap;letter-spacing:0.02em}
+  td.unit{font-family:var(--body);font-weight:500;color:var(--ink);font-size:12px;line-height:1.35}
+  td.path{font-family:var(--mono);font-size:10px;color:var(--ink-soft);line-height:1.4;word-break:break-word}
+  td.kill{font-family:var(--body);font-style:italic;color:var(--ink-soft);font-size:11.5px}
+  td.kill b{font-style:normal;color:var(--accent);font-family:var(--mono);font-size:10.5px;font-weight:500}
+  td.mono{font-family:var(--mono);font-size:10px;color:var(--ink-soft)}
+  td.cat{font-family:var(--mono);font-size:10.5px;color:var(--ink);white-space:nowrap;letter-spacing:0.01em}
+  td.status{font-family:var(--mono);font-size:9.5px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-faint)}
+  td.choice{font-family:var(--body);font-size:11.5px;color:var(--ink);line-height:1.45}
+  td.choice b{font-weight:600;color:var(--ink)}
+  td.cred{font-family:var(--body);font-size:11.5px;line-height:1.45}
+  td.cred .runtime{font-family:var(--mono);font-size:10px;color:var(--accent-deep);text-transform:uppercase;letter-spacing:0.1em;font-weight:500;display:block;margin-bottom:3px}
+  td.cred .need{font-family:var(--mono);font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;font-weight:500;display:block;margin-bottom:3px}
+  td.cred .have{font-family:var(--mono);font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.1em;font-weight:500;display:block;margin-bottom:3px}
+  td.notes{font-family:var(--body);font-size:11px;color:var(--ink-soft);line-height:1.5;font-style:italic}
+  td.notes b{font-style:normal;color:var(--ink);font-weight:600}
+  code,kbd{font-family:var(--mono);font-size:10.5px;background:rgba(138,51,36,0.07);padding:0 4px;border-radius:1px;color:var(--accent-deep)}
+  .screens{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:6px 0}
+  .screen-card{border:1.5px solid var(--ink);padding:18px 18px 20px;background:var(--paper);position:relative;display:flex;flex-direction:column}
+  .screen-card::before{content:"";position:absolute;top:-1.5px;left:-1.5px;width:24px;height:24px;border-top:4px solid var(--accent);border-left:4px solid var(--accent)}
+  .screen-card .num{font-family:var(--mono);font-size:9.5px;letter-spacing:0.18em;color:var(--accent);text-transform:uppercase;margin-bottom:4px;padding-left:24px}
+  .screen-card h3{font-family:var(--serif);font-weight:500;font-variation-settings:"opsz" 36;font-size:18px;margin:0 0 10px;color:var(--ink);line-height:1.2;padding-left:24px}
+  .screen-card .ui{font-family:var(--mono);font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-faint);padding-bottom:10px;border-bottom:1px solid var(--rule);margin-bottom:10px;line-height:1.5}
+  .screen-card .ui b{color:var(--accent)}
+  .screen-card .sub-label{font-family:var(--mono);font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:8px 0 6px}
+  .screen-card ul{margin:0 0 12px;padding-left:18px;font-family:var(--body);font-size:11.5px;color:var(--ink);line-height:1.45}
+  .screen-card ul li{margin:0 0 4px}
+  .screen-card .guard{margin-top:auto;padding-top:10px;border-top:1px dashed var(--accent);font-family:var(--body);font-size:10.5px;font-style:italic;color:var(--accent-deep);line-height:1.45}
+  .screen-card .guard b{font-style:normal;font-family:var(--mono);font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent);display:block;margin-bottom:4px}
+  footer.colophon{margin-top:64px;padding-top:18px;border-top:3px double var(--ink);font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);display:flex;justify-content:space-between;align-items:center}
+  footer.colophon b{color:var(--accent);font-weight:500}
+  @media (max-width:900px){
+    .sheet{padding:32px 22px 64px}
+    .titleblock{grid-template-columns:1fr}
+    .titlemeta{text-align:left}
+    .callouts{grid-template-columns:1fr}
+    .screens{grid-template-columns:1fr}
+    h1{font-size:30px}
+    .corner{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+<div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+
+<div class="titleblock">
+  <div>
+    <p class="eyebrow">Stage S2 · Wiring Diagram</p>
+    <h1>Document AI Flywheel<br>— <em>Contract</em></h1>
+    <p class="sub">Derived from <code>app/spec.html</code> + <code>app/tight-thesis.json</code></p>
+  </div>
+  <div class="titlemeta">
+    Sheet · <b>S2 / C-01</b><br>
+    Decomp rows · <b>18</b><br>
+    Screens · <b>3</b><br>
+    Substrate · <b>7</b><br>
+    Deps · <b>6</b>
+  </div>
+</div>
+
+<div class="stamp">S2 contract — wiring diagram derived from <code>app/spec.html</code> and <code>app/tight-thesis.json</code>. The contract decomposes the spec into buildable units; verifiable eval criteria live in S4 <code>eval-criteria.html</code>, NOT here. S3 Build reads this verbatim. Every loose phrase becomes an invented behaviour downstream.</div>
+
+<div class="callouts">
+  <div class="callout"><div class="label">◊ Customer promise · verbatim from tight-thesis.json</div><div class="body">An admin pastes messy commercial-invoice requirements and within one demo session sees compiled Document AI configuration, a clear capability assessment, a deterministic DAEJOO extraction, a readiness decision with business reasons, agentic clarification prompts for missed fields, admin-grade improvement recommendations grounded in observed corrections, and a separate internal flywheel view — all without telling the customer their requirement is "unsupported," without auto-lowering a threshold to fake a win, and without leaking internal roadmap gaps into any customer surface.</div></div>
+  <div class="callout neg"><div class="label">▲ Negative contract · verbatim from tight-thesis.json</div><div class="body">Never display "unsupported" in the Customer Workspace; never recommend lowering a confidence threshold as the demo action; never surface raw prompts, raw model output, or roadmap-candidate signals (including the DAEJOO material-disposal phrase) on a customer surface; never call live OCR or live field extraction in v1; never mark a document Ready when any required field is below auto-confirm or when a workaround rule is unconfirmed for the supplier; never auto-promote a single correction into a ProductSignal without governance gating; never read the DAEJOO PDF from ~/Downloads at runtime (canonical path is app/assets/daejoo-invoice.pdf); never hide an AI Core agent failure behind a canned fallback (use ClarificationRequest + QualityMetric instead).</div></div>
+</div>
+
+<section>
+  <div class="sec-tag"><span class="num">§·01·DECOMPOSITION</span><span class="rule"></span><span>18 buildable units</span></div>
+  <h2>Decomposition</h2>
+  <p class="sec-blurb">One row per buildable unit. Sourced from spec §5 Behaviour Contract (Always rules A1–A9) and spec §8 Implementation Notes. Every row carries an input, an output, a done-when condition, a numeric + time-bounded kill switch, and an output path. S3 reads this verbatim.</p>
+  <table>
+    <thead><tr><th style="width:42px">#</th><th style="width:170px">Unit</th><th style="width:170px">In</th><th>Out</th><th>Done when</th><th style="width:200px">Kill switch</th><th style="width:200px">Output</th></tr></thead>
+    <tbody>
+      <tr><td class="id">U1</td><td class="unit">Domain types module</td><td>spec §8 type list (14 types)</td><td><code>src/domain/types.ts</code> exporting all 14 types</td><td><code>tsc --noEmit</code> passes with all 14 types exported; each type imported by ≥1 other module</td><td class="kill"><b>45 min</b> — if 14 types still not exported, halt and revisit spec §8 for type rationale</td><td class="path">src/domain/types.ts</td></tr>
+      <tr><td class="id">U2</td><td class="unit">DAEJOO asset checkpoint</td><td>DAEJOO PDF provenance at <code>~/Downloads/03_6002108560-000.Receiving Invoice-INVOICE_DAEJOO PO 6282.pdf</code></td><td>Same file copied to <code>app/assets/daejoo-invoice.pdf</code> with SHA recorded</td><td>File exists at canonical path and SHA recorded in <code>app/assets/README.md</code></td><td class="kill"><b>10 min</b> — if asset copy + SHA not landed, halt; every downstream unit depends on this path</td><td class="path">app/assets/daejoo-invoice.pdf<br>app/assets/README.md</td></tr>
+      <tr><td class="id">U3</td><td class="unit">Deterministic mock extractor</td><td>DAEJOO PDF reference (path only, never opened at runtime) + DAEJOO extraction fixture JSON</td><td><code>simulateDocumentRun(doc, config): DocumentRun</code> returning canned <code>extractedFields</code> keyed by config schema</td><td>Vitest test asserts deterministic output across 10 invocations</td><td class="kill"><b>15 min</b> — if non-determinism in any of 3 consecutive runs, halt and pin the fixture file</td><td class="path">src/domain/simulateDocumentRun.ts<br>src/data/daejoo-extraction.fixture.json</td></tr>
+      <tr><td class="id">U4</td><td class="unit">A1 — Compile agent</td><td><code>CustomerIntent</code> (free-text prose)</td><td><code>CompiledConfiguration</code> (schema fields, instructions, validation, regex, thresholds, processing mode) via live SAP AI Core call</td><td>Compile result has all 9 DAEJOO fields, <code>source==='aiCore'</code>, <code>templateUsed===false</code></td><td class="kill"><b>20 min</b> — if 5 consecutive compile calls fail to return parseable JSON, halt; re-validate AI Core JSON contract (OQ-1)</td><td class="path">src/domain/compileIntentToConfiguration.ts</td></tr>
+      <tr><td class="id">U5</td><td class="unit">A2 — Capability assessment agent</td><td><code>CustomerIntent</code> + <code>CompiledConfiguration</code></td><td><code>CapabilityAssessment[]</code> — each row <em>Supported</em> or <em>Supported with workaround</em> only, never <em>Unsupported</em></td><td>Every requirement fragment lands in exactly one of the 2 customer-visible buckets; rendered string never contains "Unsupported"</td><td class="kill"><b>15 min</b> — if agent returns "Unsupported" in any of 3 consecutive runs, halt and tighten prompt constraint</td><td class="path">src/domain/assessCapabilities.ts</td></tr>
+      <tr><td class="id">U6</td><td class="unit">A3 — Capability-gap router</td><td><code>CapabilityAssessment[]</code> + raw intent fragments</td><td><code>ClarificationRequest[]</code> (customer-facing) + <code>ProductSignal[]</code> (internal) split per fragment</td><td>Every fragment classified as a gap appears in exactly one destination; routing decision logged</td><td class="kill"><b>10 min</b> — if any single fragment routes to both or neither in 2 of 3 runs, halt and re-define routing predicate</td><td class="path">src/domain/routeCapabilityGaps.ts</td></tr>
+      <tr><td class="id">U7</td><td class="unit">A4 — Clarification generator</td><td><code>DocumentRun</code> + <code>CompiledConfiguration</code></td><td><code>ClarificationRequest[]</code> for every missed or low-confidence field, each carrying the 3 EDGE-1 prompts (field meaning · posting/review/reporting impact · supplier-scope applicability)</td><td>Every missed field generates exactly one request; every request has all 3 prompts</td><td class="kill"><b>10 min</b> — if <code>clarifications.length === 0</code> when ≥1 field is null in any run, halt and inspect generator predicate</td><td class="path">src/domain/generateClarificationRequests.ts</td></tr>
+      <tr><td class="id">U8</td><td class="unit">A5 — Agent-failure surface</td><td>Any thrown error / timeout / malformed-JSON from a U4/U5/U6/U10/U11 agent call</td><td><code>ClarificationRequest</code> with operator-facing error message + <code>QualityMetric{agent, status:'fail', error}</code> entry</td><td>Every simulated failure produces both artifacts; UI receives both</td><td class="kill"><b>15 min</b> — if any failure path silently drops either artifact across 5 fault-injection runs, halt</td><td class="path">src/domain/agentFailureSurface.ts</td></tr>
+      <tr><td class="id">U9</td><td class="unit">A6 — Signal governance gate</td><td><code>CorrectionEvent</code> queue</td><td><code>ProductSignal[]</code> only when governance fields (frequency, customer impact, document type, supplier, country) cross thresholds (OQ-2)</td><td>No single-correction promotion; promotion requires governance fields populated and threshold check passing</td><td class="kill"><b>15 min</b> — if any one-off <code>CorrectionEvent</code> auto-promotes in any of 10 runs, halt</td><td class="path">src/domain/governProductSignals.ts</td></tr>
+      <tr><td class="id">U10</td><td class="unit">A7 — Readiness reasoning agent</td><td><code>DocumentRun</code> + <code>CompiledConfiguration</code></td><td><code>ReadinessDecision</code> with reason objects each carrying the 5 keys <code>field</code>, <code>evidence</code>, <code>rule</code>, <code>confidence</code>, <code>nextAction</code></td><td>Every reason object has all 5 keys populated; rendered text contains no <code>system:</code> / <code>prompt:</code> / <code>&lt;|</code> substrings</td><td class="kill"><b>15 min</b> — if reason objects drop any of the 5 keys in 3 consecutive runs, halt and tighten output-schema constraint</td><td class="path">src/domain/decideReadiness.ts<br>src/domain/generateOperationalReasons.ts</td></tr>
+      <tr><td class="id">U11</td><td class="unit">A8 — Three-surface routing</td><td>Same shared <code>useDomainStore()</code> root</td><td>Three routed views: <code>/customer</code>, <code>/admin</code>, <code>/internal</code>; each renders its own concern</td><td>Three routes mount; each route's DOM contains no <code>data-testid</code> registered to another workspace</td><td class="kill"><b>10 min</b> — if any workspace renders another's <code>data-testid</code> in 2 of 3 smoke runs, halt and re-check route boundaries</td><td class="path">src/routes/{customer,admin,internal}.tsx</td></tr>
+      <tr><td class="id">U12</td><td class="unit">A9 — DAEJOO asset binding</td><td>App startup config</td><td><code>import.meta.glob('/app/assets/daejoo-invoice.pdf')</code> or equivalent static binding; runtime never references <code>~/Downloads</code></td><td>grep across <code>src/</code> returns zero matches for <code>~/Downloads</code>; static asset import resolves</td><td class="kill"><b>30 min</b> — if any <code>~/Downloads</code> reference lands in source during build window, halt</td><td class="path">build config + lint rule</td></tr>
+      <tr><td class="id">U13</td><td class="unit">Admin recommendations agent</td><td><code>CorrectionEvent[]</code> + run history</td><td><code>AdminRecommendation[]</code> — schema/prompt/instruction recommendations only; never <code>type==='threshold_lower'</code> (N2/RED-1)</td><td>Every recommendation has <code>r.type !== 'threshold_lower'</code> and text does not match <code>/lower(ing)?\s+threshold/i</code></td><td class="kill"><b>15 min</b> — if <code>threshold_lower</code> appears in any recommendation across 5 runs, halt and pin prompt + post-filter</td><td class="path">src/domain/generateAdminRecommendations.ts</td></tr>
+      <tr><td class="id">U14</td><td class="unit">Correction submission</td><td>Operator-supplied correction (field, oldValue, newValue)</td><td><code>CorrectionEvent</code> written to in-memory store; enters governance queue (does NOT auto-promote)</td><td>New <code>CorrectionEvent</code> visible in store; <code>productSignals.length</code> unchanged after submission</td><td class="kill"><b>10 min</b> — if submission auto-touches <code>productSignals</code> in any run, halt</td><td class="path">src/domain/submitCorrection.ts</td></tr>
+      <tr><td class="id">U15</td><td class="unit">Regression detector</td><td><code>QualityMetric</code> log history</td><td><code>RegressionSignal[]</code> when accuracy drops across prompt-version or model-version boundaries</td><td>Detector returns ≥1 signal when a synthetic regression fixture is fed; returns <code>[]</code> otherwise</td><td class="kill"><b>15 min</b> — if detector flags a no-change baseline in 2 of 3 runs, halt and re-tune threshold</td><td class="path">src/domain/detectRegressionSignals.ts</td></tr>
+      <tr><td class="id">U16</td><td class="unit">Observability log surface</td><td>All agent calls + failures</td><td>Browser-<code>console</code>-mirrored in-memory <code>QualityMetric[]</code> rendered in <code>/internal</code> workspace</td><td>Internal workspace renders the log table; every U4/U5/U6/U10/U11/U13 call appends ≥1 entry</td><td class="kill"><b>15 min</b> — if log surface silently drops &gt;5% of calls in soak, halt</td><td class="path">src/runtime/qualityMetricLog.ts<br>Internal workspace panel</td></tr>
+      <tr><td class="id">U17</td><td class="unit">Vitest eval harness</td><td><code>evals.md</code> 12 cases + <code>src/evals/cases/*.json</code> fixtures</td><td><code>npm run evals</code> exits non-zero on any HAPPY/EDGE/RED failure; binary pass/fail report</td><td>All 12 cases mapped to a <code>*.test.ts</code>; harness exit code matches case results</td><td class="kill"><b>45 min</b> — if harness fails to bind even 1 case, halt</td><td class="path">src/evals/*.test.ts<br>package.json:scripts.evals</td></tr>
+      <tr><td class="id">U18</td><td class="unit">Walkthrough timing harness</td><td>Scripted walkthrough through <code>/customer → /admin → /internal</code></td><td>Single timing number <code>walkthroughDurationMs</code></td><td><code>walkthroughDurationMs &lt; 300_000</code> in 3 of 3 runs</td><td class="kill"><b>30 min</b> — if any run exceeds 300s, halt and trim the walkthrough script</td><td class="path">src/evals/walkthrough.test.ts</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <div class="sec-tag"><span class="num">§·02·SCREENS</span><span class="rule"></span><span>3 cards · UI handler pinned per card</span></div>
+  <h2>Screens</h2>
+  <p class="sec-blurb">One card per screen. Each card pins the UI handler and the spec-named components and interactions. Layout zones (header / sidebar / main / footer) belong to <code>frontend-design</code> at build time and are not interrogated here.</p>
+  <div class="screens">
+    <div class="screen-card">
+      <div class="num">Screen · 01</div>
+      <h3>Customer Workspace</h3>
+      <div class="ui">UI handler · <b>@ui5/webcomponents-react primitives</b> + <b>frontend-design skill</b> for layout</div>
+      <div class="sub-label">Spec-named components</div>
+      <ul>
+        <li>Business-intent input form (ShellBar + TextArea + submit Button)</li>
+        <li>Compiled configuration panel (Card with schema fields, instructions, validation, regex, thresholds, processing mode)</li>
+        <li>Capability status panel: <em>Supported</em> / <em>Supported with workaround</em> only</li>
+        <li>Clarification loop: 3 prompts per missed field (field meaning · posting/review/reporting impact · supplier-scope applicability)</li>
+        <li>Readiness panel with 5-key reasons: field · evidence · rule · confidence · nextAction</li>
+      </ul>
+      <div class="guard"><b>▲ Negative-contract guards</b>no "Unsupported" string · no raw prompts · no material-disposal phrase · no roadmap signals</div>
+    </div>
+    <div class="screen-card">
+      <div class="num">Screen · 02</div>
+      <h3>Admin Control Plane</h3>
+      <div class="ui">UI handler · <b>@ui5/webcomponents-react primitives</b> + <b>frontend-design skill</b> for layout</div>
+      <div class="sub-label">Spec-named components</div>
+      <ul>
+        <li>Prompt version management (Tabs or List + version diff)</li>
+        <li>Field-level threshold management (visible as a tool; never recommended action)</li>
+        <li>Auto-confirmation criteria editor</li>
+        <li>Schema quality monitoring</li>
+        <li>Correction trend review</li>
+        <li>Recommendation queue (filtered: no <code>threshold_lower</code> entries)</li>
+      </ul>
+      <div class="guard"><b>▲ Negative-contract guards</b>never include "lower the threshold" in any rendered recommendation</div>
+    </div>
+    <div class="screen-card">
+      <div class="num">Screen · 03</div>
+      <h3>Internal Product Intelligence</h3>
+      <div class="ui">UI handler · <b>@ui5/webcomponents-react primitives</b> + <b>frontend-design skill</b> for layout</div>
+      <div class="sub-label">Spec-named components</div>
+      <ul>
+        <li>Feedback governance queue (<code>CorrectionEvent → ProductSignal</code> gating UI)</li>
+        <li>Model regression signals panel</li>
+        <li>Product quality telemetry (<code>QualityMetric</code> log table — covers SUB-6)</li>
+        <li>Capability gap analytics ranked by frequency, customer impact, document type, supplier, country</li>
+        <li>DAEJOO material-disposal phrase surfaced HERE ONLY as <code>signal_type: unsupported_free_text_business_condition</code></li>
+      </ul>
+      <div class="guard"><b>◇ Containment</b>any signal hidden from Customer / Admin lives here, governed and ranked, never leaking back</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-tag"><span class="num">§·03·SUBSTRATE</span><span class="rule"></span><span>verbatim from spec §9 · 7 rows · all decided</span></div>
+  <h2>Substrate</h2>
+  <p class="sec-blurb">Cross-cutting infrastructure choices copied verbatim from <code>app/spec.html</code> §9. Identity copy — no auto-derivation. Substrate enforcement happens in S3 (Coder hard-stop) and S4 (eval check).</p>
+  <table>
+    <thead><tr><th style="width:60px">ID</th><th style="width:140px">Category</th><th style="width:70px">Status</th><th>Choice / Reason</th><th style="width:90px">Owner</th><th style="width:40px">ETA</th></tr></thead>
+    <tbody>
+      <tr><td class="id">SUB-1</td><td class="cat">data sources</td><td class="status">decided</td><td class="choice"><b>DAEJOO PDF at app/assets/daejoo-invoice.pdf + deterministic JSON fixtures in src/data/demoScenario.ts and src/evals/cases/*.json.</b> The PDF is the anchor document and the JSON fixtures are the canonical extraction surface; both must live in-repo so the demo is reproducible and the eval suite is hermetic.</td><td class="mono">Spec owner</td><td class="mono">—</td></tr>
+      <tr><td class="id">SUB-2</td><td class="cat">persistence</td><td class="status">decided</td><td class="choice"><b>In-memory typed fixtures + pure service functions; no database.</b> v1 is a single-operator deterministic demo; persistence beyond process memory would reshape the eval surface without adding demo value.</td><td class="mono">Spec owner</td><td class="mono">—</td></tr>
+      <tr><td class="id">SUB-3</td><td class="cat">frontend / design system</td><td class="status">decided</td><td class="choice"><b>React 18 + TypeScript + Vite + @ui5/webcomponents-react.</b> UI5 Web Components React delivers the SAP Fiori embedded-app feel without SAP BTP deployment, and Vite gives a fast local dev loop.</td><td class="mono">Spec owner</td><td class="mono">—</td></tr>
+      <tr><td class="id">SUB-4</td><td class="cat">hosting / runtime</td><td class="status">decided</td><td class="choice"><b>Local dev only via vite dev.</b> The demo runs on a developer laptop in under five minutes; shared hosting in v1 would introduce auth and rollout decisions that are not load-bearing.</td><td class="mono">Spec owner</td><td class="mono">—</td></tr>
+      <tr><td class="id">SUB-5</td><td class="cat">auth</td><td class="status">decided</td><td class="choice"><b>None — single-operator demo on localhost.</b> No multi-user surfaces in v1; auth would force a workspace permission model the demo does not need.</td><td class="mono">Spec owner</td><td class="mono">—</td></tr>
+      <tr><td class="id">SUB-6</td><td class="cat">observability</td><td class="status">decided</td><td class="choice"><b>Browser console + in-memory QualityMetric log surfaced in Internal Product Intelligence + Vitest eval report.</b> Agent failures must be logged as QualityMetric per A5 and rendered in the Internal workspace per the flywheel; Vitest output covers the eval surface.</td><td class="mono">Spec owner</td><td class="mono">—</td></tr>
+      <tr><td class="id">SUB-7</td><td class="cat">ML/AI providers</td><td class="status">decided</td><td class="choice"><b>SAP AI Core (live calls for every agentic step: compile, capability assessment, readiness reasoning, clarification generation, admin recommendations, signal governance).</b> Every agentic step is a live AI Core call per HAPPY-3 and A1; only OCR + raw extraction are mocked per N6. AI Core API contract details remain OQ-1.</td><td class="mono">Spec owner</td><td class="mono">—</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <div class="sec-tag"><span class="num">§·04·DEPENDENCIES &amp; SKILLS</span><span class="rule"></span><span>6 rows · creds resolved in-turn</span></div>
+  <h2>Dependencies &amp; Skills</h2>
+  <p class="sec-blurb">External services the build touches plus Claude skills the build invokes by name. Per blueprint Step 5: every row has an access mechanism; no live credential lands in a non-gitignored file; the AI Core service key stays at its provisioned absolute path and is loaded at runtime.</p>
+  <table>
+    <thead><tr><th style="width:54px">#</th><th style="width:150px">Name</th><th style="width:180px">Purpose</th><th style="width:180px">Access mechanism</th><th style="width:200px">Credential status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="id">DEP-1</td><td class="unit">SAP AI Core <em>(eu-central-1 production)</em></td><td>Live OAuth-backed LLM calls for U4/U5/U6/U7/U10/U13 + token refresh</td><td>OAuth2 client-credentials flow against XSUAA <code>url</code> from service key</td><td class="cred"><span class="runtime">▲ Runtime load</span>From absolute path <code>/Users/I572166/Downloads/aicore_API.txt</code>. File is <b>never</b> copied into repo, <b>never</b> written to <code>.env</code>, <b>never</b> echoed to logs.</td><td class="notes"><b>Spend cap:</b> every agent call MUST specify smallest viable model + explicit <code>max_tokens</code>; enforced by shared <code>aiCoreClient.ts</code> wrapper that rejects calls without both. Bound by EDGE-4 5-minute walkthrough budget.</td></tr>
+      <tr><td class="id">DEP-2</td><td class="unit">FMP API</td><td>Carry-over from prior workshop scaffolding; not used by v1 Document AI build</td><td>API key from <code>.env</code></td><td class="cred"><span class="have">◇ Have it</span><code>FMP_API_KEY</code> present in <code>.env</code> (gitignored).</td><td class="notes">Listed for completeness; v1 Document AI flow does not call FMP. Safe to ignore but do not delete from <code>.env</code> (downstream sessions may reference).</td></tr>
+      <tr><td class="id">DEP-3</td><td class="unit">Langfuse Cloud</td><td>Observability for live agent traces (S4 OBSERVE) — out of scope for v1 build, recorded here for S4 handoff</td><td>API keys from <code>.env</code> (currently absent)</td><td class="cred"><span class="need">▲ User must provide before S4 OBSERVE</span>Keys deleted from dashboard during S2 hygiene pass; <code>LANGFUSE_BASE_URL</code> preserved as breadcrumb.</td><td class="notes"><b>Not a blocker for S3 build.</b> New keypair: <code>cloud.langfuse.com → Settings → API Keys → Create</code>, then paste into <code>.env</code> as <code>LANGFUSE_PUBLIC_KEY</code> + <code>LANGFUSE_SECRET_KEY</code>.</td></tr>
+      <tr><td class="id">DEP-4</td><td class="unit">frontend-design skill</td><td>Layout + visual hierarchy for every UI surface (3 workspaces × ~6 panels each)</td><td>Skill invocation per screen; pass structured content, let skill own typography/layout</td><td class="cred"><span class="have">◇ Have it</span>Installed at <code>.claude/skills/frontend-design</code>.</td><td class="notes">Default UI handler per Step 3 answer. Used in S1 for <code>spec.html</code> / <code>ambiguity-audit.html</code> and now <code>contract.html</code>.</td></tr>
+      <tr><td class="id">DEP-5</td><td class="unit">claude-api skill</td><td>Tune AI Core client (prompt caching, retries, schema-enforced JSON, token budgeting)</td><td>Skill invocation when authoring <code>aiCoreClient.ts</code> and per-agent prompts</td><td class="cred"><span class="have">◇ Have it</span>Installed globally.</td><td class="notes">Load-bearing for U4/U5/U6/U7/U10/U13 agent contracts; pairs with DEP-1 spend cap.</td></tr>
+      <tr><td class="id">DEP-6</td><td class="unit">verify skill</td><td>Post-build verification pass over S3 output before claiming completion</td><td>Skill invocation at end of S3 build</td><td class="cred"><span class="have">◇ Have it</span>Installed globally.</td><td class="notes">Insurance for live-agent invariants (no "Unsupported" in Customer Workspace; no <code>threshold_lower</code> in admin recs; agent failures surface correctly). Runs against built code, not against spec.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<footer class="colophon">
+  <span>S2 · <b>contract.html</b> · derived from app/spec.html + app/tight-thesis.json</span>
+  <span>Next → S3 build reads this verbatim</span>
+</footer>
+
+</div>
+</body>
+</html>

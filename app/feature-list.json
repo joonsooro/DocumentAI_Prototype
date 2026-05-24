@@ -1,0 +1,288 @@
+{
+  "$schema_version": "s3.decomposer.v1",
+  "source": {
+    "contract": "app/contract.html",
+    "contract_sections": ["§1 Decomposition", "§2 Screens"],
+    "generated_by": "S3.DECOMP",
+    "generated_at": "2026-05-24T21:30:00Z"
+  },
+  "summary": {
+    "decomposition_rows": 18,
+    "features_total": 20,
+    "u11_split_into": ["F-11", "F-12", "F-13"]
+  },
+  "features": [
+    {
+      "id": "F-01",
+      "name": "Domain types module",
+      "contract_pointer": "U1",
+      "acceptance": "tsc --noEmit passes with all 14 types exported; each type imported by ≥1 other module",
+      "kill_switch": {
+        "window_minutes": 45,
+        "condition": "If 14 types still not exported after 45 minutes of authoring, halt and revisit spec §8 for type rationale"
+      },
+      "output_paths": ["src/domain/types.ts"],
+      "depends_on": [],
+      "status": "todo"
+    },
+    {
+      "id": "F-02",
+      "name": "DAEJOO asset checkpoint",
+      "contract_pointer": "U2",
+      "acceptance": "File exists at canonical path app/assets/daejoo-invoice.pdf and SHA recorded in app/assets/README.md",
+      "kill_switch": {
+        "window_minutes": 10,
+        "condition": "If asset copy + SHA not landed in 10 minutes, halt — every downstream unit depends on the canonical path"
+      },
+      "output_paths": ["app/assets/daejoo-invoice.pdf", "app/assets/README.md"],
+      "depends_on": [],
+      "status": "todo"
+    },
+    {
+      "id": "F-03",
+      "name": "Deterministic mock extractor",
+      "contract_pointer": "U3",
+      "acceptance": "Vitest test asserts deterministic output across 10 invocations of simulateDocumentRun(doc, config)",
+      "kill_switch": {
+        "window_minutes": 15,
+        "condition": "If non-determinism observed in any of 3 consecutive runs within a 15-minute debug window, halt and pin the fixture file"
+      },
+      "output_paths": ["src/domain/simulateDocumentRun.ts", "src/data/daejoo-extraction.fixture.json"],
+      "depends_on": ["F-01", "F-02"],
+      "status": "todo"
+    },
+    {
+      "id": "F-04",
+      "name": "Compile agent (A1)",
+      "contract_pointer": "U4",
+      "acceptance": "Compile result has all 9 DAEJOO fields, source==='aiCore', templateUsed===false (live SAP AI Core call)",
+      "kill_switch": {
+        "window_minutes": 20,
+        "condition": "If 5 consecutive compile calls fail to return parseable JSON within 20 minutes, halt and re-validate AI Core JSON contract (OQ-1)"
+      },
+      "output_paths": ["src/domain/compileIntentToConfiguration.ts"],
+      "depends_on": ["F-01"],
+      "status": "todo",
+      "notes": "Most-likely-to-trip kill switch per S2 RATIONALE. Pair with aiCoreClient.ts wrapper from DEP-1 spend cap."
+    },
+    {
+      "id": "F-05",
+      "name": "Capability assessment agent (A2)",
+      "contract_pointer": "U5",
+      "acceptance": "Every requirement fragment lands in exactly one of 2 customer-visible buckets (Supported / Supported with workaround); rendered string never contains 'Unsupported'",
+      "kill_switch": {
+        "window_minutes": 15,
+        "condition": "If agent returns 'Unsupported' in any of 3 consecutive runs within a 15-minute prompt-iteration window, halt and tighten prompt constraint"
+      },
+      "output_paths": ["src/domain/assessCapabilities.ts"],
+      "depends_on": ["F-01", "F-04"],
+      "status": "todo"
+    },
+    {
+      "id": "F-06",
+      "name": "Capability-gap router (A3)",
+      "contract_pointer": "U6",
+      "acceptance": "Every fragment classified as a gap appears in exactly one destination (ClarificationRequest or ProductSignal); routing decision logged",
+      "kill_switch": {
+        "window_minutes": 10,
+        "condition": "If any single intent fragment routes to both destinations or to neither in 2 of 3 test runs within 10 minutes, halt and re-define the routing predicate"
+      },
+      "output_paths": ["src/domain/routeCapabilityGaps.ts"],
+      "depends_on": ["F-01", "F-05"],
+      "status": "todo"
+    },
+    {
+      "id": "F-07",
+      "name": "Clarification generator (A4)",
+      "contract_pointer": "U7",
+      "acceptance": "Every missed field generates exactly one ClarificationRequest with all 3 EDGE-1 prompts (field meaning · posting/review/reporting impact · supplier-scope applicability)",
+      "kill_switch": {
+        "window_minutes": 10,
+        "condition": "If clarifications.length === 0 when ≥1 field is null in any test run, halt within 10 minutes and inspect generator predicate"
+      },
+      "output_paths": ["src/domain/generateClarificationRequests.ts"],
+      "depends_on": ["F-01", "F-03"],
+      "status": "todo"
+    },
+    {
+      "id": "F-08",
+      "name": "Agent-failure surface (A5)",
+      "contract_pointer": "U8",
+      "acceptance": "Every simulated failure produces both a ClarificationRequest with operator-facing error and a QualityMetric{agent, status:'fail', error} entry; UI receives both",
+      "kill_switch": {
+        "window_minutes": 15,
+        "condition": "If any failure path is observed to silently drop either artifact across 5 fault-injection runs in a 15-minute window, halt"
+      },
+      "output_paths": ["src/domain/agentFailureSurface.ts"],
+      "depends_on": ["F-01", "F-18"],
+      "status": "todo"
+    },
+    {
+      "id": "F-09",
+      "name": "Signal governance gate (A6)",
+      "contract_pointer": "U9",
+      "acceptance": "No single-correction promotion; promotion requires governance fields (frequency, customer impact, document type, supplier, country) populated and threshold check passing",
+      "kill_switch": {
+        "window_minutes": 15,
+        "condition": "If any single one-off CorrectionEvent auto-promotes in any of 10 test runs within a 15-minute window, halt"
+      },
+      "output_paths": ["src/domain/governProductSignals.ts"],
+      "depends_on": ["F-01", "F-16"],
+      "status": "todo",
+      "notes": "Governance threshold values blocked on OQ-2 (Open Question from S1). Coder must halt if thresholds not provided at build time."
+    },
+    {
+      "id": "F-10",
+      "name": "Readiness reasoning agent (A7)",
+      "contract_pointer": "U10",
+      "acceptance": "Every reason object has all 5 keys (field, evidence, rule, confidence, nextAction) populated; rendered text contains no 'system:' / 'prompt:' / '<|' substrings",
+      "kill_switch": {
+        "window_minutes": 15,
+        "condition": "If reason objects drop any of the 5 keys in 3 consecutive runs in a 15-minute window, halt and tighten output-schema constraint"
+      },
+      "output_paths": ["src/domain/decideReadiness.ts", "src/domain/generateOperationalReasons.ts"],
+      "depends_on": ["F-01", "F-03"],
+      "status": "todo"
+    },
+    {
+      "id": "F-11",
+      "name": "Customer Workspace screen + route",
+      "contract_pointer": "U11 + Screen-1",
+      "acceptance": "Route /customer mounts; renders business-intent input, compiled configuration panel, capability status (Supported / Supported with workaround only), clarification loop with 3 prompts per missed field, readiness panel with 5-key reasons; DOM contains no 'Unsupported' / raw prompt / material-disposal / roadmap-signal strings",
+      "kill_switch": {
+        "window_minutes": 10,
+        "condition": "If any workspace renders another's data-testid in 2 of 3 smoke runs within 10 minutes, halt and re-check route boundaries"
+      },
+      "output_paths": ["src/routes/customer.tsx", "src/components/customer/*"],
+      "depends_on": ["F-04", "F-05", "F-07", "F-10"],
+      "status": "todo",
+      "negative_contract_guards": [
+        "no 'Unsupported' string",
+        "no raw prompt text",
+        "no DAEJOO material-disposal phrase",
+        "no roadmap-candidate signals"
+      ]
+    },
+    {
+      "id": "F-12",
+      "name": "Admin Control Plane screen + route",
+      "contract_pointer": "U11 + Screen-2",
+      "acceptance": "Route /admin mounts; renders prompt version management, field-level threshold management (as tool only), auto-confirmation criteria editor, schema quality monitoring, correction trend review, recommendation queue filtered of any threshold_lower entries",
+      "kill_switch": {
+        "window_minutes": 10,
+        "condition": "If any workspace renders another's data-testid in 2 of 3 smoke runs within 10 minutes, halt and re-check route boundaries"
+      },
+      "output_paths": ["src/routes/admin.tsx", "src/components/admin/*"],
+      "depends_on": ["F-15", "F-16"],
+      "status": "todo",
+      "negative_contract_guards": [
+        "never include 'lower the threshold' in any rendered recommendation"
+      ]
+    },
+    {
+      "id": "F-13",
+      "name": "Internal Product Intelligence screen + route",
+      "contract_pointer": "U11 + Screen-3",
+      "acceptance": "Route /internal mounts; renders feedback governance queue, model regression signals panel, QualityMetric log table (covers SUB-6), capability gap analytics ranked by frequency/customer impact/document type/supplier/country; surfaces DAEJOO material-disposal phrase ONLY here as signal_type: unsupported_free_text_business_condition",
+      "kill_switch": {
+        "window_minutes": 10,
+        "condition": "If any workspace renders another's data-testid in 2 of 3 smoke runs within 10 minutes, halt and re-check route boundaries"
+      },
+      "output_paths": ["src/routes/internal.tsx", "src/components/internal/*"],
+      "depends_on": ["F-09", "F-17", "F-18"],
+      "status": "todo",
+      "containment": "any signal hidden from Customer / Admin lives here, governed and ranked, never leaks back"
+    },
+    {
+      "id": "F-14",
+      "name": "DAEJOO asset binding (A9)",
+      "contract_pointer": "U12",
+      "acceptance": "Static asset import resolves via import.meta.glob('/app/assets/daejoo-invoice.pdf') or equivalent; grep across src/ returns zero matches for '~/Downloads'",
+      "kill_switch": {
+        "window_minutes": 30,
+        "condition": "If any '~/Downloads' reference lands in source during a 30-minute build window, halt"
+      },
+      "output_paths": ["vite.config.ts", "eslint rule for ~/Downloads"],
+      "depends_on": ["F-02"],
+      "status": "todo"
+    },
+    {
+      "id": "F-15",
+      "name": "Admin recommendations agent",
+      "contract_pointer": "U13",
+      "acceptance": "Every recommendation has r.type !== 'threshold_lower' and text does not match /lower(ing)?\\s+threshold/i",
+      "kill_switch": {
+        "window_minutes": 15,
+        "condition": "If threshold_lower appears in any recommendation across 5 runs within a 15-minute window, halt and pin prompt + post-filter"
+      },
+      "output_paths": ["src/domain/generateAdminRecommendations.ts"],
+      "depends_on": ["F-01", "F-16"],
+      "status": "todo"
+    },
+    {
+      "id": "F-16",
+      "name": "Correction submission",
+      "contract_pointer": "U14",
+      "acceptance": "New CorrectionEvent visible in in-memory store; productSignals.length unchanged after submission (does NOT auto-promote)",
+      "kill_switch": {
+        "window_minutes": 10,
+        "condition": "If submission auto-touches productSignals in any test run within 10 minutes, halt"
+      },
+      "output_paths": ["src/domain/submitCorrection.ts"],
+      "depends_on": ["F-01"],
+      "status": "todo"
+    },
+    {
+      "id": "F-17",
+      "name": "Regression detector",
+      "contract_pointer": "U15",
+      "acceptance": "Detector returns ≥1 RegressionSignal when a synthetic regression fixture is fed; returns [] otherwise",
+      "kill_switch": {
+        "window_minutes": 15,
+        "condition": "If detector flags a no-change baseline in 2 of 3 runs within 15 minutes, halt and re-tune threshold"
+      },
+      "output_paths": ["src/domain/detectRegressionSignals.ts"],
+      "depends_on": ["F-01", "F-18"],
+      "status": "todo"
+    },
+    {
+      "id": "F-18",
+      "name": "Observability log surface",
+      "contract_pointer": "U16",
+      "acceptance": "Internal workspace renders the QualityMetric log table; every F-04/F-05/F-06/F-07/F-10/F-15 call appends ≥1 entry; browser console mirrors",
+      "kill_switch": {
+        "window_minutes": 15,
+        "condition": "If log surface drops entries silently for >5% of calls in a 15-minute soak, halt"
+      },
+      "output_paths": ["src/runtime/qualityMetricLog.ts"],
+      "depends_on": ["F-01"],
+      "status": "todo"
+    },
+    {
+      "id": "F-19",
+      "name": "Vitest eval harness",
+      "contract_pointer": "U17",
+      "acceptance": "All 12 cases from evals.md mapped to *.test.ts; npm run evals exits non-zero on any HAPPY/EDGE/RED failure; binary pass/fail report",
+      "kill_switch": {
+        "window_minutes": 45,
+        "condition": "If harness fails to bind even 1 case within a 45-minute authoring window, halt"
+      },
+      "output_paths": ["src/evals/*.test.ts", "src/evals/cases/*.json", "package.json:scripts.evals"],
+      "depends_on": ["F-03", "F-04", "F-05", "F-06", "F-07", "F-08", "F-09", "F-10", "F-15", "F-16", "F-17"],
+      "status": "todo"
+    },
+    {
+      "id": "F-20",
+      "name": "Walkthrough timing harness",
+      "contract_pointer": "U18",
+      "acceptance": "Scripted walkthrough through /customer → /admin → /internal returns walkthroughDurationMs < 300_000 in 3 of 3 runs",
+      "kill_switch": {
+        "window_minutes": 30,
+        "condition": "If any run exceeds 300s in a 30-minute tuning window, halt and trim the walkthrough script"
+      },
+      "output_paths": ["src/evals/walkthrough.test.ts"],
+      "depends_on": ["F-11", "F-12", "F-13"],
+      "status": "todo"
+    }
+  ]
+}

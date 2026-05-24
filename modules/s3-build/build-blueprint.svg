@@ -1,0 +1,74 @@
+<svg viewBox="0 0 660 460" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="card-clip">
+      <rect x="24" y="24" width="612" height="412" rx="10"/>
+    </clipPath>
+  </defs>
+
+  <!-- Page background -->
+  <rect width="660" height="460" fill="#f9f8f6"/>
+
+  <!-- Card -->
+  <rect x="24" y="24" width="612" height="412" rx="10" fill="#ffffff" stroke="rgba(74,104,130,0.22)" stroke-width="1.5"/>
+
+  <!-- Title bar -->
+  <rect x="24" y="24" width="612" height="40" fill="#1a1a1a" clip-path="url(#card-clip)"/>
+
+  <!-- Traffic light dots -->
+  <circle cx="48" cy="44" r="5.5" fill="#ff5f57"/>
+  <circle cx="65" cy="44" r="5.5" fill="#febc2e"/>
+  <circle cx="82" cy="44" r="5.5" fill="#28c840"/>
+
+  <!-- Filename -->
+  <text x="104" y="50" fill="#aaaaaa" font-size="13" font-family="'Courier New', Courier, monospace" letter-spacing="0.5">agent-owner-spec.md</text>
+
+  <!-- Title bar bottom border -->
+  <line x1="24" y1="64" x2="636" y2="64" stroke="rgba(74,104,130,0.12)" stroke-width="1"/>
+
+  <!-- ── DOOR MAP ── -->
+  <text x="50" y="90" fill="#4a6882" font-size="12.5" font-family="'Courier New', Courier, monospace" font-weight="700">## Door Map</text>
+  <text x="50" y="110" fill="#3a3a3a" font-size="12.5" font-family="'Courier New', Courier, monospace">00 // Scope</text>
+  <text x="50" y="129" fill="#3a3a3a" font-size="12.5" font-family="'Courier New', Courier, monospace">01 // Access Inventory</text>
+  <text x="50" y="148" fill="#3a3a3a" font-size="12.5" font-family="'Courier New', Courier, monospace">02 // Permitted Actions</text>
+  <text x="50" y="167" fill="#3a3a3a" font-size="12.5" font-family="'Courier New', Courier, monospace">03 // Hard Stops</text>
+
+  <!-- Bracket: Door Map -->
+  <polyline points="494,80 484,80 484,175 494,175" fill="none" stroke="#4a6882" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="484" y1="127" x2="502" y2="127" stroke="#4a6882" stroke-width="2" stroke-linecap="round"/>
+  <text x="508" y="122" fill="#4a6882" font-size="12" font-weight="700" font-family="'Segoe UI', system-ui, sans-serif">WHAT?</text>
+  <text x="508" y="138" fill="#4a6882" font-size="11" font-style="italic" font-family="'Segoe UI', system-ui, sans-serif">can it do?</text>
+
+  <!-- Divider -->
+  <line x1="50" y1="185" x2="480" y2="185" stroke="#eff2f4" stroke-width="1"/>
+
+  <!-- ── LOCKS ── -->
+  <text x="50" y="204" fill="#2a7fa8" font-size="12.5" font-family="'Courier New', Courier, monospace" font-weight="700">## Locks</text>
+  <text x="50" y="224" fill="#3a3a3a" font-size="12.5" font-family="'Courier New', Courier, monospace">04 // Handoff Conditions</text>
+  <text x="50" y="243" fill="#3a3a3a" font-size="12.5" font-family="'Courier New', Courier, monospace">05 // Escalation</text>
+  <text x="50" y="262" fill="#3a3a3a" font-size="12.5" font-family="'Courier New', Courier, monospace">06 // Failure State</text>
+
+  <!-- Bracket: Locks -->
+  <polyline points="494,194 484,194 484,270 494,270" fill="none" stroke="#2a7fa8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="484" y1="232" x2="502" y2="232" stroke="#2a7fa8" stroke-width="2" stroke-linecap="round"/>
+  <text x="508" y="227" fill="#2a7fa8" font-size="12" font-weight="700" font-family="'Segoe UI', system-ui, sans-serif">WHEN?</text>
+  <text x="508" y="243" fill="#2a7fa8" font-size="11" font-style="italic" font-family="'Segoe UI', system-ui, sans-serif">does it stop?</text>
+
+  <!-- Divider -->
+  <line x1="50" y1="280" x2="480" y2="280" stroke="#eff2f4" stroke-width="1"/>
+
+  <!-- ── RECOVERY ── -->
+  <text x="50" y="299" fill="#2e7d52" font-size="12.5" font-family="'Courier New', Courier, monospace" font-weight="700">## Recovery</text>
+  <text x="50" y="319" fill="#3a3a3a" font-size="12.5" font-family="'Courier New', Courier, monospace">07 // Rollback</text>
+  <text x="50" y="338" fill="#3a3a3a" font-size="12.5" font-family="'Courier New', Courier, monospace">08 // Success Signal</text>
+  <text x="50" y="357" fill="#3a3a3a" font-size="12.5" font-family="'Courier New', Courier, monospace">09 // Change Control</text>
+
+  <!-- Bracket: Recovery -->
+  <polyline points="494,289 484,289 484,365 494,365" fill="none" stroke="#2e7d52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="484" y1="327" x2="502" y2="327" stroke="#2e7d52" stroke-width="2" stroke-linecap="round"/>
+  <text x="508" y="322" fill="#2e7d52" font-size="12" font-weight="700" font-family="'Segoe UI', system-ui, sans-serif">IF?</text>
+  <text x="508" y="338" fill="#2e7d52" font-size="11" font-style="italic" font-family="'Segoe UI', system-ui, sans-serif">it breaks?</text>
+
+  <!-- Footer ellipsis -->
+  <line x1="50" y1="378" x2="480" y2="378" stroke="#eff2f4" stroke-width="1"/>
+  <text x="50" y="398" fill="#d0dce6" font-size="13" font-family="'Courier New', Courier, monospace">...</text>
+</svg>

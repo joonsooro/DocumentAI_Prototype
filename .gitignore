@@ -1,0 +1,45 @@
+# SQLite snapshot - SUB-2 storage, never commit
+app/data/snapshot.db
+app/data/snapshot.db-journal
+app/data/snapshot.db-wal
+app/data/snapshot.db-shm
+
+# Observability trace - SUB-6 JSONL, never commit
+app/data/trace.jsonl
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.log
+
+# Local backup of modules/ — rollback escape hatch, never commit
+modules.bak/
+
+# Secrets
+.env
+.env.local
+.env*.local
+
+# OMC session state — local-only, never commit
+.omc/
+
+# Symlinks to user-global Claude plugins — host-specific, never commit
+.claude/skills/frontend-design

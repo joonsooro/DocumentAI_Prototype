@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ambiguity Audit · spec.html · S1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=Newsreader:opsz,ital,wght@6..72,0,400;6..72,0,500;6..72,0,600;6..72,1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F7F3EC;
+    --paper-deep:#EFE8DB;
+    --ink:#1A1714;
+    --ink-soft:#4A423A;
+    --ink-faint:#8A8275;
+    --rule:#D9CFBC;
+    --red:#8A3324;
+    --red-soft:#B8553F;
+    --red-tint:rgba(138,51,36,0.10);
+    --red-wash:rgba(138,51,36,0.04);
+    --amber:#A8742B;
+    --amber-tint:rgba(168,116,43,0.10);
+    --amber-wash:rgba(168,116,43,0.04);
+    --serif:"Fraunces", "Newsreader", Georgia, serif;
+    --mono:"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--paper);color:var(--ink)}
+  body{
+    font-family:"Newsreader", Georgia, serif;
+    font-size:15px;
+    line-height:1.55;
+    font-feature-settings:"liga","onum","ss01";
+    background-image:
+      radial-gradient(circle at 88% 6%, rgba(138,51,36,0.08), transparent 35%),
+      radial-gradient(circle at 6% 96%, rgba(26,23,20,0.05), transparent 45%);
+    background-attachment:fixed;
+  }
+  .page{max-width:900px;margin:0 auto;padding:72px 56px 120px;position:relative}
+  .folio{position:fixed;top:24px;right:32px;font-family:var(--mono);font-size:10px;letter-spacing:0.18em;color:var(--red);text-transform:uppercase;writing-mode:vertical-rl;transform:rotate(180deg)}
+  header.masthead{border-top:6px solid var(--red);border-bottom:1.5px solid var(--ink);padding:28px 0 32px;margin-bottom:48px}
+  .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:0.28em;text-transform:uppercase;color:var(--red);margin:0 0 14px}
+  h1.title{font-family:var(--serif);font-weight:400;font-variation-settings:"opsz" 144,"SOFT" 30,"WONK" 0;font-size:52px;line-height:0.98;letter-spacing:-0.02em;margin:0 0 28px;color:var(--ink)}
+  h1.title em{font-style:italic;font-variation-settings:"opsz" 144,"SOFT" 100,"WONK" 1;color:var(--red)}
+  .verdict{display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:start;padding:18px 22px;background:var(--red-tint);border-left:3px solid var(--red);margin-top:12px}
+  .verdict .stamp{font-family:var(--serif);font-style:italic;font-weight:500;font-variation-settings:"opsz" 60;font-size:32px;color:var(--red);line-height:1;letter-spacing:-0.02em;white-space:nowrap}
+  .verdict .stamp::before{content:"▲ ";font-style:normal;font-size:24px;vertical-align:1px}
+  .verdict .body{font-family:"Newsreader",Georgia,serif;font-size:14px;color:var(--ink);line-height:1.5}
+  .verdict .body b{font-weight:600}
+  .meta-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:20px;border-top:1px solid var(--rule)}
+  .meta-grid div{padding:14px 14px 12px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+  .meta-grid div:last-child{border-right:none}
+  .meta-grid .label{font-family:var(--mono);font-size:9.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-faint);display:block;margin-bottom:6px}
+  .meta-grid .value{font-family:var(--serif);font-weight:500;font-size:22px;color:var(--ink);letter-spacing:-0.01em}
+  .meta-grid .value .qual{font-family:var(--mono);font-size:10px;color:var(--red);letter-spacing:0.1em;text-transform:uppercase;margin-left:4px;vertical-align:3px}
+  .meta-grid .value.fail{color:var(--red);font-style:italic;font-variation-settings:"opsz" 60,"SOFT" 80}
+  section{margin:64px 0 0;scroll-margin-top:40px}
+  section + section{padding-top:48px;border-top:1px solid var(--rule)}
+  .sec-head{display:grid;grid-template-columns:72px 1fr auto;gap:18px;align-items:baseline;margin-bottom:14px}
+  .sec-num{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;color:var(--red);text-transform:uppercase;padding-top:6px}
+  h2{font-family:var(--serif);font-weight:500;font-variation-settings:"opsz" 60,"SOFT" 20;font-size:28px;letter-spacing:-0.01em;line-height:1.15;margin:0;color:var(--ink)}
+  .halt-tag{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--red);padding:5px 10px;background:var(--red-tint);border:1px solid var(--red);border-radius:1px;white-space:nowrap}
+  .sec-body{padding-left:90px}
+  .sec-body p{margin:0 0 16px;color:var(--ink-soft)}
+  table{width:100%;border-collapse:collapse;margin:6px 0 4px;font-size:13px}
+  thead th{font-family:var(--mono);font-weight:500;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:10px 10px 12px;border-bottom:1.5px solid var(--ink);background:transparent}
+  tbody td{padding:13px 10px;vertical-align:top;border-bottom:1px solid var(--rule);line-height:1.45}
+  tbody tr.strict{background:var(--red-wash)}
+  tbody tr.strict:hover{background:var(--red-tint)}
+  tbody tr.partial{background:var(--amber-wash)}
+  tbody tr.partial:hover{background:var(--amber-tint)}
+  td.glyph{font-family:var(--mono);font-size:14px;width:28px;text-align:center;padding-top:14px;line-height:1}
+  tr.strict td.glyph{color:var(--red);font-weight:700}
+  tr.partial td.glyph{color:var(--amber);font-weight:500}
+  td.term{font-family:var(--mono);font-size:11.5px;letter-spacing:0.01em;color:var(--ink);font-weight:500;width:24%}
+  tr.strict td.term{color:var(--red)}
+  tr.partial td.term{color:var(--amber)}
+  td.loc{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);width:18%;line-height:1.5}
+  td.reason{font-family:"Newsreader",Georgia,serif;font-size:13.5px;color:var(--ink);line-height:1.5}
+  td.reason em{font-style:italic;color:var(--ink-soft)}
+  td.reason code{font-family:var(--mono);font-size:12px;background:rgba(138,51,36,0.06);padding:0 4px;border-radius:1px;color:var(--red)}
+  .colophon{margin-top:88px;padding:22px 0 0;border-top:6px solid var(--red);display:grid;grid-template-columns:1fr auto;gap:24px;font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint)}
+  .colophon .next{color:var(--red);font-weight:500}
+  .colophon .next b{color:var(--ink)}
+  @media (max-width:780px){
+    .page{padding:48px 22px 80px}
+    .sec-head{grid-template-columns:1fr;gap:6px}
+    .sec-body{padding-left:0}
+    h1.title{font-size:36px}
+    .meta-grid{grid-template-columns:repeat(2,1fr)}
+    .verdict{grid-template-columns:1fr}
+    .folio{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="folio">S1 · Audit · spec.html · FAILS</div>
+<div class="page">
+
+<header class="masthead">
+  <p class="eyebrow">S1 · Independent Critic · Ambiguity Audit</p>
+  <h1 class="title">Three Classes,<br>Three Halts, <em>Fired</em>.</h1>
+  <div class="verdict">
+    <div class="stamp">FAILS</div>
+    <div class="body">All three halt conditions triggered — <b>entity introduction</b>, <b>action HOW</b>, <b>qualifier bound</b>. Per the blueprint, this is the expected outcome: <em>a spec that passes Working Backwards but fails the audit is the normal case, not the exception.</em></div>
+  </div>
+  <div class="meta-grid">
+    <div><span class="label">Source</span><span class="value" style="font-family:var(--mono);font-size:13px">app/spec.html</span></div>
+    <div><span class="label">Date</span><span class="value" style="font-family:var(--mono);font-size:13px">2026-05-24</span></div>
+    <div><span class="label">Strict flags</span><span class="value fail">20</span></div>
+    <div><span class="label">Partial</span><span class="value">3 <span class="qual">owned</span></span></div>
+  </div>
+</header>
+
+<section id="c1">
+  <div class="sec-head"><div class="sec-num">CLASS 01</div><h2>Entity introduction</h2><span class="halt-tag">Halt 1 · fired</span></div>
+  <div class="sec-body">
+    <p>Entities referenced before — or without — a definition the reader can resolve in-place. Type names listed once in §8 but never bound to a rule are flagged as dead.</p>
+    <table>
+      <thead><tr><th style="width:28px"></th><th>Term</th><th>Location</th><th>Flag reason</th></tr></thead>
+      <tbody>
+        <tr class="strict"><td class="glyph">▲</td><td class="term">STP</td><td class="loc">§1 lede · line 98</td><td class="reason">Acronym used without expansion. <em>"Straight-through processing"</em> is industry jargon; spec never defines it. A non-AP reader cannot decode the readiness vocabulary.</td></tr>
+        <tr class="strict"><td class="glyph">▲</td><td class="term">CorrectionEvent</td><td class="loc">§5 A6 · line 152</td><td class="reason">Type name appears inside a promotion rule with no preceding sentence defining what a <code>CorrectionEvent</code> is. Reader infers from context only.</td></tr>
+        <tr class="strict"><td class="glyph">▲</td><td class="term">DAEJOO material-disposal phrase</td><td class="loc">§2 line 107 · §3 RED-2 line 128</td><td class="reason">Referenced repeatedly as <em>"the material-disposal phrase"</em> without ever quoting the verbatim string (<em>"If exposed to air, it shall be disposed"</em>) or naming its source field. Downstream builder has no string to match against.</td></tr>
+        <tr class="strict"><td class="glyph">▲</td><td class="term">ReadinessDecision</td><td class="loc">§1 line 98 · §5 A7 line 153 (prose) · §8 line 204 (type)</td><td class="reason">Prose form <em>"readiness decision(s)"</em> appears before §8 introduces the TS type. Same word doing two jobs — prose noun and typed object.</td></tr>
+        <tr class="strict"><td class="glyph">▲</td><td class="term">CapabilityAssessment</td><td class="loc">§1 line 98 · §2 line 106 (prose) · §8 line 204 (type)</td><td class="reason">Same prose-before-type pattern as <code>ReadinessDecision</code>.</td></tr>
+        <tr class="strict"><td class="glyph">▲</td><td class="term">ExceptionReason</td><td class="loc">§8 line 204</td><td class="reason">Listed as a TS type in <code>src/domain/types.ts</code>; never referenced in any other section. Dead type or missing rule.</td></tr>
+        <tr class="strict"><td class="glyph">▲</td><td class="term">PromptVersion · RegressionSignal · CapabilityGap · DocumentRun</td><td class="loc">§8 line 204</td><td class="reason">Listed as TS types; none cited by any Always / Ask First / Never / FAQ / Substrate rule. <b>Four dead types.</b></td></tr>
+        <tr class="strict"><td class="glyph">▲</td><td class="term">"customer" vs "operator" vs "admin"</td><td class="loc">HAPPY-1 · §1 · §2</td><td class="reason">HAPPY-1 disambiguates the three terms; §1 and §2 drift back to overloaded usage. Disambiguation only holds if the reader carries HAPPY-1 forward — fragile under partial reads.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="c2">
+  <div class="sec-head"><div class="sec-num">CLASS 02</div><h2>Action verbs without <em>HOW</em></h2><span class="halt-tag">Halt 2 · fired</span></div>
+  <div class="sec-body">
+    <p>Rules stated as <em>shall / must / never</em> with no mechanism naming what executes, enforces, or detects the action. Partials are owned by an Open Question.</p>
+    <table>
+      <thead><tr><th style="width:28px"></th><th>Action</th><th>Location</th><th>Missing HOW</th></tr></thead>
+      <tbody>
+        <tr class="strict"><td class="glyph">▲</td><td class="term">classify every requirement as Supported / Supported with workaround</td><td class="loc">A2 · HAPPY-4</td><td class="reason">Classification mechanism not specified — what rule decides which bucket an intent fragment lands in?</td></tr>
+        <tr class="strict"><td class="glyph">▲</td><td class="term">route every capability gap into the ProductSignal pipeline</td><td class="loc">A3</td><td class="reason">Gap-detection rule not specified — what classifies an item as a capability gap vs. a normal <code>ClarificationRequest</code>?</td></tr>
+        <tr class="strict"><td class="glyph">▲</td><td class="term">keep Customer / Admin / Internal three-surface separation</td><td class="loc">A8</td><td class="reason">Separation mechanism not specified — what <em>prevents</em> one workspace from rendering another's data? Convention-only.</td></tr>
+        <tr class="strict"><td class="glyph">▲</td><td class="term">six live AI Core agents (compile · capability · readiness · clarification · admin recs · signal governance)</td><td class="loc">§1 · §6 · SUB-7</td><td class="reason">Per-agent input schema, output schema, refusal pattern, and prompt template are not specified anywhere. OQ-1 owns the API contract but <b>not</b> the per-agent contracts.</td></tr>
+        <tr class="strict"><td class="glyph">▲</td><td class="term">never include "lower the threshold" in any recommendation</td><td class="loc">RED-1 · N2</td><td class="reason">Enforcement layer not specified — agent prompt constraint, post-filter, eval-only? Live-agent compliance mechanism is unstated.</td></tr>
+        <tr class="strict"><td class="glyph">▲</td><td class="term">never display "Unsupported" in the Customer Workspace</td><td class="loc">N1</td><td class="reason">Same as RED-1 / N2 — no enforcement mechanism named for a live-agent generated surface.</td></tr>
+        <tr class="partial"><td class="glyph">◇</td><td class="term">generate a ClarificationRequest for every missed or low-confidence required field</td><td class="loc">A4 · EDGE-1</td><td class="reason"><em>"missed" = absent</em> ✓ (inferable); <em>"low-confidence"</em> depends on threshold values that live in <b>OQ-3</b>. Owned.</td></tr>
+        <tr class="partial"><td class="glyph">◇</td><td class="term">gate CorrectionEvent → ProductSignal promotion through governance fields</td><td class="loc">A6 · EDGE-3</td><td class="reason">Governance field <em>names</em> ✓; actual threshold values live in <b>OQ-2</b>. Owned.</td></tr>
+        <tr class="partial"><td class="glyph">◇</td><td class="term">must complete a full DAEJOO walkthrough in under five minutes</td><td class="loc">EDGE-4</td><td class="reason">Timing source not specified — wall clock, monotonic, or Vitest's own timer?</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="c3">
+  <div class="sec-head"><div class="sec-num">CLASS 03</div><h2>Qualifiers without unit / boundary</h2><span class="halt-tag">Halt 3 · fired</span></div>
+  <div class="sec-body">
+    <p>Numeric, scope, and lifecycle qualifiers without explicit bounds. Open-Question-owned values are still flagged here because the rule is in force while the bound is open.</p>
+    <table>
+      <thead><tr><th style="width:28px"></th><th>Qualifier</th><th>Location</th><th>Flag reason</th></tr></thead>
+      <tbody>
+        <tr class="strict"><td class="glyph">▲</td><td class="term">"low-confidence"</td><td class="loc">A4</td><td class="reason">No threshold bound. Always rule is in force but unactionable until <b>OQ-3</b> closes.</td></tr>
+        <tr class="strict"><td class="glyph">▲</td><td class="term">"auto-confirm threshold"</td><td class="loc">AF1 · N7</td><td class="reason">Threshold values per field not bound; rules cite the threshold but the value lives in <b>OQ-3</b>.</td></tr>
+        <tr class="strict"><td class="glyph">▲</td><td class="term">"frequency, customer impact, supplier-count required"</td><td class="loc">A6 · AF2</td><td class="reason">Governance numeric bounds not specified; lives in <b>OQ-2</b>.</td></tr>
+        <tr class="strict"><td class="glyph">▲</td><td class="term">"seven eval families"</td><td class="loc">EDGE-4</td><td class="reason">Count is fixed but spec body never enumerates the seven. Reader must consult the brief or <code>evals.md</code> to know <em>which</em> seven.</td></tr>
+        <tr class="strict"><td class="glyph">▲</td><td class="term">Scope-combination semantics: supplier × country</td><td class="loc">A6 · AF1</td><td class="reason">Scopes named but no resolution rule. <em>AND? OR? Supplier-then-country?</em></td></tr>
+        <tr class="strict"><td class="glyph">▲</td><td class="term">In-memory fixture lifecycle</td><td class="loc">§6 · SUB-2</td><td class="reason">Not specified — session-scoped, per-test, per-walkthrough? Affects eval determinism.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="colophon">
+  <span>S1 · Independent Critic · <b style="color:var(--red)">ambiguity-audit.html</b></span>
+  <span class="next">Next action → <b>return to spec.html · resolve flagged rows · re-run audit</b></span>
+</div>
+
+</div>
+</body>
+</html>

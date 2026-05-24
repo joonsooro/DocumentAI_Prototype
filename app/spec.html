@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Document AI Self-Improvement Flywheel — Spec (S1)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=Newsreader:opsz,ital,wght@6..72,0,400;6..72,0,500;6..72,0,600;6..72,1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F7F3EC;
+    --paper-deep:#EFE8DB;
+    --ink:#1A1714;
+    --ink-soft:#4A423A;
+    --ink-faint:#8A8275;
+    --rule:#D9CFBC;
+    --accent:#8A3324;
+    --accent-soft:#B8553F;
+    --tint:rgba(138,51,36,0.06);
+    --serif:"Fraunces", "Newsreader", Georgia, serif;
+    --mono:"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--paper);color:var(--ink)}
+  body{
+    font-family:"Newsreader", Georgia, serif;
+    font-size:15px;
+    line-height:1.55;
+    font-feature-settings:"liga","onum","ss01";
+    background-image:
+      radial-gradient(circle at 12% 8%, rgba(138,51,36,0.04), transparent 40%),
+      radial-gradient(circle at 88% 92%, rgba(26,23,20,0.04), transparent 45%);
+    background-attachment:fixed;
+  }
+  .page{max-width:880px;margin:0 auto;padding:88px 56px 120px;position:relative}
+  .folio{position:fixed;top:24px;right:32px;font-family:var(--mono);font-size:10px;letter-spacing:0.18em;color:var(--ink-faint);text-transform:uppercase;writing-mode:vertical-rl;transform:rotate(180deg)}
+  header.masthead{border-bottom:1.5px solid var(--ink);padding-bottom:28px;margin-bottom:48px;display:grid;grid-template-columns:1fr auto;align-items:end;gap:24px}
+  .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:0.24em;text-transform:uppercase;color:var(--accent);margin:0 0 12px}
+  h1.title{font-family:var(--serif);font-weight:400;font-variation-settings:"opsz" 144,"SOFT" 30,"WONK" 0;font-size:46px;line-height:1.02;letter-spacing:-0.018em;margin:0;color:var(--ink)}
+  h1.title em{font-style:italic;font-variation-settings:"opsz" 144,"SOFT" 100,"WONK" 1;color:var(--accent)}
+  .meta{font-family:var(--mono);font-size:10.5px;letter-spacing:0.08em;color:var(--ink-soft);text-align:right;line-height:1.7}
+  .meta b{color:var(--ink);font-weight:500}
+  section{margin:56px 0 0;scroll-margin-top:40px}
+  section + section{padding-top:48px;border-top:1px solid var(--rule)}
+  .sec-head{display:grid;grid-template-columns:64px 1fr;gap:20px;align-items:baseline;margin-bottom:20px}
+  .sec-num{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;color:var(--accent);text-transform:uppercase;padding-top:6px}
+  h2{font-family:var(--serif);font-weight:500;font-variation-settings:"opsz" 60,"SOFT" 20;font-size:26px;letter-spacing:-0.01em;line-height:1.15;margin:0;color:var(--ink)}
+  .sec-body{padding-left:84px}
+  p{margin:0 0 14px}
+  p.lede::first-line{font-variant-caps:small-caps;letter-spacing:0.04em;color:var(--ink-soft)}
+  p strong{font-weight:600;color:var(--ink)}
+  p .term{font-family:var(--mono);font-size:12.5px;background:var(--tint);padding:1px 5px;border-radius:2px;color:var(--accent);white-space:nowrap}
+  .pull{font-family:var(--serif);font-style:italic;font-size:17px;color:var(--accent);border-left:2px solid var(--accent);padding:4px 0 4px 18px;margin:18px 0;line-height:1.4}
+  table{width:100%;border-collapse:collapse;margin:8px 0 6px;font-size:13px}
+  thead th{font-family:var(--mono);font-weight:500;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:8px 10px 10px;border-bottom:1.5px solid var(--ink)}
+  tbody td{padding:11px 10px;vertical-align:top;border-bottom:1px solid var(--rule);line-height:1.45}
+  tbody tr:hover{background:var(--tint)}
+  td.id{font-family:var(--mono);font-size:11px;letter-spacing:0.04em;color:var(--accent);white-space:nowrap;font-weight:500}
+  td.src{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);white-space:nowrap}
+  td.q{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--ink-soft);width:24%}
+  td.status-d{font-family:var(--mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-faint)}
+  td.cat{font-family:var(--mono);font-size:11px;color:var(--ink);letter-spacing:0.02em;white-space:nowrap}
+  .subhead{font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent);margin:22px 0 4px;display:flex;align-items:center;gap:10px}
+  .subhead::after{content:"";flex:1;height:1px;background:var(--rule)}
+  .colophon{margin-top:80px;padding-top:24px;border-top:1.5px solid var(--ink);font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);display:flex;justify-content:space-between}
+  .colophon span b{color:var(--accent);font-weight:500}
+  @media (max-width:700px){
+    .page{padding:48px 24px 80px}
+    .sec-head{grid-template-columns:1fr;gap:4px}
+    .sec-body{padding-left:0}
+    h1.title{font-size:34px}
+    header.masthead{grid-template-columns:1fr;align-items:start}
+    .meta{text-align:left}
+    .folio{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="folio">S1 · Working Backwards · Spec</div>
+<div class="page">
+
+<header class="masthead">
+  <div>
+    <p class="eyebrow">Stage S1 · Working Backwards</p>
+    <h1 class="title">Document AI<br>Self-Improvement <em>Flywheel</em></h1>
+  </div>
+  <div class="meta">
+    <b>v1 prototype</b><br>
+    DAEJOO commercial-invoice anchor<br>
+    9 sections · 12 FAQ · 7 substrate
+  </div>
+</header>
+
+<section id="s1">
+  <div class="sec-head"><div class="sec-num">§ 01</div><h2>Problem &amp; Opportunity</h2></div>
+  <div class="sec-body">
+    <p class="lede">Document AI administrators today translate prose business requirements into schema, prompts, regex, and thresholds by hand, producing silent capability mismatches that surface only as downstream STP failures or operator overrides. The prototype compiles messy customer intent into a single <span class="term">CompiledConfiguration</span> artifact, surfaces capability assessments without ever telling the customer something is <em>"unsupported,"</em> runs a deterministic DAEJOO extraction, renders readiness with business-language reasons, runs live AI Core agents for every reasoning step — compile, capability, readiness, clarification, admin recommendation, signal governance — and routes hidden capability gaps into a governed Internal Product Intelligence flywheel.</p>
+    <p class="pull">Field extraction is mock. Every agent is live.</p>
+  </div>
+</section>
+
+<section id="s2">
+  <div class="sec-head"><div class="sec-num">§ 02</div><h2>Customer Experience Contract</h2></div>
+  <div class="sec-body">
+    <p><strong>Customer promise.</strong> An admin pastes messy commercial-invoice requirements and within one demo session sees compiled Document AI configuration, a clear capability assessment, a deterministic DAEJOO extraction, a readiness decision with business reasons, agentic clarification prompts for missed fields, admin-grade improvement recommendations grounded in observed corrections, and a separate internal flywheel view — all without telling the customer their requirement is "unsupported," without auto-lowering a threshold to fake a win, and without leaking internal roadmap gaps into any customer surface.</p>
+    <p><strong>Negative contract.</strong> Never display "unsupported" in the Customer Workspace; never recommend lowering a confidence threshold as the demo action; never surface raw prompts, raw model output, or roadmap-candidate signals (including the DAEJOO material-disposal phrase) on a customer surface; never call live OCR or live field extraction in v1; never mark a document <span class="term">Ready</span> when any required field is below auto-confirm or when a workaround rule is unconfirmed for the supplier; never auto-promote a single correction into a <span class="term">ProductSignal</span> without governance gating; never read the DAEJOO PDF from <span class="term">~/Downloads</span> at runtime (canonical path is <span class="term">app/assets/daejoo-invoice.pdf</span>); never hide an AI Core agent failure behind a canned fallback — use <span class="term">ClarificationRequest</span> + <span class="term">QualityMetric</span> instead.</p>
+  </div>
+</section>
+
+<section id="s3">
+  <div class="sec-head"><div class="sec-num">§ 03</div><h2>FAQ → Assertion Rows</h2></div>
+  <div class="sec-body">
+    <table>
+      <thead><tr><th style="width:9%">ID</th><th style="width:24%">Question</th><th>Assertion</th></tr></thead>
+      <tbody>
+        <tr><td class="id">HAPPY-1</td><td class="q">Who is the customer?</td><td>The customer is <b>always</b> a Document AI administrator configuring commercial-invoice processing on behalf of an enterprise AP/logistics team; the end consumer of the configuration is <b>always</b> an internal operator triaging extraction results, <b>never</b> a generic end-user uploading invoices ad-hoc.</td></tr>
+        <tr><td class="id">HAPPY-2</td><td class="q">What hurts today without this control layer?</td><td>Administrators <b>must</b> today translate prose business requirements into Document AI schema, prompts, regex, and thresholds by hand, which <b>always</b> produces silent capability mismatches that surface only as downstream STP failures or operator overrides.</td></tr>
+        <tr><td class="id">HAPPY-3</td><td class="q">How does the prototype solve the messy-intent → configuration problem?</td><td>The prototype <b>must</b> compile customer intent into a CompiledConfiguration containing schema fields, field instructions, validation rules, regex patterns, confidence thresholds, and processing mode in a single visible artifact; the compile step is <b>always</b> a live AI Core agent call, <b>never</b> a static template lookup.</td></tr>
+        <tr><td class="id">HAPPY-4</td><td class="q">How does the prototype handle a capability gap without lying?</td><td>The Customer Workspace <b>must</b> classify every requirement as Supported or Supported with workaround and <b>must never</b> display Unsupported; capability gaps <b>must always</b> be routed to the hidden ProductSignal flywheel and to the customer-facing ClarificationRequest loop instead.</td></tr>
+        <tr><td class="id">HAPPY-5</td><td class="q">What does the administrator do differently after running the demo?</td><td>After the demo the administrator <b>must</b> review readiness in business language, confirm or correct extracted fields through the clarification loop, and accept or defer admin recommendations — they <b>never</b> edit raw prompts or thresholds blindly, and they <b>always</b> see why a recommendation was generated.</td></tr>
+        <tr><td class="id">HAPPY-6</td><td class="q">What can a competing Document AI control layer not copy?</td><td>Competitors <b>always</b> expose unsupported-capability language to the customer or auto-tune thresholds to hide failures; this prototype <b>must</b> instead split the surface into Customer / Admin / Internal workspaces with a governed flywheel, and that three-surface separation with a hidden product-signal pipeline is <b>always</b> the load-bearing differentiator.</td></tr>
+        <tr><td class="id">EDGE-1</td><td class="q">What happens when extraction misses a required field?</td><td>The system <b>must always</b> generate a ClarificationRequest asking the operator for field meaning, posting/review/reporting impact, and whether the interpretation applies to future documents from the same supplier; it <b>must never</b> silently fall back to a default value or skip the field.</td></tr>
+        <tr><td class="id">EDGE-2</td><td class="q">What happens when an AI Core agent call fails, times out, or returns malformed JSON?</td><td>An agent failure <b>must always</b> be surfaced as a ClarificationRequest with an operator-facing error message and <b>must always</b> be logged as a QualityMetric; the system <b>must never</b> substitute a canned fallback response that pretends the agent succeeded.</td></tr>
+        <tr><td class="id">EDGE-3</td><td class="q">What happens when a correction looks like a one-off vs. a pattern?</td><td>The flywheel <b>must always</b> gate CorrectionEvent → ProductSignal promotion through governance fields (frequency, customer impact, document type, supplier, country); a single one-off correction <b>must never</b> auto-promote into a roadmap recommendation.</td></tr>
+        <tr><td class="id">EDGE-4</td><td class="q">What is the value of the prototype at demo scale and how does it scale?</td><td>The demo <b>must</b> complete a full DAEJOO walkthrough in under five minutes, covering all three workspaces and all seven eval families; the same architecture <b>must always</b> scale to multiple suppliers and document types by adding deterministic fixtures and supplier-specific prompt versions, <b>never</b> by hand-editing the control layer.</td></tr>
+        <tr><td class="id">RED-1</td><td class="q">What if a stakeholder asks the demo to lower thresholds to make a borderline document Ready for STP?</td><td>The Admin Control Plane <b>must always</b> expose threshold management as a visible tool and <b>must never</b> include "lower the threshold" in any recommendation, suggestion, or demo script step, even if a document would pass STP after the change.</td></tr>
+        <tr><td class="id">RED-2</td><td class="q">What if a stakeholder asks the demo to show the customer that a requirement (e.g. the DAEJOO material-disposal phrase) is unsupported, so the customer is "informed"?</td><td>The Customer Workspace <b>must never</b> display the material-disposal phrase, any roadmap-candidate signal, raw internal prompt text, or any equivalent capability-gap language; that signal <b>must always</b> appear only in Internal Product Intelligence as <span class="term">unsupported_free_text_business_condition</span>.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="s4">
+  <div class="sec-head"><div class="sec-num">§ 04</div><h2>Non-Goals &amp; Scope Boundaries</h2></div>
+  <div class="sec-body">
+    <p>v1 does <strong>NOT</strong> call live OCR or live field extraction (deterministic mock only for DAEJOO). v1 does <strong>NOT</strong> post to S/4HANA, does <strong>NOT</strong> deploy to SAP BTP, does <strong>NOT</strong> integrate with a real Document AI tenant. v1 does <strong>NOT</strong> introduce a database, does <strong>NOT</strong> introduce auth, does <strong>NOT</strong> introduce a shared hosted runtime. v1 does <strong>NOT</strong> support a second supplier beyond DAEJOO (Amazon stays a v2 happy-path fixture). v1 does <strong>NOT</strong> introduce 1–5 scoring or LLM-as-judge in evals (binary assertions only). v1 does <strong>NOT</strong> recommend threshold-lowering in any admin surface.</p>
+  </div>
+</section>
+
+<section id="s5">
+  <div class="sec-head"><div class="sec-num">§ 05</div><h2>Behaviour Contract</h2></div>
+  <div class="sec-body">
+    <div class="subhead">Always</div>
+    <table><thead><tr><th style="width:9%">ID</th><th>Rule</th><th style="width:18%">Source</th></tr></thead>
+    <tbody>
+      <tr><td class="id">A1</td><td>Compile customer intent into a single CompiledConfiguration artifact via a live AI Core agent.</td><td class="src">HAPPY-3</td></tr>
+      <tr><td class="id">A2</td><td>Classify every requirement as Supported or Supported with workaround in the Customer Workspace.</td><td class="src">HAPPY-4</td></tr>
+      <tr><td class="id">A3</td><td>Route every capability gap into the hidden ProductSignal pipeline and the customer-facing ClarificationRequest loop.</td><td class="src">HAPPY-4, RED-2</td></tr>
+      <tr><td class="id">A4</td><td>Generate a ClarificationRequest for every missed or low-confidence required field.</td><td class="src">EDGE-1</td></tr>
+      <tr><td class="id">A5</td><td>Surface every AI Core agent failure as a ClarificationRequest plus a logged QualityMetric.</td><td class="src">EDGE-2</td></tr>
+      <tr><td class="id">A6</td><td>Gate CorrectionEvent → ProductSignal promotion through governance fields (frequency, customer impact, document type, supplier, country).</td><td class="src">EDGE-3</td></tr>
+      <tr><td class="id">A7</td><td>Render readiness decisions with business-language reasons (field, evidence, rule/config, confidence, recommended next action).</td><td class="src">HAPPY-5</td></tr>
+      <tr><td class="id">A8</td><td>Keep the Customer / Admin / Internal three-surface separation; each workspace reads the same domain objects but exposes its own concern.</td><td class="src">HAPPY-6</td></tr>
+      <tr><td class="id">A9</td><td>Read the DAEJOO PDF only from app/assets/daejoo-invoice.pdf.</td><td class="src">HAPPY-3, EDGE-4</td></tr>
+    </tbody></table>
+    <div class="subhead">Ask First</div>
+    <table><thead><tr><th style="width:9%">ID</th><th>Rule</th><th style="width:18%">Source</th></tr></thead>
+    <tbody>
+      <tr><td class="id">AF1</td><td>Before accepting an admin recommendation that changes a prompt version, schema field, or auto-confirm criterion, confirm the change scope (this document · this supplier · all suppliers).</td><td class="src">HAPPY-5</td></tr>
+      <tr><td class="id">AF2</td><td>Before promoting a CorrectionEvent into a ProductSignal, confirm category, suggested product area, and frequency threshold via the Internal governance queue.</td><td class="src">EDGE-3</td></tr>
+      <tr><td class="id">AF3</td><td>Before marking a document Ready for STP when any workaround-classified rule applies, confirm the workaround applies to this supplier.</td><td class="src">HAPPY-4, RED-1</td></tr>
+    </tbody></table>
+    <div class="subhead">Never</div>
+    <table><thead><tr><th style="width:9%">ID</th><th>Rule</th><th style="width:18%">Source</th></tr></thead>
+    <tbody>
+      <tr><td class="id">N1</td><td>Never display Unsupported or equivalent capability-gap language in the Customer Workspace.</td><td class="src">HAPPY-4, RED-2</td></tr>
+      <tr><td class="id">N2</td><td>Never recommend lowering a confidence threshold in the Admin Control Plane, in any demo step, recommendation, or suggestion.</td><td class="src">RED-1</td></tr>
+      <tr><td class="id">N3</td><td>Never surface roadmap-candidate signals, raw prompt text, raw model output, or the DAEJOO material-disposal phrase on any customer-visible surface.</td><td class="src">RED-2</td></tr>
+      <tr><td class="id">N4</td><td>Never substitute a canned fallback response for a failed AI Core agent call.</td><td class="src">EDGE-2</td></tr>
+      <tr><td class="id">N5</td><td>Never auto-promote a one-off CorrectionEvent into a ProductSignal without governance gating.</td><td class="src">EDGE-3</td></tr>
+      <tr><td class="id">N6</td><td>Never call live OCR or live field extraction in v1; simulateDocumentRun returns deterministic mock extraction for DAEJOO.</td><td class="src">HAPPY-3, HAPPY-4</td></tr>
+      <tr><td class="id">N7</td><td>Never mark a document Ready for STP when any required field is below its auto-confirm threshold.</td><td class="src">RED-1, EDGE-1</td></tr>
+      <tr><td class="id">N8</td><td>Never read or write the DAEJOO PDF from ~/Downloads at runtime.</td><td class="src">EDGE-4</td></tr>
+    </tbody></table>
+  </div>
+</section>
+
+<section id="s6">
+  <div class="sec-head"><div class="sec-num">§ 06</div><h2>Constraints, Dependencies &amp; Risks</h2></div>
+  <div class="sec-body">
+    <p><strong>Stack constraints.</strong> React 18 + TypeScript + Vite + <span class="term">@ui5/webcomponents-react</span>; in-memory typed fixtures only; Vitest binary evals. Live AI Core for all agentic steps (compile, capability, readiness reasoning, clarification, admin recs, signal governance).</p>
+    <p><strong>Risk.</strong> Live AI Core agents are non-deterministic — evals assert agent behaviour invariants (shape, presence of fields, refusal patterns), not exact response text.</p>
+    <p><strong>Risk.</strong> A single demo laptop with no shared runtime means a flaky network during a live demo blocks every agent; mitigation is the ClarificationRequest + QualityMetric surface per A5.</p>
+    <p><strong>Dependency.</strong> AI Core API contract details (auth, endpoint, JSON shape) are still <strong>OPEN</strong> per OQ-1.</p>
+  </div>
+</section>
+
+<section id="s7">
+  <div class="sec-head"><div class="sec-num">§ 07</div><h2>Open Questions</h2></div>
+  <div class="sec-body">
+    <table><thead><tr><th style="width:9%">ID</th><th>Question</th><th style="width:14%">Owner</th><th style="width:20%">ETA</th></tr></thead>
+    <tbody>
+      <tr><td class="id">OQ-1</td><td>AI Core API contract details (auth model, endpoint shape, rate limits, JSON contract).</td><td class="src">Spec owner</td><td class="src">before S2 contract</td></tr>
+      <tr><td class="id">OQ-2</td><td>Governance thresholds for CorrectionEvent → ProductSignal promotion (frequency, customer-impact weight, supplier-count required).</td><td class="src">Spec owner</td><td class="src">before S3 build</td></tr>
+      <tr><td class="id">OQ-3</td><td>Auto-confirm threshold values per field (supplier, PO, invoice date, payment terms, payable amount).</td><td class="src">Spec owner</td><td class="src">before S3 build</td></tr>
+    </tbody></table>
+  </div>
+</section>
+
+<section id="s8">
+  <div class="sec-head"><div class="sec-num">§ 08</div><h2>Implementation Notes</h2></div>
+  <div class="sec-body">
+    <p><strong>Repo layout</strong> follows the brief: <span class="term">src/data/demoScenario.ts</span> (fixtures), <span class="term">src/domain/types.ts</span> (<span class="term">CustomerIntent</span>, <span class="term">CompiledConfiguration</span>, <span class="term">CapabilityAssessment</span>, <span class="term">DocumentRun</span>, <span class="term">ReadinessDecision</span>, <span class="term">ExceptionReason</span>, <span class="term">ClarificationRequest</span>, <span class="term">CorrectionEvent</span>, <span class="term">AdminRecommendation</span>, <span class="term">PromptVersion</span>, <span class="term">QualityMetric</span>, <span class="term">ProductSignal</span>, <span class="term">RegressionSignal</span>, <span class="term">CapabilityGap</span>), <span class="term">src/domain/harnessService.ts</span> (pure service functions), <span class="term">src/evals/cases/*.json</span> + <span class="term">src/evals/*.test.ts</span> (Vitest binary evals).</p>
+    <p><strong>Service functions:</strong> <span class="term">compileIntentToConfiguration</span>, <span class="term">assessCapabilities</span>, <span class="term">simulateDocumentRun</span> (mock), <span class="term">decideReadiness</span>, <span class="term">generateOperationalReasons</span>, <span class="term">generateClarificationRequests</span>, <span class="term">submitCorrection</span>, <span class="term">generateAdminRecommendations</span>, <span class="term">governProductSignals</span>, <span class="term">detectRegressionSignals</span>. Three workspaces are routed views over the same domain objects.</p>
+    <p>DAEJOO PDF lives at <span class="term">app/assets/daejoo-invoice.pdf</span> and is referenced only by the static asset path; the <span class="term">~/Downloads</span> source is provenance only. AI Core failures surface as ClarificationRequest + QualityMetric (no canned fallbacks).</p>
+  </div>
+</section>
+
+<section id="s9">
+  <div class="sec-head"><div class="sec-num">§ 09</div><h2>Substrate</h2></div>
+  <div class="sec-body">
+    <table><thead><tr><th style="width:8%">ID</th><th style="width:13%">Category</th><th style="width:9%">Status</th><th>Choice / Reason</th><th style="width:11%">Owner</th><th style="width:6%">ETA</th></tr></thead>
+    <tbody>
+      <tr><td class="id">SUB-1</td><td class="cat">data sources</td><td class="status-d">decided</td><td><b>DAEJOO PDF at app/assets/daejoo-invoice.pdf + deterministic JSON fixtures in src/data/demoScenario.ts and src/evals/cases/*.json.</b> The PDF is the anchor document and the JSON fixtures are the canonical extraction surface; both must live in-repo so the demo is reproducible and the eval suite is hermetic.</td><td class="src">Spec owner</td><td class="src">—</td></tr>
+      <tr><td class="id">SUB-2</td><td class="cat">persistence</td><td class="status-d">decided</td><td><b>In-memory typed fixtures + pure service functions; no database.</b> v1 is a single-operator deterministic demo; persistence beyond process memory would reshape the eval surface without adding demo value.</td><td class="src">Spec owner</td><td class="src">—</td></tr>
+      <tr><td class="id">SUB-3</td><td class="cat">frontend / design system</td><td class="status-d">decided</td><td><b>React 18 + TypeScript + Vite + @ui5/webcomponents-react.</b> UI5 Web Components React delivers the SAP Fiori embedded-app feel without SAP BTP deployment, and Vite gives a fast local dev loop.</td><td class="src">Spec owner</td><td class="src">—</td></tr>
+      <tr><td class="id">SUB-4</td><td class="cat">hosting / runtime</td><td class="status-d">decided</td><td><b>Local dev only via vite dev.</b> The demo runs on a developer laptop in under five minutes; shared hosting in v1 would introduce auth and rollout decisions that are not load-bearing.</td><td class="src">Spec owner</td><td class="src">—</td></tr>
+      <tr><td class="id">SUB-5</td><td class="cat">auth</td><td class="status-d">decided</td><td><b>None — single-operator demo on localhost.</b> No multi-user surfaces in v1; auth would force a workspace permission model the demo does not need.</td><td class="src">Spec owner</td><td class="src">—</td></tr>
+      <tr><td class="id">SUB-6</td><td class="cat">observability</td><td class="status-d">decided</td><td><b>Browser console + in-memory QualityMetric log surfaced in Internal Product Intelligence + Vitest eval report.</b> Agent failures must be logged as QualityMetric per A5 and rendered in the Internal workspace per the flywheel; Vitest output covers the eval surface.</td><td class="src">Spec owner</td><td class="src">—</td></tr>
+      <tr><td class="id">SUB-7</td><td class="cat">ML/AI providers</td><td class="status-d">decided</td><td><b>SAP AI Core (live calls for every agentic step: compile, capability assessment, readiness reasoning, clarification generation, admin recommendations, signal governance).</b> Every agentic step is a live AI Core call per HAPPY-3 and A1; only OCR + raw extraction are mocked per N6. AI Core API contract details remain OQ-1.</td><td class="src">Spec owner</td><td class="src">—</td></tr>
+    </tbody></table>
+  </div>
+</section>
+
+<div class="colophon">
+  <span>S1 · Working Backwards · <b>spec.html</b></span>
+  <span>Next: S2 contract.html</span>
+</div>
+
+</div>
+</body>
+</html>
