@@ -250,8 +250,8 @@
       },
       "output_paths": ["src/domain/detectRegressionSignals.ts"],
       "depends_on": ["F-01", "F-18"],
-      "status": "todo"
-    },
+      "status": "done",
+      "notes": "Pure function over a partitioned MetricCohort[] view of QualityMetric history. Cohort shape (kind, id, metrics) decouples F-17 from where the version-id comes from — prompt_version comes from F-12's PromptVersion store; model_version comes from QualityMetric.model. Two configurable thresholds: minDropDelta (default 0.05 — five-percentage-point success-rate drop) and minSampleSize (default 5). No-change baseline (delta=0) is rejected by a strict-less-than check; positive delta (improvement) is also rejected; both proven by 3-run soak. Mixed-kind boundaries are skipped (no cross-kind signals). Multi-boundary sequence emits one signal per regressive boundary; recovery is not retroactively flagged."
     {
       "id": "F-18",
       "name": "Observability log surface",
