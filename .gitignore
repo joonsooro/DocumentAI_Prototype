@@ -14,6 +14,7 @@ out/
 .turbo/
 *.tsbuildinfo
 next-env.d.ts
+dist/
 
 # Python
 __pycache__/
@@ -43,3 +44,6 @@ modules.bak/
 
 # Symlinks to user-global Claude plugins — host-specific, never commit
 .claude/skills/frontend-design
+
+# Per-session Claude state — host-specific, never commit
+.claude/settings.local.json
