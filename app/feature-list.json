@@ -207,9 +207,10 @@
         "window_minutes": 30,
         "condition": "If any '~/Downloads' reference lands in source during a 30-minute build window, halt"
       },
-      "output_paths": ["vite.config.ts", "eslint rule for ~/Downloads"],
+      "output_paths": ["vite.config.ts", "eslint.config.js", "src/data/assetBinding.test.ts"],
       "depends_on": ["F-02"],
-      "status": "todo"
+      "status": "done",
+      "notes": "Vite static binding (publicDir='app') + DAEJOO_PDF_URL='/assets/daejoo-invoice.pdf' were front-loaded in the F-02/scaffold work. F-14 closes the loop with (1) src/data/assetBinding.test.ts: a runtime grep across src/ that asserts zero matches for the forbidden tokens, complementing the ESLint AST-level rule that catches them in literals and template strings; (2) the test caught two legitimate-looking comment references in src/data/assets.ts and src/domain/types.ts and they were cleaned out — exactly the kind of drift the feature is meant to prevent; (3) eslint.config.js scoped to ignore src/data/assetBinding.test.ts so the test can legitimately reference the forbidden token in its grep regex and assertion messages."
     },
     {
       "id": "F-15",

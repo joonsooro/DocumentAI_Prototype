@@ -6,7 +6,7 @@
  * so the URL is /assets/daejoo-invoice.pdf at runtime.
  *
  * Per spec N8 / contract A9 / F-14: source code MUST NEVER reference
- * the original ~/Downloads path. Use DAEJOO_PDF_URL below.
+ * the original local-download path of the PDF. Use DAEJOO_PDF_URL below.
  *
  * Also: imports `DocumentRun` from @domain so that types.ts is consumed
  * by at least one other module — this closes F-01's acceptance clause (b)

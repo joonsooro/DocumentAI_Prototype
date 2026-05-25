@@ -84,7 +84,7 @@ export interface ExtractedField {
 
 export interface DocumentRun {
   readonly id: string;
-  readonly documentPath: string; // canonical asset path — never ~/Downloads (N8)
+  readonly documentPath: string; // canonical asset path under app/assets — never the original local-download path (N8 / F-14)
   readonly configurationId: CompiledConfiguration['id'];
   readonly extractedFields: readonly ExtractedField[];
   readonly extractedAt: string;
