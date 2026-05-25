@@ -1,0 +1,231 @@
+/**
+ * F-18 — Observability log surface (SUB-6).
+ *
+ * Contract pointer: U16. The browser-console-mirrored in-memory
+ * QualityMetric[] that the Internal Product Intelligence workspace (F-13)
+ * renders as the "Product quality telemetry" panel. Every agentic call in
+ * F-04 / F-05 / F-10 / F-15 appends ≥1 entry; F-08 (agent-failure surface)
+ * will be the canonical write path for failures, paired with a
+ * ClarificationRequest per N4.
+ *
+ * Design choices:
+ *   - Process-singleton store (module-level array). v1 is a single-operator
+ *     deterministic demo (SUB-5 / SUB-2); there is no multi-tenant or
+ *     persistence concern. Tests reset via _resetQualityMetricLogForTests().
+ *   - Append-only. Mutators only push; readers always get a frozen snapshot.
+ *     This makes the "logSurface dropped >5% of calls" kill switch
+ *     structurally impossible — every record() call is a single push.
+ *   - Browser console mirror is fire-and-forget. Console output goes to
+ *     console.info / console.error keyed off status; if console is
+ *     unavailable (Node test env, JSDOM without spy), the push still lands.
+ *   - Subscribers are simple callbacks. The F-13 Internal view will use
+ *     this to re-render when new metrics arrive. Wired separately when
+ *     F-13 lands; F-18 owns only the store + helpers.
+ *   - record() accepts either an AgentResult (success) or an AgentFailure
+ *     (fail). Both paths produce a QualityMetric — no canned fallback,
+ *     consistent with N4.
+ *
+ * Acceptance (per app/feature-list.json F-18):
+ *   - Every F-04/F-05/F-06/F-10/F-15 call appends ≥1 entry (proven once
+ *     those agents wire log() into their flow — F-18 surfaces the API).
+ *   - Drop rate < 5% in soak (structurally 0 — append-only).
+ *
+ * Non-goals:
+ *   - F-18 is NOT the agent-failure router. F-08 will read AgentFailure,
+ *     emit ClarificationRequest, and call recordFailure() here. F-18 is
+ *     the store; F-08 is the routing policy.
+ *   - F-18 does NOT render UI. F-13 reads from getMetrics() / subscribe().
+ */
+
+import type {
+  AgentFailure,
+  AgentFailureReason,
+  AgentResult,
+} from '@runtime/aiCoreClient';
+import type { QualityMetric, QualityMetricStatus } from '@domain/types';
+
+// ---------------------------------------------------------------------------
+// Module-level store — single instance per process (browser tab or Node test
+// run). Tests reset via _resetQualityMetricLogForTests().
+// ---------------------------------------------------------------------------
+
+const metrics: QualityMetric[] = [];
+type Subscriber = (latest: readonly QualityMetric[]) => void;
+const subscribers = new Set<Subscriber>();
+
+let idCounter = 0;
+function nextId(agent: string, nowIso: string): string {
+  // Stable, monotonic, no entropy. Format: qm::<agent>::<n>::<iso>.
+  idCounter += 1;
+  return `qm::${agent}::${idCounter}::${nowIso}`;
+}
+
+// ---------------------------------------------------------------------------
+// Append helpers — the public write surface
+// ---------------------------------------------------------------------------
+
+export interface RecordOptions {
+  /** Injectable for deterministic loggedAt stamping in tests. */
+  readonly nowIso?: string;
+}
+
+/** Record a successful AgentResult. */
+export function recordSuccess<T>(result: AgentResult<T>, opts: RecordOptions = {}): QualityMetric {
+  const loggedAt = opts.nowIso ?? new Date().toISOString();
+  const entry: QualityMetric = {
+    id: nextId(result.agent, loggedAt),
+    agent: result.agent,
+    status: 'success',
+    latencyMs: result.latency_ms,
+    tokenUsage: result.token_usage,
+    model: result.model,
+    maxTokens: result.max_tokens,
+    error: null,
+    loggedAt,
+  };
+  return pushAndMirror(entry);
+}
+
+/** Record an AgentFailure thrown by callAgent. */
+export function recordFailure(failure: AgentFailure, opts: RecordOptions = {}): QualityMetric {
+  const loggedAt = opts.nowIso ?? new Date().toISOString();
+  const entry: QualityMetric = {
+    id: nextId(failure.agent, loggedAt),
+    agent: failure.agent,
+    status: 'fail',
+    latencyMs: null,
+    tokenUsage: null,
+    model: null,
+    maxTokens: null,
+    error: `${failure.reason}: ${failure.message}`,
+    loggedAt,
+  };
+  return pushAndMirror(entry);
+}
+
+/**
+ * Lower-level write hook for cases where the caller has neither an
+ * AgentResult nor an AgentFailure (e.g. a non-agent operation that we
+ * still want surfaced in the log). Most callers should prefer
+ * recordSuccess / recordFailure.
+ */
+export interface RecordCustomParams {
+  readonly agent: string;
+  readonly status: QualityMetricStatus;
+  readonly latencyMs?: number | null;
+  readonly tokenUsage?: { readonly input: number; readonly output: number } | null;
+  readonly model?: string | null;
+  readonly maxTokens?: number | null;
+  readonly error?: string | null;
+  readonly errorReason?: AgentFailureReason | null;
+}
+
+export function recordCustom(params: RecordCustomParams, opts: RecordOptions = {}): QualityMetric {
+  const loggedAt = opts.nowIso ?? new Date().toISOString();
+  const errorText =
+    params.error ??
+    (params.errorReason ? `${params.errorReason}: (no message)` : null);
+  const entry: QualityMetric = {
+    id: nextId(params.agent, loggedAt),
+    agent: params.agent,
+    status: params.status,
+    latencyMs: params.latencyMs ?? null,
+    tokenUsage: params.tokenUsage ?? null,
+    model: params.model ?? null,
+    maxTokens: params.maxTokens ?? null,
+    error: errorText,
+    loggedAt,
+  };
+  return pushAndMirror(entry);
+}
+
+function pushAndMirror(entry: QualityMetric): QualityMetric {
+  metrics.push(entry);
+  mirrorToConsole(entry);
+  notifySubscribers();
+  return entry;
+}
+
+function mirrorToConsole(entry: QualityMetric): void {
+  // Fire-and-forget. We deliberately do NOT echo the prompt or response —
+  // N4 / the agent_client_contract.must_not list forbid leaking prompts.
+  // Only the metadata (agent, status, latency, tokens, error reason) goes
+  // to console.
+  try {
+    if (entry.status === 'fail') {
+      console.error('[qualityMetric]', {
+        agent: entry.agent,
+        status: entry.status,
+        model: entry.model,
+        error: entry.error,
+        loggedAt: entry.loggedAt,
+      });
+    } else {
+      console.info('[qualityMetric]', {
+        agent: entry.agent,
+        status: entry.status,
+        model: entry.model,
+        latencyMs: entry.latencyMs,
+        tokenUsage: entry.tokenUsage,
+        loggedAt: entry.loggedAt,
+      });
+    }
+  } catch {
+    // Console unavailable — drop silently. The store push already happened.
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Read surface
+// ---------------------------------------------------------------------------
+
+/** Frozen snapshot of the full log. Consumers should not mutate the array. */
+export function getMetrics(): readonly QualityMetric[] {
+  return Object.freeze(metrics.slice());
+}
+
+/** Convenience: count entries matching agent + status. */
+export function countMetrics(filter?: {
+  readonly agent?: string;
+  readonly status?: QualityMetricStatus;
+}): number {
+  if (!filter) return metrics.length;
+  return metrics.filter(
+    (m) =>
+      (filter.agent === undefined || m.agent === filter.agent) &&
+      (filter.status === undefined || m.status === filter.status),
+  ).length;
+}
+
+// ---------------------------------------------------------------------------
+// Subscription surface (for F-13 Internal view re-render)
+// ---------------------------------------------------------------------------
+
+export function subscribe(fn: Subscriber): () => void {
+  subscribers.add(fn);
+  return () => {
+    subscribers.delete(fn);
+  };
+}
+
+function notifySubscribers(): void {
+  if (subscribers.size === 0) return;
+  const snapshot = getMetrics();
+  for (const fn of subscribers) {
+    try {
+      fn(snapshot);
+    } catch {
+      // Subscriber threw — we don't let a downstream renderer break the log.
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Test-only reset
+// ---------------------------------------------------------------------------
+
+export function _resetQualityMetricLogForTests(): void {
+  metrics.length = 0;
+  subscribers.clear();
+  idCounter = 0;
+}

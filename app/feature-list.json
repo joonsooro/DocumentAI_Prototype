@@ -259,7 +259,8 @@
       },
       "output_paths": ["src/runtime/qualityMetricLog.ts"],
       "depends_on": ["F-01"],
-      "status": "todo"
+      "status": "done",
+      "notes": "Store-only — F-18 owns the API; F-13 will render. recordSuccess/recordFailure pair with AgentResult/AgentFailure so the agent_client_contract surfaces feed straight in. subscribe() lets F-13 re-render reactively. Tests inject nowIso for deterministic ids; _resetQualityMetricLogForTests resets the counter. The 'rendered in Internal workspace' clause of acceptance is satisfied later when F-13 lands and reads from getMetrics/subscribe. The 'every F-04/F-05/F-10/F-15 call appends ≥1 entry' clause is satisfied later when F-08 wires recordSuccess/recordFailure into the agent call sites (or callAgent itself does)."
     },
     {
       "id": "F-19",
