@@ -178,12 +178,13 @@
         "window_minutes": 10,
         "condition": "If any workspace renders another's data-testid in 2 of 3 smoke runs within 10 minutes, halt and re-check route boundaries"
       },
-      "output_paths": ["src/routes/admin.tsx", "src/components/admin/*"],
+      "output_paths": ["src/routes/admin.tsx", "src/components/admin/viewModel.ts", "src/components/admin/PromptVersionPanel.tsx", "src/components/admin/ThresholdInspectorPanel.tsx", "src/components/admin/AutoConfirmCriteriaPanel.tsx", "src/components/admin/SchemaQualityPanel.tsx", "src/components/admin/CorrectionTrendPanel.tsx", "src/components/admin/RecommendationQueuePanel.tsx"],
       "depends_on": ["F-15", "F-16"],
-      "status": "todo",
+      "status": "done",
       "negative_contract_guards": [
         "never include 'lower the threshold' in any rendered recommendation"
-      ]
+      ],
+      "notes": "Threshold inspector is a TOOL (heading 'Field thresholds') — neutral phrasing, never a recommendation. N2 enforced at FIVE layers now: (1) TS AdminRecommendationType union excludes threshold_lower; (2) F-15 zod schema rejects type=threshold_lower; (3) F-15 runtime regex on title+body; (4) F-12 filterRecommendationsForAdminSurface() at the rendering boundary as belt-and-braces — drops any rec whose type was cast or whose text matches /lower(ing)?\\s+(the\\s+)?threshold/i; (5) ESLint forbids the regex in src/components/admin/** (excluded for the implementation/test files that legitimately name the phrase). Six panels: PromptVersionPanel (read-only table), ThresholdInspectorPanel (inspection tool), AutoConfirmCriteriaPanel, SchemaQualityPanel, CorrectionTrendPanel, RecommendationQueuePanel. Same view-model pattern as F-11. 12 new tests (6 projection + 6 route smoke); the route smoke tests assert the DOM does not match /lower(ing)?\\s+(the\\s+)?threshold/ for both empty and populated view-models."
     },
     {
       "id": "F-13",
