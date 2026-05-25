@@ -291,9 +291,9 @@
         "window_minutes": 30,
         "condition": "If any run exceeds 300s in a 30-minute tuning window, halt and trim the walkthrough script"
       },
-      "output_paths": ["src/evals/walkthrough.test.ts"],
+      "output_paths": ["src/evals/walkthrough.test.tsx"],
       "depends_on": ["F-11", "F-12", "F-13"],
-      "status": "todo"
-    }
+      "status": "done",
+      "notes": "Three tests: (1) single walkthrough < 300_000 ms; (2) three consecutive walkthroughs all < 300_000 ms (EDGE-4 verbatim); (3) supplier-portability sub-clause — a stub Amazon CompiledConfiguration renders through the existing CustomerRoute without editing src/domain/* runtime modules. Real measured durations are in the tens of ms; the 5-minute bound is the contractual upper limit. cleanup() is called between each route mount to avoid React tree leak between routes."
   ]
 }
