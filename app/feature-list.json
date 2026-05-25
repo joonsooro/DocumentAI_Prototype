@@ -23,7 +23,7 @@
       },
       "output_paths": ["src/domain/types.ts"],
       "depends_on": [],
-      "status": "todo"
+      "status": "doing"
     },
     {
       "id": "F-02",
