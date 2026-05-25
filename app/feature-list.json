@@ -60,10 +60,10 @@
         "window_minutes": 20,
         "condition": "If 5 consecutive compile calls fail to return parseable JSON within 20 minutes, halt and re-validate AI Core JSON contract (OQ-1)"
       },
-      "output_paths": ["src/domain/compileIntentToConfiguration.ts"],
+      "output_paths": ["src/domain/compileIntentToConfiguration.ts", "src/runtime/aiCoreClient.ts"],
       "depends_on": ["F-01"],
-      "status": "todo",
-      "notes": "Most-likely-to-trip kill switch per S2 RATIONALE. Pair with aiCoreClient.ts wrapper from DEP-1 spend cap."
+      "status": "done",
+      "notes": "Most-likely-to-trip kill switch per S2 RATIONALE. Pair with aiCoreClient.ts wrapper from DEP-1 spend cap. Closed mocked: live tenant call deferred to S4 OBSERVE — OQ-1 wire shape pinned to Anthropic-style /v2/inference/deployments/{model}/invoke in aiCoreClient.ts and verified end-to-end via 23 mocked tests (7 compile + 16 wrapper)."
     },
     {
       "id": "F-05",
