@@ -1,0 +1,324 @@
+{
+  "$schema_version": "s3.initializer.v1",
+  "source": {
+    "contract": "app/contract.html",
+    "contract_sections_read": ["§2 Screens", "§3 Substrate", "§4 Dependencies & Skills"],
+    "feature_list": "app/feature-list.json",
+    "generated_by": "S3.INIT",
+    "generated_at": "2026-05-25T00:00:00Z",
+    "halt_gates_passed": [
+      "credential_resolvable: no DEP has credential_status='user must provide now'",
+      "no_cred_filename_in_committed_files: aicore_API.txt redacted from contract.html; path lives only in gitignored .env",
+      "every_third_party_substrate_has_dep_row: SUB-7 SAP AI Core -> DEP-1; SUB-6 (observability v1) -> DEP-3 Langfuse (deferred to S4)"
+    ]
+  },
+
+  "project": {
+    "name": "Document AI Self-Improvement Flywheel",
+    "package_name": "document-ai-flywheel",
+    "version": "0.0.1",
+    "runtime": "node>=20",
+    "language": "TypeScript",
+    "module_system": "ESM",
+    "build_layout": "Vite SPA: app/ at repo root holds artifacts; src/ at repo root holds application code"
+  },
+
+  "substrate": [
+    {
+      "id": "SUB-1",
+      "category": "data sources",
+      "status": "decided",
+      "choice": "DAEJOO PDF at app/assets/daejoo-invoice.pdf + deterministic JSON fixtures in src/data/demoScenario.ts and src/evals/cases/*.json",
+      "reason": "The PDF is the anchor document and the JSON fixtures are the canonical extraction surface; both must live in-repo so the demo is reproducible and the eval suite is hermetic.",
+      "owner": "Spec owner",
+      "eta": null
+    },
+    {
+      "id": "SUB-2",
+      "category": "persistence",
+      "status": "decided",
+      "choice": "In-memory typed fixtures + pure service functions; no database",
+      "reason": "v1 is a single-operator deterministic demo; persistence beyond process memory would reshape the eval surface without adding demo value.",
+      "owner": "Spec owner",
+      "eta": null
+    },
+    {
+      "id": "SUB-3",
+      "category": "frontend / design system",
+      "status": "decided",
+      "choice": "React 18 + TypeScript + Vite + @ui5/webcomponents-react",
+      "reason": "UI5 Web Components React delivers the SAP Fiori embedded-app feel without SAP BTP deployment, and Vite gives a fast local dev loop.",
+      "owner": "Spec owner",
+      "eta": null
+    },
+    {
+      "id": "SUB-4",
+      "category": "hosting / runtime",
+      "status": "decided",
+      "choice": "Local dev only via vite dev",
+      "reason": "The demo runs on a developer laptop in under five minutes; shared hosting in v1 would introduce auth and rollout decisions that are not load-bearing.",
+      "owner": "Spec owner",
+      "eta": null
+    },
+    {
+      "id": "SUB-5",
+      "category": "auth",
+      "status": "decided",
+      "choice": "None — single-operator demo on localhost",
+      "reason": "No multi-user surfaces in v1; auth would force a workspace permission model the demo does not need.",
+      "owner": "Spec owner",
+      "eta": null
+    },
+    {
+      "id": "SUB-6",
+      "category": "observability",
+      "status": "decided",
+      "choice": "Browser console + in-memory QualityMetric log surfaced in Internal Product Intelligence + Vitest eval report",
+      "reason": "Agent failures must be logged as QualityMetric per A5 and rendered in the Internal workspace per the flywheel; Vitest output covers the eval surface.",
+      "owner": "Spec owner",
+      "eta": null
+    },
+    {
+      "id": "SUB-7",
+      "category": "ML/AI providers",
+      "status": "decided",
+      "choice": "SAP AI Core (live calls for every agentic step: compile, capability assessment, readiness reasoning, clarification generation, admin recommendations, signal governance)",
+      "reason": "Every agentic step is a live AI Core call per HAPPY-3 and A1; only OCR + raw extraction are mocked per N6. AI Core API contract details remain OQ-1.",
+      "owner": "Spec owner",
+      "eta": null
+    }
+  ],
+
+  "screens": [
+    {
+      "id": "SCR-1",
+      "name": "Customer Workspace",
+      "route": "/customer",
+      "ui_handler": {
+        "primitives": "@ui5/webcomponents-react",
+        "layout": "frontend-design skill (invoked per-screen)"
+      },
+      "components": [
+        "Business-intent input form (ShellBar + TextArea + submit Button)",
+        "Compiled configuration panel (Card with schema fields, instructions, validation, regex, thresholds, processing mode)",
+        "Capability status panel: Supported / Supported with workaround only",
+        "Clarification loop: 3 prompts per missed field (field meaning · posting/review/reporting impact · supplier-scope applicability)",
+        "Readiness panel with 5-key reasons: field · evidence · rule · confidence · nextAction"
+      ],
+      "negative_contract_guards": [
+        "no 'Unsupported' string anywhere in DOM",
+        "no raw prompt text",
+        "no DAEJOO material-disposal phrase",
+        "no roadmap-candidate signals"
+      ],
+      "feature_pointer": "F-11"
+    },
+    {
+      "id": "SCR-2",
+      "name": "Admin Control Plane",
+      "route": "/admin",
+      "ui_handler": {
+        "primitives": "@ui5/webcomponents-react",
+        "layout": "frontend-design skill (invoked per-screen)"
+      },
+      "components": [
+        "Prompt version management (Tabs or List + version diff)",
+        "Field-level threshold management (visible as a tool; never recommended action)",
+        "Auto-confirmation criteria editor",
+        "Schema quality monitoring",
+        "Correction trend review",
+        "Recommendation queue (filtered: no threshold_lower entries)"
+      ],
+      "negative_contract_guards": [
+        "never include 'lower the threshold' in any rendered recommendation"
+      ],
+      "feature_pointer": "F-12"
+    },
+    {
+      "id": "SCR-3",
+      "name": "Internal Product Intelligence",
+      "route": "/internal",
+      "ui_handler": {
+        "primitives": "@ui5/webcomponents-react",
+        "layout": "frontend-design skill (invoked per-screen)"
+      },
+      "components": [
+        "Feedback governance queue (CorrectionEvent -> ProductSignal gating UI)",
+        "Model regression signals panel",
+        "Product quality telemetry (QualityMetric log table — covers SUB-6)",
+        "Capability gap analytics ranked by frequency, customer impact, document type, supplier, country",
+        "DAEJOO material-disposal phrase surfaced HERE ONLY as signal_type: unsupported_free_text_business_condition"
+      ],
+      "containment": "any signal hidden from Customer / Admin lives here, governed and ranked, never leaks back",
+      "feature_pointer": "F-13"
+    }
+  ],
+
+  "dependencies": [
+    {
+      "id": "DEP-1",
+      "name": "SAP AI Core (eu-central-1 production)",
+      "purpose": "Live OAuth-backed LLM calls for F-04/F-05/F-06/F-07/F-10/F-15 + token refresh",
+      "access_mechanism": "OAuth2 client-credentials flow against XSUAA url from service key",
+      "credential_status": "runtime_load",
+      "credential_storage": {
+        "scheme": "env_var_pointer",
+        "env_var": "AICORE_KEY_PATH",
+        "policy": "Service-key file is never copied into repo, never written to .env, never echoed to logs; its filename and absolute path are never named in any committed file (env var is resolved at runtime from gitignored .env).",
+        "validation_at_boot": "fail-fast if AICORE_KEY_PATH unset, path not readable, or parsed JSON missing keys: serviceurls.AI_API_URL, clientid, clientsecret, url"
+      },
+      "spend_cap": {
+        "enforcement": "shared src/runtime/aiCoreClient.ts wrapper",
+        "rules": [
+          "every call MUST specify model",
+          "every call MUST specify max_tokens",
+          "calls missing either MUST throw before dispatch",
+          "default model SHOULD be the smallest viable (e.g. anthropic--claude-3.5-haiku via AI Core deployment id)"
+        ],
+        "walkthrough_budget": "bounded by EDGE-4 5-minute walkthrough"
+      },
+      "consumed_by_features": ["F-04", "F-05", "F-06", "F-07", "F-10", "F-15"]
+    },
+    {
+      "id": "DEP-2",
+      "name": "FMP API",
+      "purpose": "Carry-over from prior workshop scaffolding; not used by v1 Document AI build",
+      "access_mechanism": "API key from .env (FMP_API_KEY)",
+      "credential_status": "have",
+      "consumed_by_features": [],
+      "notes": "Listed for completeness; v1 Document AI flow does not call FMP. Safe to ignore but do not delete from .env (downstream sessions may reference)."
+    },
+    {
+      "id": "DEP-3",
+      "name": "Langfuse Cloud",
+      "purpose": "Observability for live agent traces (S4 OBSERVE) — out of scope for v1 build, recorded here for S4 handoff",
+      "access_mechanism": "API keys from .env (LANGFUSE_PUBLIC_KEY + LANGFUSE_SECRET_KEY, currently absent)",
+      "credential_status": "user_must_provide_before_S4",
+      "consumed_by_features": [],
+      "notes": "NOT a blocker for S3 build. New keypair: cloud.langfuse.com -> Settings -> API Keys -> Create, then paste into .env. LANGFUSE_BASE_URL preserved as breadcrumb."
+    },
+    {
+      "id": "DEP-4",
+      "name": "frontend-design skill",
+      "purpose": "Layout + visual hierarchy for every UI surface (3 workspaces × ~6 panels each)",
+      "access_mechanism": "Skill invocation per screen; pass structured content, let skill own typography/layout",
+      "credential_status": "have",
+      "install_location": ".claude/skills/frontend-design (symlink to user-global plugin)",
+      "consumed_by_features": ["F-11", "F-12", "F-13"]
+    },
+    {
+      "id": "DEP-5",
+      "name": "claude-api skill",
+      "purpose": "Tune AI Core client (prompt caching, retries, schema-enforced JSON, token budgeting)",
+      "access_mechanism": "Skill invocation when authoring aiCoreClient.ts and per-agent prompts",
+      "credential_status": "have",
+      "consumed_by_features": ["F-04", "F-05", "F-06", "F-07", "F-10", "F-15"]
+    },
+    {
+      "id": "DEP-6",
+      "name": "verify skill",
+      "purpose": "Post-build verification pass over S3 output before claiming completion",
+      "access_mechanism": "Skill invocation at end of S3 build",
+      "credential_status": "have",
+      "consumed_by_features": "all"
+    }
+  ],
+
+  "runtime_config": {
+    "repo_layout": {
+      "code_root": "src/",
+      "artifacts_root": "app/",
+      "asset_canonical_path": "app/assets/daejoo-invoice.pdf",
+      "evals_fixtures": "src/evals/cases/",
+      "evals_tests": "src/evals/",
+      "domain": "src/domain/",
+      "routes": "src/routes/",
+      "components": "src/components/{customer,admin,internal}/",
+      "runtime": "src/runtime/",
+      "data": "src/data/"
+    },
+    "package_manager": "npm",
+    "scripts": {
+      "dev": "vite",
+      "build": "vite build",
+      "preview": "vite preview",
+      "typecheck": "tsc --noEmit",
+      "lint": "eslint src --max-warnings=0",
+      "test": "vitest run",
+      "evals": "vitest run src/evals"
+    },
+    "typescript": {
+      "strict": true,
+      "target": "ES2022",
+      "module": "ESNext",
+      "jsx": "react-jsx"
+    },
+    "lint_rules_specific_to_this_build": [
+      "no-restricted-imports: forbid any literal containing '~/Downloads' or 'Downloads/aicore' in source (enforces N8 + F-14)",
+      "no-restricted-syntax: forbid string literal 'Unsupported' inside any file under src/routes/customer/ or src/components/customer/ (enforces N1)",
+      "no-restricted-syntax: forbid regex /lower(ing)?\\s+threshold/i match in any file under src/domain/generateAdminRecommendations.ts output or src/components/admin/ (enforces N2)"
+    ]
+  },
+
+  "agent_client_contract": {
+    "file": "src/runtime/aiCoreClient.ts",
+    "interface": "callAgent({ agent, model, max_tokens, system, user, expect_json_schema? }) -> Promise<AgentResult>",
+    "must": [
+      "load credentials via process.env.AICORE_KEY_PATH at boot; fail-fast if unreadable",
+      "obtain OAuth token via client-credentials flow against XSUAA url; cache token in memory only until expiry",
+      "reject any callAgent invocation missing { model } or { max_tokens }",
+      "stamp every AgentResult with { agent, source: 'aiCore', templateUsed: false, latency_ms, token_usage }",
+      "on failure (timeout / network / non-2xx / unparseable JSON when expect_json_schema is set), throw AgentFailure { agent, reason, raw } -- F-08 then converts to ClarificationRequest + QualityMetric"
+    ],
+    "must_not": [
+      "never substitute a canned fallback response (N4)",
+      "never log or persist the service key, the OAuth token, or AICORE_KEY_PATH's resolved value",
+      "never echo system or user prompts back into the rendered DOM (enforced by F-10 5-key constraint)"
+    ],
+    "default_models": {
+      "smallest_viable": "anthropic--claude-3.5-haiku",
+      "compile_or_reasoning_heavy": "anthropic--claude-sonnet-4 (only when smallest_viable insufficient; document rationale per call)"
+    },
+    "default_max_tokens": {
+      "extraction_or_classification": 1024,
+      "free_text_generation": 2048
+    }
+  },
+
+  "build_protocol": {
+    "feature_iteration_order": "respect depends_on graph in feature-list.json; F-01 first, F-20 last; within each layer pick lowest F-id",
+    "per_feature_commit": {
+      "scope": "one feature per commit",
+      "message_format": "S3.CODER F-NN: <feature name>\\n\\n<one paragraph: what changed, why, which kill-switch metric>",
+      "must_include": ["RATIONALE line in app/claude-progress.txt", "feature status flipped to 'done' in app/feature-list.json"]
+    },
+    "status_lifecycle": "todo -> doing -> done; doing is set BEFORE work begins, done is set ONLY after acceptance check passes",
+    "halt_behaviors": [
+      "if a per-unit kill switch trips: exit 3 + log to claude-progress.txt + leave feature status at 'doing'",
+      "if a required credential is missing at build time: halt and ask, do not stub",
+      "if Screens guidance is ambiguous on a feature: halt and ask",
+      "if a substrate row not listed here is needed: halt and ask",
+      "if a feature needs a dependency with credential_status other than 'have' or 'runtime_load': halt and ask"
+    ],
+    "claude_md_update_policy": "touch app/CLAUDE.md §2 Durable Tenets ONLY if a tenet that survives a model swap surfaced; most features add nothing",
+    "session_close": "after the last feature lands, append a single session-level RATIONALE entry to claude-progress.txt summarizing features built, kill switches tripped, and any open follow-ups for S4"
+  },
+
+  "blocked_open_questions": {
+    "OQ-1": {
+      "question": "AI Core API contract details (auth model, endpoint shape, rate limits, JSON contract)",
+      "blocks": ["F-04 first run of compile agent against live tenant"],
+      "resolution_window": "must be resolved during F-04 build window (20 min kill switch)"
+    },
+    "OQ-2": {
+      "question": "Governance thresholds for CorrectionEvent -> ProductSignal promotion",
+      "blocks": ["F-09 signal governance gate"],
+      "resolution_window": "must be resolved before F-09 begins; Coder halts at F-09 if thresholds not provided"
+    },
+    "OQ-3": {
+      "question": "Auto-confirm threshold values per field (supplier, PO, invoice date, payment terms, payable amount)",
+      "blocks": ["F-07 clarification generator (defines 'low-confidence')", "F-10 readiness reasoning"],
+      "resolution_window": "must be resolved before F-07 begins"
+    }
+  }
+}
