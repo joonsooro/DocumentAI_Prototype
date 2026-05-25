@@ -118,7 +118,8 @@
       },
       "output_paths": ["src/domain/agentFailureSurface.ts"],
       "depends_on": ["F-01", "F-18"],
-      "status": "todo"
+      "status": "done",
+      "notes": "Two surfaces: (1) surfaceAgentFailure(AgentFailure) emits BOTH a ClarificationRequest (kind='agent_failure_surface') AND a QualityMetric (via F-18 recordFailure) atomically — no early-return between the two; the result is frozen. (2) runAgentWithFailureSurface(agent, fn) is the higher-order wrapper for F-04/F-05/F-10/F-15 call sites, returns a discriminated union {kind:'success', value} | {kind:'failure', clarification, metric, failure} so callers cannot accidentally treat a failure as a value (N4). coerceToAgentFailure wraps plain Error/string/unknown throws with reason='http_error'. 5-run fault-injection soak in tests proves the kill-switch invariant holds."
     },
     {
       "id": "F-09",
