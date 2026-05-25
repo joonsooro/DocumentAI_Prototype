@@ -313,7 +313,19 @@
     "OQ-2": {
       "question": "Governance thresholds for CorrectionEvent -> ProductSignal promotion",
       "blocks": ["F-09 signal governance gate"],
-      "resolution_window": "must be resolved before F-09 begins; Coder halts at F-09 if thresholds not provided"
+      "resolution_window": "must be resolved before F-09 begins; Coder halts at F-09 if thresholds not provided",
+      "v1_decision": {
+        "resolved_at": "2026-05-25T15:05:00Z",
+        "policy": "conservative_uniform",
+        "thresholds": {
+          "min_frequency": 3,
+          "min_distinct_suppliers": 2,
+          "forbidden_customer_impacts": ["low"]
+        },
+        "promotion_predicate": "candidate.frequency >= 3 AND candidate.distinct_suppliers >= 2 AND candidate.customerImpact != 'low'",
+        "rationale": "v1 demo proves the flywheel; per-signal-type tuning needs real telemetry. The uniform conservative bar is defensible: a single supplier saying something interesting once is not a roadmap signal, but the same complaint from two suppliers with non-trivial customer impact crosses the bar to internal product attention. EDGE-3 (single correction does not auto-promote) is satisfied by min_frequency=3. RED-2 (DAEJOO material-disposal phrase routes to Internal as ProductSignal) is satisfied by F-06's candidate signal entering the queue ungoverned; if only one DAEJOO instance is seen, it stays ungoverned (visible in Internal as a candidate row, just not promoted).",
+        "deferred_to": "S4 OBSERVE — per-signal-type thresholds re-open OQ-2 with observed frequency distributions per signalType."
+      }
     },
     "OQ-3": {
       "question": "Auto-confirm threshold values per field (supplier, PO, invoice date, payment terms, payable amount)",

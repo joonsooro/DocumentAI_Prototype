@@ -132,8 +132,8 @@
       },
       "output_paths": ["src/domain/governProductSignals.ts"],
       "depends_on": ["F-01", "F-16"],
-      "status": "todo",
-      "notes": "Governance threshold values blocked on OQ-2 (Open Question from S1). Coder must halt if thresholds not provided at build time."
+      "status": "done",
+      "notes": "OQ-2 resolved as v1 conservative_uniform policy in app-spec.json#blocked_open_questions.OQ-2.v1_decision (min_frequency=3, min_distinct_suppliers=2, forbidden_customer_impacts=['low']). Pure function — no AI Core. Groups corrections by (documentType, field), evaluates against the three gates, approves via the F-16 escape hatch _appendApprovedSignalForF09. Dedup keys signals by (documentType, intentFragment) so re-runs are idempotent. Single-correction-never-promotes invariant proven by 10-run soak; the DAEJOO disposal-phrase scenario also tested explicitly (one DAEJOO instance stays ungoverned)."
     },
     {
       "id": "F-10",
