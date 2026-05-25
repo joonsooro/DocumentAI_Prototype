@@ -104,7 +104,8 @@
       },
       "output_paths": ["src/domain/generateClarificationRequests.ts"],
       "depends_on": ["F-01", "F-03"],
-      "status": "todo"
+      "status": "done",
+      "notes": "Pure function — no AI Core. OQ-3 resolved as v1 uniform 0.85 default (recorded in app-spec.json#blocked_open_questions.OQ-3.v1_decision); thresholds read FROM each SchemaField, NOT a magic constant, so per-field calibration in S4 OBSERVE will be picked up automatically. Missed and low-confidence predicates are mutually exclusive. F-03 pre-applies the confidence gate (nulls below-threshold values), so the DAEJOO demo path emits missed_field for payment_terms (0.74) + commercial_value_indicator (0.62) — clarification is raised either way."
     },
     {
       "id": "F-08",

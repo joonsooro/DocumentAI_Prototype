@@ -318,7 +318,16 @@
     "OQ-3": {
       "question": "Auto-confirm threshold values per field (supplier, PO, invoice date, payment terms, payable amount)",
       "blocks": ["F-07 clarification generator (defines 'low-confidence')", "F-10 readiness reasoning"],
-      "resolution_window": "must be resolved before F-07 begins"
+      "resolution_window": "must be resolved before F-07 begins",
+      "v1_decision": {
+        "resolved_at": "2026-05-25T14:40:00Z",
+        "policy": "uniform_default",
+        "default_threshold": 0.85,
+        "rationale": "v1 demo proves the flywheel mechanism, not per-field calibration. The F-04 compile agent stamps SchemaField.confidenceThreshold=0.85 on every DAEJOO field; the F-03 fixture already validates the demo flow against that default (payment_terms confidence 0.74 < 0.85 → F-07 raises a ClarificationRequest naturally). Per-field calibration is deferred to S4 OBSERVE where real extraction telemetry exists.",
+        "low_confidence_predicate": "extractedField.confidence < compiledConfig.schema.fields[name].confidenceThreshold",
+        "missed_field_predicate": "extractedField.value === null OR no matching extractedField for a required SchemaField",
+        "deferred_to": "S4 OBSERVE — per-field threshold tuning re-opens OQ-3 with observed accuracy distributions."
+      }
     }
   }
 }
