@@ -76,7 +76,8 @@
       },
       "output_paths": ["src/domain/assessCapabilities.ts"],
       "depends_on": ["F-01", "F-04"],
-      "status": "todo"
+      "status": "done",
+      "notes": "Two-layer 'Unsupported' defence: (1) zod schema rejects status === 'Unsupported' at parse time → AgentFailure(schema_validation_failed); (2) belt-and-braces runtime guard re-tags any synonym leak to capability_gap + customerVisible=false. capability_gap rows are tagged customerVisible=false so the customer surface never sees them; F-06 will route them into ProductSignals."
     },
     {
       "id": "F-06",
