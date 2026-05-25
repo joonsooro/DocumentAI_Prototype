@@ -19,7 +19,14 @@
     "allowSyntheticDefaultImports": true,
     "useDefineForClassFields": true,
     "verbatimModuleSyntax": false,
-    "types": ["node", "vite/client", "vitest/globals"]
+    "types": ["node", "vite/client", "vitest/globals"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@domain/*": ["src/domain/*"],
+      "@runtime/*": ["src/runtime/*"],
+      "@data/*": ["src/data/*"]
+    }
   },
   "include": ["src", "vite.config.ts", "vitest.config.ts"],
   "exclude": ["node_modules", "dist", "app"]

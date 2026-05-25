@@ -23,7 +23,7 @@
       },
       "output_paths": ["src/domain/types.ts"],
       "depends_on": [],
-      "status": "doing"
+      "status": "done"
     },
     {
       "id": "F-02",
@@ -36,7 +36,7 @@
       },
       "output_paths": ["app/assets/daejoo-invoice.pdf", "app/assets/README.md"],
       "depends_on": [],
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "F-03",
