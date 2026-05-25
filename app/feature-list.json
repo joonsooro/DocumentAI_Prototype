@@ -235,7 +235,8 @@
       },
       "output_paths": ["src/domain/submitCorrection.ts"],
       "depends_on": ["F-01"],
-      "status": "todo"
+      "status": "done",
+      "notes": "Module-level in-memory store (SUB-2). submitCorrection writes ONLY to corrections[]; productSignals[] is mutated EXCLUSIVELY via _appendApprovedSignalForF09, which F-09 (governance gate) will call after the OQ-2 thresholds clear. governance fields default to null; documentType falls back to 'unknown_document_type'. 10-run soak proves productSignals.length stays at 0 after 10 corrections (kill-switch invariant)."
     },
     {
       "id": "F-17",
