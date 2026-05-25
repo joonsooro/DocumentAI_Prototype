@@ -47,3 +47,6 @@ modules.bak/
 
 # Per-session Claude state — host-specific, never commit
 .claude/settings.local.json
+
+# Throwaway fixture-build scripts — dev-only, do not commit
+scripts/

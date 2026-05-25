@@ -1,0 +1,87 @@
+{
+  "$comment_provenance": "Hand-picked from the real DAEJOO PDF (app/assets/daejoo-invoice.pdf, SHA-256 fc719ecf...29ae) via the one-shot scripts/extract-daejoo-once.mjs on 2026-05-25. The PDF is never read at runtime (N6); this fixture is the entire extraction surface for v1. Material-disposal phrase appears verbatim under 'remark_freetext' to feed the F-06 capability-gap router which routes it to the F-09 governance gate as a hidden ProductSignal (RED-2).",
+  "documentPath": "/assets/daejoo-invoice.pdf",
+  "extractedAt": "2026-05-25T00:00:00Z",
+  "source": "mock",
+  "extractedFields": [
+    {
+      "name": "supplier",
+      "value": "DAEJOO ELECTRONIC MATERIALS CO., LTD.",
+      "confidence": 0.99,
+      "evidence": "Manufacturer/Shipper/Exporter — DAEJOO ELECTRONIC MATERIALS CO., LTD."
+    },
+    {
+      "name": "supplier_address",
+      "value": "148, SEOHAEAN-RO, SIHEUNG-SI, GYEONGGI-DO, KOREA. ZIP CODE: 429-848",
+      "confidence": 0.97,
+      "evidence": "148, SEOHAEAN-RO, SIHEUNG-SI, GYEONGGI-DO, KOREA. ZIP CODE: 429-848"
+    },
+    {
+      "name": "invoice_number",
+      "value": "DJ-260121-001",
+      "confidence": 0.98,
+      "evidence": "Invoice NO. and Date — DJ-260121-001  21-Jan-26"
+    },
+    {
+      "name": "invoice_date",
+      "value": "2026-01-21",
+      "confidence": 0.96,
+      "evidence": "21-Jan-26"
+    },
+    {
+      "name": "po_number",
+      "value": "4570166282",
+      "confidence": 0.99,
+      "evidence": "PO NO. 4570166282"
+    },
+    {
+      "name": "hs_code",
+      "value": "3824.99.9090",
+      "confidence": 0.95,
+      "evidence": "HS Code: 3824.99.9090"
+    },
+    {
+      "name": "payment_terms",
+      "value": "WITHIN 60 DAYS AFTER BOARDING",
+      "confidence": 0.74,
+      "evidence": "Payment — WITHIN 60 DAYS AFTER BOARDING"
+    },
+    {
+      "name": "total_amount",
+      "value": 136653.44,
+      "confidence": 0.98,
+      "evidence": "3,308.8 KGS  Total  US$136,653.44"
+    },
+    {
+      "name": "payable_amount",
+      "value": 136290.00,
+      "confidence": 0.88,
+      "evidence": "Payable Amount  US$136,290.00"
+    },
+    {
+      "name": "commercial_value_indicator",
+      "value": "payable_excludes_sample_line",
+      "confidence": 0.62,
+      "evidence": "DMSO-E82 (No commercial value)  8.8 KGS  41.30  US$363.44; Remark: No commercial value for sample, Value for customs purpose only; No commercial value : 8.8 KG"
+    },
+    {
+      "name": "line_items",
+      "value": "Silicon Composite Oxide DMSO-E82 (Mg-SiO) 3300 KGS @ 41.30 USD/kg = 136290.00; DMSO-E82 (No commercial value) 8.8 KGS @ 41.30 USD/kg = 363.44",
+      "confidence": 0.93,
+      "evidence": "Goods description / Quantity / Unit price / Amount table"
+    }
+  ],
+  "remark_freetext": "Remark: No commercial value for sample, Value for customs purpose only. If it is exposed to Air, it shall be disposed, No commercial value : 8.8 KG",
+  "consignee": {
+    "name": "HL-GA BATTERY COMPANY LLC",
+    "address": "9730 US HIGHWAY 280 ELLABELL, GA 31308, USA",
+    "country": "US"
+  },
+  "shipping": {
+    "vessel": "HYUNDAI PLUTO 044E",
+    "departure_date": "2026-01-28",
+    "from_port": "BUSAN PORT IN KOREA",
+    "to_port": "Los Angeles, CA, UNITED STATES",
+    "incoterm": "FOB BUSAN"
+  }
+}

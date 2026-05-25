@@ -49,7 +49,7 @@
       },
       "output_paths": ["src/domain/simulateDocumentRun.ts", "src/data/daejoo-extraction.fixture.json"],
       "depends_on": ["F-01", "F-02"],
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "F-04",
