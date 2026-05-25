@@ -56,11 +56,13 @@ export default tseslint.config(
     },
   },
   {
-    // N2 — Admin recommendations and admin UI must never include "lower the threshold".
-    files: [
-      'src/domain/generateAdminRecommendations.ts',
-      'src/components/admin/**/*.{ts,tsx}',
-    ],
+    // N2 — Admin recommendations and admin UI must never include "lower the
+    // threshold". The implementation file generateAdminRecommendations.ts
+    // legitimately names the forbidden phrase inside its own runtime guard
+    // (the regex literal + the error message that quotes the rule); the
+    // belt-and-braces invariants are enforced there, so it is excluded from
+    // the AST rule itself.
+    files: ['src/components/admin/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-syntax': [
         'error',

@@ -223,8 +223,8 @@
       },
       "output_paths": ["src/domain/generateAdminRecommendations.ts"],
       "depends_on": ["F-01", "F-16"],
-      "status": "todo"
-    },
+      "status": "done",
+      "notes": "Three-layer N2 defence: (1) TypeScript — AdminRecommendationType union excludes 'threshold_lower' at compile time; (2) zod — RecommendationTypeZ mirrors the TS union, so type='threshold_lower' fails parse → AgentFailure(schema_validation_failed); (3) runtime third-belt — every rendered title/body scanned against /lower(ing)?\\s+(the\\s+)?threshold/i (broadened from the ESLint rule's regex to also catch 'lower the threshold' and 'lowering the threshold'); a match throws before the recommendation leaves the function (N4 — never auto-rewrite, never canned fallback). The implementation file is excluded from the N2 ESLint rule because it legitimately names the forbidden phrase inside its own regex literal + error message; the AST-level rule still applies to src/components/admin/** at the UI layer. 5-run soak proves the kill switch."
     {
       "id": "F-16",
       "name": "Correction submission",
