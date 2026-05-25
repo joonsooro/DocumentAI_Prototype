@@ -146,7 +146,8 @@
       },
       "output_paths": ["src/domain/decideReadiness.ts", "src/domain/generateOperationalReasons.ts"],
       "depends_on": ["F-01", "F-03"],
-      "status": "todo"
+      "status": "done",
+      "notes": "Split into two files per output_paths. decideReadiness.ts is the top-level entry: deterministic status policy (Blocked / Needs review / Ready) + agent reasoning call via runAgentWithFailureSurface from F-08. generateOperationalReasons.ts is the live AI Core call returning the 5-key reasons. THREE-layer 5-key invariant: TypeScript OperationalReason interface; zod WireReasonZ rejects missing/misshapen keys → AgentFailure(schema_validation_failed); runtime sanitiser strips 'system:'/'prompt:'/'<|' substrings from every rendered field. On agent failure: decision downgrades to Blocked with one synthetic reason carrying all 5 keys (N4 — never empty reasons[]); F-08 emits ClarificationRequest + QualityMetric pair via the higher-order wrapper."
     },
     {
       "id": "F-11",
