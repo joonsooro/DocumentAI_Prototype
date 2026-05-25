@@ -195,10 +195,11 @@
         "window_minutes": 10,
         "condition": "If any workspace renders another's data-testid in 2 of 3 smoke runs within 10 minutes, halt and re-check route boundaries"
       },
-      "output_paths": ["src/routes/internal.tsx", "src/components/internal/*"],
+      "output_paths": ["src/routes/internal.tsx", "src/components/internal/viewModel.ts", "src/components/internal/GovernanceQueuePanel.tsx", "src/components/internal/RegressionSignalsPanel.tsx", "src/components/internal/QualityMetricLogPanel.tsx", "src/components/internal/CapabilityGapAnalyticsPanel.tsx", "src/components/internal/RoadmapSignalsPanel.tsx"],
       "depends_on": ["F-09", "F-17", "F-18"],
-      "status": "todo",
-      "containment": "any signal hidden from Customer / Admin lives here, governed and ranked, never leaks back"
+      "status": "done",
+      "containment": "any signal hidden from Customer / Admin lives here, governed and ranked, never leaks back",
+      "notes": "Same view-model pattern as F-11/F-12. Five panels: GovernanceQueuePanel (F-09 decision rows incl. held + reason), RoadmapSignalsPanel (partitions approved signals into unsupported_free_text + recurring_correction + other — the DAEJOO disposal phrase renders here in its own category per RED-2), RegressionSignalsPanel (F-17 RegressionSignal rows with boundary + delta), CapabilityGapAnalyticsPanel (frequency × impact ranking), QualityMetricLogPanel (live F-18 subscribe + cleanup on unmount). RED-2 containment proven by route smoke tests: 'auto-dispose spent materials' text renders in /internal under the unsupported_free_text_business_condition category — and F-11/F-12 already proved the same content cannot reach /customer or /admin because their view-models don't carry ProductSignal at the type level. F-18 subscribe wiring tested via act() + recordSuccess/recordFailure roundtrip. 13 new tests (5 partition + 8 route smoke incl. live log subscription)."
     },
     {
       "id": "F-14",
