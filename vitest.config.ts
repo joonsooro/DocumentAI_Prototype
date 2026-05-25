@@ -16,6 +16,8 @@ export default defineConfig({
       '@domain': fileURLToPath(new URL('./src/domain', import.meta.url)),
       '@runtime': fileURLToPath(new URL('./src/runtime', import.meta.url)),
       '@data': fileURLToPath(new URL('./src/data', import.meta.url)),
+      '@routes': fileURLToPath(new URL('./src/routes', import.meta.url)),
+      '@components': fileURLToPath(new URL('./src/components', import.meta.url)),
     },
   },
 });

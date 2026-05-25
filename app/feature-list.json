@@ -158,15 +158,16 @@
         "window_minutes": 10,
         "condition": "If any workspace renders another's data-testid in 2 of 3 smoke runs within 10 minutes, halt and re-check route boundaries"
       },
-      "output_paths": ["src/routes/customer.tsx", "src/components/customer/*"],
+      "output_paths": ["index.html", "src/main.tsx", "src/App.tsx", "src/routes/customer.tsx", "src/routes/admin.tsx", "src/routes/internal.tsx", "src/components/customer/viewModel.ts", "src/components/customer/IntentInputPanel.tsx", "src/components/customer/CompiledConfigPanel.tsx", "src/components/customer/CapabilityStatusPanel.tsx", "src/components/customer/ClarificationLoopPanel.tsx", "src/components/customer/ReadinessPanel.tsx"],
       "depends_on": ["F-04", "F-05", "F-07", "F-10"],
-      "status": "todo",
+      "status": "done",
       "negative_contract_guards": [
         "no 'Unsupported' string",
         "no raw prompt text",
         "no DAEJOO material-disposal phrase",
         "no roadmap-candidate signals"
-      ]
+      ],
+      "notes": "Structural enforcement of negative-contract guards via CustomerViewModel type: model has no ProductSignal field, no remark_freetext, and CustomerVisibleCapabilityAssessment.status is narrowed to 'Supported'|'Supported with workaround' only. projectCapabilitiesForCustomerSurface() is the one place where the guard fires (drops capability_gap + customerVisible=false rows). The screen literally cannot leak forbidden content because the type system doesn't expose it. v1 wiring: route accepts initialViewModel prop so tests and the F-19 eval harness can seed canned state; live agent wiring (intent → compile → assess → readiness) deferred — F-11 ships the screen + its negative-contract enforcement. Added jsdom + @testing-library/react devDeps for component testing; @routes and @components path aliases added to tsconfig/vite/vitest. Admin + Internal routes mount as placeholders for F-12/F-13 so HAPPY-6 (three-workspace separation) is testable today."
     },
     {
       "id": "F-12",

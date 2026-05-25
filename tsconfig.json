@@ -25,7 +25,9 @@
       "@/*": ["src/*"],
       "@domain/*": ["src/domain/*"],
       "@runtime/*": ["src/runtime/*"],
-      "@data/*": ["src/data/*"]
+      "@data/*": ["src/data/*"],
+      "@routes/*": ["src/routes/*"],
+      "@components/*": ["src/components/*"]
     }
   },
   "include": ["src", "vite.config.ts", "vitest.config.ts"],
