@@ -410,7 +410,7 @@
         "src/domain/roadmapRanking.test.ts"
       ],
       "depends_on": ["F-01"],
-      "status": "todo",
+      "status": "done",
       "notes": "Constants live in app-spec.json#roadmap_ranking (already authored in S1.AMEND, untouched by S2). F-25 consumes them; if S4 OBSERVE re-tunes the formula, F-25 follows automatically. The 3 binding eval cases HAPPY-7/8/9 are added to evals.md by the S1 amendment pass. Trace: A11 · HAPPY-7 (FAQ row + 3 eval cases) · OQ-5."
     },
     {
