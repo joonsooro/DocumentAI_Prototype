@@ -29,8 +29,15 @@ import {
   handleReadiness,
   handleChatTurnDecide,
 } from '../src/server/devAgentMiddleware';
+import { initLangfuseTracerProvider, shutdownLangfuse } from '../src/runtime/langfuseClient';
 
 const PORT = Number(process.env.AGENT_SERVER_PORT ?? 3001);
+
+// Boot Langfuse trace capture once at server startup. Fail-soft per the
+// langfuseClient contract — missing keys emit one warn line and continue
+// with trace capture disabled. The rest of the server runs identically
+// either way.
+initLangfuseTracerProvider();
 
 type Handler = (body: unknown) => Promise<unknown>;
 const HANDLERS: Record<string, Handler> = {
@@ -124,3 +131,14 @@ server.listen(PORT, () => {
   // eslint-disable-next-line no-console
   console.log(`[dev-agent-server] AICORE_KEY_PATH ${process.env.AICORE_KEY_PATH ? 'set' : 'NOT SET'}`);
 });
+
+// Best-effort flush of any pending Langfuse spans on graceful shutdown so a
+// final batch of traces makes it to Langfuse before the process dies.
+async function gracefulShutdown(signal: string): Promise<void> {
+  // eslint-disable-next-line no-console
+  console.log(`[dev-agent-server] received ${signal}, flushing langfuse...`);
+  await shutdownLangfuse();
+  process.exit(0);
+}
+process.on('SIGINT', () => void gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => void gracefulShutdown('SIGTERM'));
