@@ -98,7 +98,7 @@ export function ThresholdGovernancePanel(props: ThresholdGovernancePanelProps) {
           {rows.map((row) => {
             const isDecrease = row.direction === '↓ requires approval';
             return (
-              <tr key={row.id} data-testid={`admin-threshold-row-${row.id}`}>
+              <tr key={row.id} data-testid={`admin-threshold-governance-row-${row.id}`}>
                 <td style={tdStyle}>{row.field}</td>
                 <td style={tdMonoStyle}>{row.currentThreshold.toFixed(2)}</td>
                 <td style={tdMonoStyle}>

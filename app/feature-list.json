@@ -199,7 +199,7 @@
         "src/components/admin/CorrectionTrendPanel.tsx"
       ],
       "depends_on": ["F-15", "F-16", "F-21", "F-24"],
-      "status": "todo",
+      "status": "done",
       "negative_contract_guards": [
         "never include 'lower the threshold' in any rendered recommendation",
         "threshold-decrease is informational-only in v1; workflow defers to v2 (OQ-4)"
