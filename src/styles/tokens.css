@@ -1,0 +1,78 @@
+/*
+ * F-26 — Design tokens (CSS-variable overrides on UI5 defaults).
+ *
+ * Authored from app/app-spec.json#design_tokens. The block is the source
+ * of truth; this file is a one-to-one CSS projection. Pure visual tokens
+ * only — no behaviour rules, no logic-gating thresholds, no agent names,
+ * no model IDs, no API shapes.
+ *
+ * Imported once from src/main.tsx. Components read variables via var(--name).
+ * The short aliases (--brand, --shell-bg, --sidenav-bg) match the literal
+ * names F-26 + F-21 acceptance criteria reference verbatim.
+ */
+
+:root {
+  /* color · brand */
+  --brand: #0A5FFF;
+  --brand-700: #0848C7;
+  --brand-50: #EBF2FF;
+
+  /* color · surfaces */
+  --bg: #F2F3F6;
+  --panel: #FFFFFF;
+  --panel-2: #F7F8FA;
+  --line: #E1E4EA;
+  --line-2: #EEF0F4;
+
+  /* color · ink ramp */
+  --ink-1: #11181F;
+  --ink-2: #374151;
+  --ink-3: #5F6B7A;
+  --ink-4: #8A95A4;
+
+  /* color · semantic */
+  --ok: #107E3E;
+  --ok-bg: #E4F3EA;
+  --warn: #B8590A;
+  --warn-bg: #FBEFDF;
+  --err: #BB1F1F;
+  --err-bg: #FCE7E7;
+
+  /* color · chrome */
+  --shell-bg: #0B1421;
+  --sidenav-bg: #0F1B2E;
+
+  /* type · families */
+  --font-sans: "IBM Plex Sans", "72", "Source Sans 3", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* type · scale */
+  --body-size: 13px;
+  --body-line-height: 1.45;
+  --kpi-value-size: 24px;
+  --object-title-size: 22px;
+  --object-title-weight: 600;
+  --object-title-tracking: -0.012em;
+  --panel-title-size: 14px;
+  --panel-title-weight: 600;
+  --table-head-size: 11.5px;
+  --table-head-tracking: 0.022em;
+  --table-head-transform: uppercase;
+
+  /* spacing */
+  --app-padding-x: 24px;
+  --app-section-gap-y: 14px;
+  --card-padding: 16px;
+  --shell-bar-h: 48px;
+  --sidenav-w-collapsed: 56px;
+  --sidenav-w-expanded: 236px;
+
+  /* radius */
+  --radius-card: 6px;
+  --radius-button: 4px;
+  --radius-tag: 10px;
+
+  /* transition */
+  --transition-sidenav: 180ms;
+  --transition-easing: ease;
+}

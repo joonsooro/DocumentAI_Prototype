@@ -428,7 +428,7 @@
         "src/styles/tokens.test.ts"
       ],
       "depends_on": ["F-01"],
-      "status": "todo",
+      "status": "done",
       "notes": "The design_tokens block in app-spec.json is authored by S2 (this rewrite) — S3 reads and emits CSS. The block's only top-level sub-keys are color, type, spacing, radius, transition; any candidate token that doesn't fit those buckets is omitted (per SUB-3 clarification + the design-tokens audit gate). Trace: SUB-3 clarification · D2 visual fidelity · D3 visual fidelity."
     },
     {
