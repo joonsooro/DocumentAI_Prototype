@@ -361,7 +361,7 @@
         "src/components/customer/PdfViewerPanel.tsx"
       ],
       "depends_on": ["F-14", "F-26"],
-      "status": "todo",
+      "status": "done",
       "notes": "D1 is OPTIONAL for v1. The 7-span inventory is in spec §5 D1 (handoff is reference only). RED-2 containment preserved: the 'freetext' span (if built) is highlightable on the document but its product-signal interpretation never leaves /internal. Trace: D1 · N3 · RED-2 · [handoff-derived: 7-span inventory canonicalised in spec D1]."
     },
     {
