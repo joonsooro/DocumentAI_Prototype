@@ -449,7 +449,7 @@
         "src/domain/writeProvisionalSignal.test.ts"
       ],
       "depends_on": ["F-01", "F-16"],
-      "status": "todo",
+      "status": "done",
       "negative_contract_guards": [
         "no auto-generated ProductSignal without explicit chat consent — enforced at the signal-write layer (N9 / RED-3)"
       ],

@@ -253,6 +253,21 @@ export type ProductSignalType =
   | 'schema_field_ambiguity'
   | 'extraction_regression';
 
+// F-27 amendment (S1.AMEND § 8): 6 new fields land on ProductSignal.
+// All are marked optional here so the 17 features that construct
+// ProductSignals (F-06 router emit, F-09 governance promotion via the
+// F-16 escape hatch) keep compiling without per-call-site touch-ups.
+// F-25 ranking consumes the 4 ranking fields via its own structural
+// RoadmapRankingInput intersection type, so the optional shape here is
+// safe. F-13 / F-29 surface the status + provenance fields when present.
+export type ProductSignalStatus = 'provisional' | 'governance_approved';
+export type ProductSignalProvenance =
+  | 'governance_promotion'
+  | 'conversational_notify_team'
+  | 'curated_v1';
+export type WorkaroundBurden = 'none' | 'low' | 'medium' | 'high';
+export type ProductSignalActionability = 'low' | 'medium' | 'high';
+
 export interface ProductSignal {
   readonly id: string;
   readonly signalType: ProductSignalType;
@@ -266,6 +281,16 @@ export interface ProductSignal {
   readonly country: string | null;
   readonly sourceCorrectionIds: readonly CorrectionEvent['id'][];
   readonly governanceApprovedAt: string | null; // null until A6 gate clears
+
+  // F-27 / S1.AMEND § 8 — optional in v1 so the existing F-06/F-09
+  // emission paths keep compiling. F-25 ranking + F-29 status surface
+  // both gracefully fall back when these are absent.
+  readonly customerCount?: number;
+  readonly workaroundBurden?: WorkaroundBurden;
+  readonly actionability?: ProductSignalActionability;
+  readonly expectedStpLift?: number;
+  readonly status?: ProductSignalStatus;
+  readonly provenance?: ProductSignalProvenance;
 }
 
 // ---------------------------------------------------------------------------
@@ -300,4 +325,54 @@ export interface CapabilityGap {
   readonly actionability: 'short_term' | 'medium_term' | 'long_term';
   readonly relatedSignalIds: readonly ProductSignal['id'][];
   readonly rolledUpAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// 15. ChatTurn — F-27 / S1.AMEND § 8. A single turn in the Customer
+//     Workspace chat thread. The 6-kind union pins exactly which bubble
+//     types F-27 ChatPanel renders + which the F-28 chat.turn_decide
+//     agent can produce; new kinds require both a contract amendment
+//     and a UI update.
+// ---------------------------------------------------------------------------
+export type ChatTurnKind =
+  | 'message'
+  | 'clarification_question'
+  | 'recompile_announcement'
+  | 'notify_team_question'
+  | 'notify_team_confirmation'
+  | 'success_summary';
+
+export interface ChatTurnRefs {
+  readonly fields?: readonly string[];
+  readonly capabilityGapClass?: string;
+}
+
+export interface ChatTurn {
+  readonly id: string;
+  readonly role: 'user' | 'assistant';
+  readonly content: string;
+  readonly timestamp: string; // ISO 8601
+  readonly kind: ChatTurnKind;
+  readonly refs?: ChatTurnRefs;
+}
+
+// ---------------------------------------------------------------------------
+// 16. ConversationState — F-27 / S1.AMEND § 8. The full chat session
+//     for the Customer Workspace. In-memory only per SUB-2 (scoped to
+//     the browser tab; lost on reload). compiledConfigVersionRefs
+//     orders the CompiledConfiguration ids produced as the conversation
+//     progresses (length increments on each F-28 'recompile' decision).
+// ---------------------------------------------------------------------------
+export type ConversationStatus =
+  | 'collecting'
+  | 'recompiling'
+  | 'success'
+  | 'awaiting_notify_decision'
+  | 'completed';
+
+export interface ConversationState {
+  readonly id: string;
+  readonly turns: readonly ChatTurn[];
+  readonly compiledConfigVersionRefs: readonly CompiledConfiguration['id'][];
+  readonly status: ConversationStatus;
 }
