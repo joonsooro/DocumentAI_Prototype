@@ -345,7 +345,7 @@
         "src/components/shell/AppLayout.tsx"
       ],
       "depends_on": ["F-26"],
-      "status": "todo",
+      "status": "done",
       "notes": "Structural inventory is handoff-derived (shell-bar 48px navy, side-nav 56→236px hover, object-page tab strip). UI5 is ADAPTED — UI5 primitives provide the components, F-26 tokens provide the colour/spacing overrides. The chrome is layout-only; no data-testid that belongs to /customer, /admin, or /internal main panels lives here. Trace: A8 · HAPPY-6 · SUB-3 clarification · [handoff-derived: chrome inventory]."
     },
     {
