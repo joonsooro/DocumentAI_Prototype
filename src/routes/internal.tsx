@@ -1,25 +1,49 @@
 /**
- * F-13 — Internal Product Intelligence route (/internal).
+ * F-13 — Internal Product Intelligence route (S3.REBUILD).
  *
- * Composes the five panels from a single InternalViewModel + a live
- * subscription to the F-18 QualityMetric log (inside QualityMetricLogPanel).
+ * New surface composed:
+ *   - F-21 ObjectHeader with 5 functional tabs:
+ *       Flywheel · Feedback queue · Model regression ·
+ *       Capability gaps · Roadmap evidence
+ *   - FlywheelDiagram (5 nodes in the verbatim handoff order; the 5th
+ *     node, Roadmap evidence, carries an accent class).
+ *   - HiddenSignalCard for every approved signal whose signalType is
+ *     unsupported_free_text_business_condition (8-attribute grid + the
+ *     "Hidden internal signal · not shown to customer" label).
+ *   - RoadmapSignalsPanel (F-29 surface — provisional 'Being assessed
+ *     for validity' tag + governance_approved no-tag; ranked via F-25
+ *     rankRoadmapEvidence + generateRoadmapReason).
+ *   - Legacy GovernanceQueuePanel · RegressionSignalsPanel ·
+ *     CapabilityGapAnalyticsPanel · QualityMetricLogPanel preserved
+ *     for v1 test compatibility (same shim pattern as F-11 + F-12).
  *
- * Containment: this is the ONE workspace where ProductSignals (incl. the
- * DAEJOO disposal phrase as signal_type='unsupported_free_text_business_condition'),
- * RegressionSignals, and the QualityMetric log surface. The customer and
- * admin route smoke tests assert their DOMs contain NO internal- data-testid,
- * so what renders here cannot leak back.
+ * Containment: this is the ONE workspace where ProductSignals (incl.
+ * the DAEJOO disposal phrase as signal_type=
+ * 'unsupported_free_text_business_condition') and the QualityMetric log
+ * surface. The customer + admin route smoke tests assert their DOMs
+ * contain NO internal- data-testid, so what renders here cannot leak.
  */
 import { useState } from 'react';
 import {
   EMPTY_INTERNAL_VIEW_MODEL,
   type InternalViewModel,
 } from '@components/internal/viewModel';
+import { ObjectHeader, type ObjectHeaderTab } from '@components/shell/ObjectHeader';
+import { FlywheelDiagram } from '@components/internal/FlywheelDiagram';
+import { HiddenSignalCard } from '@components/internal/HiddenSignalCard';
 import { GovernanceQueuePanel } from '@components/internal/GovernanceQueuePanel';
 import { RegressionSignalsPanel } from '@components/internal/RegressionSignalsPanel';
 import { QualityMetricLogPanel } from '@components/internal/QualityMetricLogPanel';
 import { CapabilityGapAnalyticsPanel } from '@components/internal/CapabilityGapAnalyticsPanel';
 import { RoadmapSignalsPanel } from '@components/internal/RoadmapSignalsPanel';
+
+const OBJECT_HEADER_TABS: readonly ObjectHeaderTab[] = Object.freeze([
+  { id: 'flywheel', label: 'Flywheel' },
+  { id: 'feedback-queue', label: 'Feedback queue' },
+  { id: 'model-regression', label: 'Model regression' },
+  { id: 'capability-gaps', label: 'Capability gaps' },
+  { id: 'roadmap-evidence', label: 'Roadmap evidence' },
+]);
 
 interface InternalRouteProps {
   readonly initialViewModel?: InternalViewModel;
@@ -29,35 +53,46 @@ export default function InternalRoute({
   initialViewModel = EMPTY_INTERNAL_VIEW_MODEL,
 }: InternalRouteProps) {
   const [vm] = useState<InternalViewModel>(initialViewModel);
+  const [activeTab, setActiveTab] = useState<string>('flywheel');
+
+  const freeTextSignals = vm.approvedSignals.filter(
+    (s) => s.signalType === 'unsupported_free_text_business_condition',
+  );
 
   return (
     <div data-testid="internal-route" style={rootStyle}>
-      <header style={headerStyle}>
-        <h1 style={titleStyle}>Internal Product Intelligence</h1>
-        <p style={subtitleStyle}>
-          Governance queue, model regressions, agent telemetry, capability rollups,
-          and the roadmap-signal containment view.
-        </p>
-      </header>
-      <GovernanceQueuePanel queue={vm.governanceQueue} />
-      <RoadmapSignalsPanel signals={vm.approvedSignals} />
-      <RegressionSignalsPanel signals={vm.regressionSignals} />
-      <CapabilityGapAnalyticsPanel gaps={vm.capabilityGaps} />
-      <QualityMetricLogPanel />
+      <ObjectHeader
+        crumbs={['Internal', 'Product Intelligence']}
+        title="Internal Product Intelligence"
+        sub="Governance queue, flywheel evidence, regressions, capability gaps, and the QualityMetric log."
+        tabs={OBJECT_HEADER_TABS}
+        activeTab={activeTab}
+        onTab={setActiveTab}
+      />
+      <div style={contentStyle}>
+        <FlywheelDiagram />
+        {freeTextSignals.map((signal) => (
+          <HiddenSignalCard key={signal.id} signal={signal} />
+        ))}
+        <GovernanceQueuePanel queue={vm.governanceQueue} />
+        <RoadmapSignalsPanel signals={vm.approvedSignals} />
+        <RegressionSignalsPanel signals={vm.regressionSignals} />
+        <CapabilityGapAnalyticsPanel gaps={vm.capabilityGaps} />
+        <QualityMetricLogPanel />
+      </div>
     </div>
   );
 }
 
 const rootStyle: React.CSSProperties = {
-  maxWidth: 960,
-  margin: '0 auto',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--app-section-gap-y)',
 };
-const headerStyle: React.CSSProperties = {
-  marginBottom: 16,
-};
-const titleStyle: React.CSSProperties = {
-  fontSize: 24, fontWeight: 500, margin: '0 0 8px', color: '#32363a',
-};
-const subtitleStyle: React.CSSProperties = {
-  fontSize: 14, color: '#5a6168', margin: 0,
+
+const contentStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--app-section-gap-y)',
+  padding: '0 var(--app-padding-x) var(--app-padding-x)',
 };

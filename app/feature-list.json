@@ -227,7 +227,7 @@
         "src/components/internal/RoadmapSignalsPanel.tsx"
       ],
       "depends_on": ["F-09", "F-17", "F-18", "F-21", "F-25", "F-29"],
-      "status": "todo",
+      "status": "done",
       "containment": "any signal hidden from Customer / Admin lives here, governed and ranked, never leaks back",
       "notes": "Replaces the v1 F-13 wholesale. RoadmapSignalsPanel reason lines now come from F-25 generateRoadmapReason — no inline string formatting. HiddenSignalCard's 8-attribute grid is the load-bearing handoff-derived inventory; the disposal phrase still flows in via the existing F-06 routing → F-09 governance → /internal containment path. F-29 introduces the provisional-vs-approved status tag without changing any v1 ProductSignal value paths (the 17 verbatim features are untouched). Trace: A8 · A11 · A13 · HAPPY-6 · HAPPY-7 · HAPPY-8 · RED-2."
     },
