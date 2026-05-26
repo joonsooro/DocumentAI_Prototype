@@ -393,7 +393,7 @@
         "src/components/admin/ThresholdGovernancePanel.tsx"
       ],
       "depends_on": ["F-21", "F-26"],
-      "status": "todo",
+      "status": "done",
       "notes": "Informational only in v1. The dual-approval workflow itself is OQ-4 (blocked on SUB-5 auth resolution, defers to v2). EDGE-5 eval binds here. Trace: A10 · N2 · RED-1 (extended) · EDGE-5 · OQ-4 · SUB-5 · [handoff-derived: message-strip text]."
     },
     {
