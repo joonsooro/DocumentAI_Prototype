@@ -14,7 +14,8 @@
     "lint": "eslint src --max-warnings=0",
     "test": "vitest run",
     "evals": "vitest run src/evals",
-    "evals:live": "node --env-file=.env node_modules/vitest/vitest.mjs run src/evals/live.test.tsx"
+    "evals:live": "node --env-file=.env node_modules/vitest/vitest.mjs run src/evals/live.test.tsx",
+    "observe:push": "node --env-file=.env scripts/push-eval-to-langfuse.mjs"
   },
   "dependencies": {
     "@langfuse/otel": "^5.3.0",
