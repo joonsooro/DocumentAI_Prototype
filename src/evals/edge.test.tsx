@@ -22,6 +22,7 @@ import {
   getCorrections,
   _resetCorrectionStoreForTests,
 } from '@domain/submitCorrection';
+import { governProductSignals } from '@domain/governProductSignals';
 import CustomerRoute from '@routes/customer';
 import AdminRoute from '@routes/admin';
 import InternalRoute from '@routes/internal';
@@ -148,6 +149,90 @@ describe('F-19 EDGE-3 — single correction does not auto-promote to ProductSign
     expect(event.governance).toHaveProperty('documentType');
     expect(event.governance).toHaveProperty('supplier');
     expect(event.governance).toHaveProperty('country');
+  });
+});
+
+// ===========================================================================
+// EDGE-3-positive — 3 corrections × 2 suppliers × non-low impact DOES promote.
+// ===========================================================================
+// Closes OQ-E3 (C-S-07-positive). EDGE-3 above proves the negative path
+// (single correction does not promote). This block exercises the
+// complementary positive path through the F-09 governance gate using the
+// OQ-2 v1 thresholds (min_frequency=3, min_distinct_suppliers=2,
+// forbidden_customer_impacts=['low']) recorded in
+// app/app-spec.json#blocked_open_questions.OQ-2.v1_decision.
+describe('F-19 EDGE-3-positive — 3 corrections from 2 suppliers promote to ProductSignal', () => {
+  it('productSignals.length === 1 after governance pass; signal carries the right shape', () => {
+    expect(getProductSignals().length).toBe(0);
+    // Three corrections, same (documentType, field), across two distinct
+    // suppliers, with medium customerImpact — crosses every gate.
+    submitCorrection(
+      {
+        documentRunId: 'run::eval::edge3p::1',
+        field: 'payment_terms',
+        oldValue: '30 days',
+        newValue: 'NET 30 FROM B/L',
+        operator: 'op-eval',
+        governance: {
+          documentType: 'commercial_invoice',
+          supplier: 'DAEJOO',
+          customerImpact: 'medium',
+        },
+      },
+      { nowIso: '2026-05-25T00:00:01Z' },
+    );
+    submitCorrection(
+      {
+        documentRunId: 'run::eval::edge3p::2',
+        field: 'payment_terms',
+        oldValue: '45 days',
+        newValue: 'NET 45 FROM INVOICE',
+        operator: 'op-eval',
+        governance: {
+          documentType: 'commercial_invoice',
+          supplier: 'AMAZON',
+          customerImpact: 'medium',
+        },
+      },
+      { nowIso: '2026-05-25T00:00:02Z' },
+    );
+    submitCorrection(
+      {
+        documentRunId: 'run::eval::edge3p::3',
+        field: 'payment_terms',
+        oldValue: '60 days',
+        newValue: 'NET 60 EOM',
+        operator: 'op-eval',
+        governance: {
+          documentType: 'commercial_invoice',
+          supplier: 'DAEJOO',
+          customerImpact: 'high',
+        },
+      },
+      { nowIso: '2026-05-25T00:00:03Z' },
+    );
+
+    const result = governProductSignals(getCorrections(), {
+      nowIso: '2026-05-25T00:00:04Z',
+    });
+
+    expect(result.newlyApproved.length).toBe(1);
+    expect(getProductSignals().length).toBe(1);
+    const signal = result.newlyApproved[0];
+    expect(signal.signalType).toBe('recurring_correction_pattern');
+    expect(signal.documentType).toBe('commercial_invoice');
+    expect(signal.intentFragment).toBe('payment_terms');
+    expect(signal.frequency).toBe(3);
+    expect(signal.customerImpact).toBe('high'); // aggregate = max(medium, medium, high)
+    expect(signal.supplier).toBeNull(); // dedup'd to >1 supplier
+    expect(signal.sourceCorrectionIds.length).toBe(3);
+
+    // Decision log records the approved candidate with its reason.
+    const approvedLog = result.log.find((l) => l.approved);
+    expect(approvedLog).toBeDefined();
+    expect(approvedLog!.frequency).toBe(3);
+    expect(approvedLog!.distinctSuppliers).toBe(2);
+    expect(approvedLog!.reason).toBe('thresholds met');
   });
 });
 

@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Document AI Self-Improvement Flywheel — Eval Criteria (S4)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=Newsreader:opsz,ital,wght@6..72,0,400;6..72,0,500;6..72,0,600;6..72,1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F7F3EC;
+    --paper-deep:#EFE8DB;
+    --ink:#1A1714;
+    --ink-soft:#4A423A;
+    --ink-faint:#8A8275;
+    --rule:#D9CFBC;
+    --accent:#8A3324;
+    --accent-soft:#B8553F;
+    --tint:rgba(138,51,36,0.06);
+    --self:#2D5742;
+    --judge:#5A3F8A;
+    --kill:#8A3324;
+    --na:#8A8275;
+    --tint-self:rgba(45,87,66,0.08);
+    --tint-judge:rgba(90,63,138,0.08);
+    --tint-kill:rgba(138,51,36,0.08);
+    --tint-na:rgba(138,130,117,0.10);
+    --serif:"Fraunces", "Newsreader", Georgia, serif;
+    --mono:"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--paper);color:var(--ink)}
+  body{
+    font-family:"Newsreader", Georgia, serif;
+    font-size:15px;
+    line-height:1.55;
+    font-feature-settings:"liga","onum","ss01";
+    background-image:
+      radial-gradient(circle at 12% 8%, rgba(138,51,36,0.04), transparent 40%),
+      radial-gradient(circle at 88% 92%, rgba(26,23,20,0.04), transparent 45%);
+    background-attachment:fixed;
+  }
+  .page{max-width:960px;margin:0 auto;padding:88px 56px 120px;position:relative}
+  .folio{position:fixed;top:24px;right:32px;font-family:var(--mono);font-size:10px;letter-spacing:0.18em;color:var(--ink-faint);text-transform:uppercase;writing-mode:vertical-rl;transform:rotate(180deg)}
+  header.masthead{border-bottom:1.5px solid var(--ink);padding-bottom:28px;margin-bottom:48px;display:grid;grid-template-columns:1fr auto;align-items:end;gap:24px}
+  .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:0.24em;text-transform:uppercase;color:var(--accent);margin:0 0 12px}
+  h1.title{font-family:var(--serif);font-weight:400;font-variation-settings:"opsz" 144,"SOFT" 30,"WONK" 0;font-size:46px;line-height:1.02;letter-spacing:-0.018em;margin:0;color:var(--ink)}
+  h1.title em{font-style:italic;font-variation-settings:"opsz" 144,"SOFT" 100,"WONK" 1;color:var(--accent)}
+  .meta{font-family:var(--mono);font-size:10.5px;letter-spacing:0.08em;color:var(--ink-soft);text-align:right;line-height:1.7}
+  .meta b{color:var(--ink);font-weight:500}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:24px 0 40px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.10em;text-transform:uppercase}
+  .chip{padding:5px 10px;border-radius:2px;display:inline-flex;align-items:center;gap:8px;border:1px solid currentColor}
+  .chip .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .chip.self{color:var(--self);background:var(--tint-self)}
+  .chip.judge{color:var(--judge);background:var(--tint-judge)}
+  .chip.kill{color:var(--kill);background:var(--tint-kill)}
+  .chip.na{color:var(--na);background:var(--tint-na)}
+  section{margin:56px 0 0;scroll-margin-top:40px}
+  section + section{padding-top:48px;border-top:1px solid var(--rule)}
+  .sec-head{display:grid;grid-template-columns:64px 1fr;gap:20px;align-items:baseline;margin-bottom:20px}
+  .sec-num{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;color:var(--accent);text-transform:uppercase;padding-top:6px}
+  h2{font-family:var(--serif);font-weight:500;font-variation-settings:"opsz" 60,"SOFT" 20;font-size:26px;letter-spacing:-0.01em;line-height:1.15;margin:0;color:var(--ink)}
+  .sec-body{padding-left:84px}
+  p{margin:0 0 14px}
+  p strong{font-weight:600;color:var(--ink)}
+  p .term{font-family:var(--mono);font-size:12.5px;background:var(--tint);padding:1px 5px;border-radius:2px;color:var(--accent);white-space:nowrap}
+  .pull{font-family:var(--serif);font-style:italic;font-size:17px;color:var(--accent);border-left:2px solid var(--accent);padding:4px 0 4px 18px;margin:18px 0;line-height:1.4}
+  table{width:100%;border-collapse:collapse;margin:8px 0 6px;font-size:13px}
+  thead th{font-family:var(--mono);font-weight:500;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:8px 10px 10px;border-bottom:1.5px solid var(--ink)}
+  tbody td{padding:11px 10px;vertical-align:top;border-bottom:1px solid var(--rule);line-height:1.45}
+  tbody tr:hover{background:var(--tint)}
+  td.id{font-family:var(--mono);font-size:11px;letter-spacing:0.04em;color:var(--accent);white-space:nowrap;font-weight:500}
+  td.src{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);white-space:nowrap}
+  td.gulf{font-family:var(--mono);font-size:10.5px;letter-spacing:0.06em;color:var(--judge);white-space:nowrap;text-transform:uppercase}
+  td.assertion{font-family:var(--serif);font-style:normal;color:var(--ink)}
+  td.assertion .term{font-style:normal}
+  td.probe{font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);line-height:1.5}
+  td.kind-self{font-family:var(--mono);font-size:10px;letter-spacing:0.10em;text-transform:uppercase;color:var(--self);white-space:nowrap}
+  td.kind-judge{font-family:var(--mono);font-size:10px;letter-spacing:0.10em;text-transform:uppercase;color:var(--judge);white-space:nowrap}
+  td.kind-kill{font-family:var(--mono);font-size:10px;letter-spacing:0.10em;text-transform:uppercase;color:var(--kill);white-space:nowrap;font-weight:700}
+  td.kind-na{font-family:var(--mono);font-size:10px;letter-spacing:0.10em;text-transform:uppercase;color:var(--na);white-space:nowrap}
+  .subhead{font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent);margin:22px 0 4px;display:flex;align-items:center;gap:10px}
+  .subhead::after{content:"";flex:1;height:1px;background:var(--rule)}
+  .colophon{margin-top:80px;padding-top:24px;border-top:1.5px solid var(--ink);font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);display:flex;justify-content:space-between}
+  .colophon span b{color:var(--accent);font-weight:500}
+  @media (max-width:760px){
+    .page{padding:48px 24px 80px}
+    .sec-head{grid-template-columns:1fr;gap:4px}
+    .sec-body{padding-left:0}
+    h1.title{font-size:34px}
+    header.masthead{grid-template-columns:1fr;align-items:start}
+    .meta{text-align:left}
+    .folio{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="folio">S4 · Eval · Criteria</div>
+<div class="page">
+
+<header class="masthead">
+  <div>
+    <p class="eyebrow">Stage S4 · Step 1 · Criteria from Spec</p>
+    <h1 class="title">Eval <em>Criteria</em><br>Document AI Flywheel</h1>
+  </div>
+  <div class="meta">
+    <b>derived from spec.html</b><br>
+    Behaviour Contract · FAQ · Substrate · §6 Constraints<br>
+    35 criteria · 4 OQ-E
+  </div>
+</header>
+
+<div class="legend">
+  <span class="chip self"><span class="dot"></span>Self-check</span>
+  <span class="chip judge"><span class="dot"></span>Judge-required</span>
+  <span class="chip kill"><span class="dot"></span>Eval-level kill</span>
+  <span class="chip na"><span class="dot"></span>OQ-E (undefined)</span>
+</div>
+
+<section id="s0">
+  <div class="sec-head"><div class="sec-num">§ 00</div><h2>Method</h2></div>
+  <div class="sec-body">
+    <p>Criteria walked top-to-bottom from <span class="term">app/spec.html</span>: Behaviour Contract §5 (Always, Ask First, Never), FAQ §3 (HAPPY · EDGE · RED), Substrate §9, and §6 Constraints. Each criterion carries a single binding source and one of four kinds.</p>
+    <p><strong>Self-check</strong> rows are mechanical — a count, a regex, a type check, a literal-string presence test. The Judge applies them by reading source or running the test. <strong>Judge-required</strong> rows need an independent reviewer's read of the artifact and a one-sentence Gulf tag on every FAIL. <strong>Eval-level kill</strong> rows are numeric, time-bounded, and structurally separate — failing any one means the build fails its release bar regardless of other passes. <strong>OQ-E</strong> rows are criteria the spec gestures at but does not operationalise; the verdict in Step 2 will be <span class="term">N/A</span> with a pointer to the open question.</p>
+    <p class="pull">N/A is not a pass and not a fail. It means the spec has not authorised a verdict yet.</p>
+  </div>
+</section>
+
+<section id="s1">
+  <div class="sec-head"><div class="sec-num">§ 01</div><h2>Self-check rows</h2></div>
+  <div class="sec-body">
+    <p>Mechanical assertions. Each is a single read of source, fixture, or test output. Pulled from Behaviour Contract Always rows, Never rows, and Substrate decisions.</p>
+
+    <div class="subhead">From Behaviour Contract · Always</div>
+    <table>
+      <thead><tr><th style="width:8%">ID</th><th style="width:14%">Source</th><th>Assertion</th><th style="width:30%">Probe</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="id">C-S-01</td><td class="src">A1 / HAPPY-3</td>
+          <td class="assertion">Compile output is tagged as a live <span class="term">aiCore</span> call: <span class="term">CompiledConfiguration.source === 'aiCore'</span> and <span class="term">templateUsed === false</span>.</td>
+          <td class="probe">Read <span class="term">src/domain/compileIntentToConfiguration.ts</span>: stamp site for <span class="term">source</span> + <span class="term">templateUsed</span> is the module, not the model.</td>
+        </tr>
+        <tr>
+          <td class="id">C-S-02</td><td class="src">A1 / DEP-1</td>
+          <td class="assertion">Every <span class="term">callAgent</span> invocation supplies both <span class="term">model</span> and <span class="term">max_tokens</span>; the wrapper rejects calls missing either before any I/O.</td>
+          <td class="probe">Read <span class="term">src/runtime/aiCoreClient.ts</span> guard block; cross-check call sites in F-04/F-05/F-10/F-15.</td>
+        </tr>
+        <tr>
+          <td class="id">C-S-03</td><td class="src">A2 / HAPPY-4 / N1</td>
+          <td class="assertion">CapabilityAssessment customer-visible status union is constrained to <span class="term">Supported</span> | <span class="term">Supported with workaround</span>; <span class="term">capability_gap</span> is an internal-only status with <span class="term">customerVisible === false</span>.</td>
+          <td class="probe">Read <span class="term">src/domain/types.ts</span> (<span class="term">CustomerVisibleStatus</span>, <span class="term">InternalOnlyStatus</span>) and <span class="term">src/components/customer/viewModel.ts</span> (<span class="term">CustomerVisibleCapabilityAssessment</span>).</td>
+        </tr>
+        <tr>
+          <td class="id">C-S-04</td><td class="src">A3</td>
+          <td class="assertion">Every <span class="term">capability_gap</span> row routes to exactly one of <span class="term">ClarificationRequest[]</span> or <span class="term">ProductSignal[]</span> — never both, never neither.</td>
+          <td class="probe">Read <span class="term">src/domain/routeCapabilityGaps.ts</span>; routing loop is total by construction (single <span class="term">classify()</span> per gap row).</td>
+        </tr>
+        <tr>
+          <td class="id">C-S-05</td><td class="src">A4 / EDGE-1</td>
+          <td class="assertion">A missed or low-confidence required field emits a <span class="term">ClarificationRequest</span> carrying all three EDGE-1 prompts: <span class="term">fieldMeaning</span>, <span class="term">postingReviewReportingImpact</span>, <span class="term">supplierScopeApplicability</span>.</td>
+          <td class="probe">Read <span class="term">src/domain/generateClarificationRequests.ts</span> and the EDGE-1 eval; assert all three prompt strings are non-empty for the missed field.</td>
+        </tr>
+        <tr>
+          <td class="id">C-S-06</td><td class="src">A5 / EDGE-2</td>
+          <td class="assertion">Every AI Core agent failure produces BOTH a <span class="term">ClarificationRequest</span> (<span class="term">kind='agent_failure_surface'</span>) AND a <span class="term">QualityMetric</span> with <span class="term">status='fail'</span> — atomic dual emission, no canned fallback.</td>
+          <td class="probe">Read <span class="term">src/domain/agentFailureSurface.ts</span> (<span class="term">surfaceAgentFailure</span> has no early-return); run EDGE-2 eval; expect <span class="term">countMetrics({status:'fail'}) === 1</span> + non-empty <span class="term">operatorFacingError</span>.</td>
+        </tr>
+        <tr>
+          <td class="id">C-S-07</td><td class="src">A6 / EDGE-3 / N5</td>
+          <td class="assertion">A single <span class="term">CorrectionEvent</span> never auto-promotes: <span class="term">productSignals.length</span> unchanged after a single <span class="term">submitCorrection</span> call.</td>
+          <td class="probe">Read <span class="term">src/domain/submitCorrection.ts</span> (no write path to <span class="term">productSignals</span>) and <span class="term">src/domain/governProductSignals.ts</span> (<span class="term">min_frequency=3</span> per OQ-2.v1_decision). Run EDGE-3 eval.</td>
+        </tr>
+        <tr>
+          <td class="id">C-S-08</td><td class="src">A7 / HAPPY-5</td>
+          <td class="assertion">Every rendered <span class="term">OperationalReason</span> carries all 5 keys: <span class="term">field</span>, <span class="term">evidence</span>, <span class="term">rule</span>, <span class="term">confidence</span>, <span class="term">nextAction</span>.</td>
+          <td class="probe">Read <span class="term">src/domain/generateOperationalReasons.ts</span> (TypeScript + zod + sanitise) and the HAPPY-5 eval; assert each reason key is truthy / typeof number.</td>
+        </tr>
+        <tr>
+          <td class="id">C-S-09</td><td class="src">A8 / HAPPY-6</td>
+          <td class="assertion">Three distinct routes exist at <span class="term">/customer</span>, <span class="term">/admin</span>, <span class="term">/internal</span>; each route DOM contains no <span class="term">data-testid</span> belonging to another workspace.</td>
+          <td class="probe">Read <span class="term">src/App.tsx</span> router; run HAPPY-6 eval (three asserts, one per route).</td>
+        </tr>
+        <tr>
+          <td class="id">C-S-10</td><td class="src">A9 / N8 / F-14</td>
+          <td class="assertion">DAEJOO PDF is referenced only via <span class="term">/assets/daejoo-invoice.pdf</span>; no source file under <span class="term">src/</span> contains the literal substring <span class="term">~/Downloads</span>.</td>
+          <td class="probe">Read <span class="term">src/data/assets.ts</span> and <span class="term">src/data/assetBinding.test.ts</span>; vitest grep guard is the live enforcement.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="subhead">From Behaviour Contract · Never</div>
+    <table>
+      <thead><tr><th style="width:8%">ID</th><th style="width:14%">Source</th><th>Assertion</th><th style="width:30%">Probe</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="id">C-S-11</td><td class="src">N1 / HAPPY-4 / RED-2</td>
+          <td class="assertion">Customer Workspace rendered DOM contains no literal <span class="term">Unsupported</span> for the DAEJOO scenario.</td>
+          <td class="probe">Run RED-2 eval first assertion: <span class="term">customerContainer.textContent</span> must not contain <span class="term">Unsupported</span>.</td>
+        </tr>
+        <tr>
+          <td class="id">C-S-12</td><td class="src">N2 / RED-1</td>
+          <td class="assertion">No <span class="term">AdminRecommendation</span> reaching the admin DOM has <span class="term">type === 'threshold_lower'</span> nor a body/title matching <span class="term">/lower(ing)?\s+(the\s+)?threshold/i</span>.</td>
+          <td class="probe">Read four-layer enforcement: types.ts union, F-15 zod + runtime regex, viewModel filter. Run RED-1 eval.</td>
+        </tr>
+        <tr>
+          <td class="id">C-S-13</td><td class="src">N3 / RED-2</td>
+          <td class="assertion">Customer DOM does not contain <span class="term">material disposal</span> nor <span class="term">unsupported_free_text_business_condition</span>; raw prompt substrings <span class="term">system:</span> / <span class="term">prompt:</span> / <span class="term">&lt;|</span> are also absent.</td>
+          <td class="probe">Run RED-2 + HAPPY-5 evals; check <span class="term">customerContainer.textContent</span> for each forbidden substring.</td>
+        </tr>
+        <tr>
+          <td class="id">C-S-14</td><td class="src">N4 / EDGE-2</td>
+          <td class="assertion">No call path returns a canned fallback for a failed agent: <span class="term">AgentFailure</span> always throws; <span class="term">runAgentWithFailureSurface</span> returns a discriminated union the caller cannot mistake for a value.</td>
+          <td class="probe">Read <span class="term">aiCoreClient.ts</span> (every failure throws AgentFailure) and <span class="term">agentFailureSurface.ts</span> (<span class="term">{kind:'success'|'failure'}</span> tagged union).</td>
+        </tr>
+        <tr>
+          <td class="id">C-S-15</td><td class="src">N6</td>
+          <td class="assertion"><span class="term">simulateDocumentRun</span> is pure (no I/O, no clock, no entropy); <span class="term">DocumentRun.source</span> is always <span class="term">'mock'</span>; no <span class="term">pdf-parse</span> import inside <span class="term">src/</span>.</td>
+          <td class="probe">Read <span class="term">src/domain/simulateDocumentRun.ts</span>; grep <span class="term">src/</span> for <span class="term">pdf-parse</span> import.</td>
+        </tr>
+        <tr>
+          <td class="id">C-S-16</td><td class="src">N7</td>
+          <td class="assertion"><span class="term">decideStatus</span> never returns <span class="term">Ready</span> when any required field has <span class="term">value === null</span> after the confidence gate, nor when any field is below its threshold.</td>
+          <td class="probe">Read <span class="term">src/domain/decideReadiness.ts</span> (<span class="term">decideStatus</span> policy: Blocked / Needs review / Ready).</td>
+        </tr>
+        <tr>
+          <td class="id">C-S-17</td><td class="src">N8 / F-14</td>
+          <td class="assertion">No file under <span class="term">src/</span> reads or writes the DAEJOO PDF from a <span class="term">~/Downloads</span> path at runtime.</td>
+          <td class="probe">Run <span class="term">src/data/assetBinding.test.ts</span>: grep across <span class="term">src/</span> returns zero matches for forbidden token.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="subhead">From Substrate</div>
+    <table>
+      <thead><tr><th style="width:8%">ID</th><th style="width:14%">Source</th><th>Assertion</th><th style="width:30%">Probe</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="id">C-S-18</td><td class="src">SUB-1</td>
+          <td class="assertion">DAEJOO PDF lives at <span class="term">app/assets/daejoo-invoice.pdf</span> with the pinned SHA-256.</td>
+          <td class="probe">Read <span class="term">app/assets/README.md</span>; verify file size + SHA via <span class="term">shasum -a 256</span>.</td>
+        </tr>
+        <tr>
+          <td class="id">C-S-19</td><td class="src">SUB-2</td>
+          <td class="assertion">Persistence is in-memory typed fixtures + pure service functions; no database dependency.</td>
+          <td class="probe">Read <span class="term">package.json</span> dependencies; read <span class="term">submitCorrection.ts</span> + <span class="term">qualityMetricLog.ts</span> module-singleton arrays.</td>
+        </tr>
+        <tr>
+          <td class="id">C-S-20</td><td class="src">SUB-3</td>
+          <td class="assertion">Frontend uses React 18 + TypeScript + Vite + <span class="term">@ui5/webcomponents-react</span>.</td>
+          <td class="probe">Read <span class="term">package.json</span> dependencies and <span class="term">tsconfig.json</span>.</td>
+        </tr>
+        <tr>
+          <td class="id">C-S-21</td><td class="src">SUB-4</td>
+          <td class="assertion">Hosting / runtime is local dev only via <span class="term">vite dev</span>; no shared deployment.</td>
+          <td class="probe">Read <span class="term">package.json</span> scripts (no deploy/publish targets); read <span class="term">vite.config.ts</span>.</td>
+        </tr>
+        <tr>
+          <td class="id">C-S-22</td><td class="src">SUB-5</td>
+          <td class="assertion">No auth surface in v1.</td>
+          <td class="probe">Grep <span class="term">src/</span> for auth/login/session keywords; expect none.</td>
+        </tr>
+        <tr>
+          <td class="id">C-S-23</td><td class="src">SUB-6</td>
+          <td class="assertion"><span class="term">QualityMetric</span> log is rendered in the Internal workspace, mirrors to browser console, and never echoes <span class="term">system</span> / <span class="term">user</span> prompts.</td>
+          <td class="probe">Read <span class="term">src/runtime/qualityMetricLog.ts</span> (<span class="term">mirrorToConsole</span> sends metadata only) and <span class="term">src/components/internal/QualityMetricLogPanel.tsx</span>.</td>
+        </tr>
+        <tr>
+          <td class="id">C-S-24</td><td class="src">SUB-7 / HAPPY-3 / A1</td>
+          <td class="assertion">SAP AI Core is the only ML/AI provider; every agentic step (compile, capability, readiness, clarification, admin recs, signal governance) goes through <span class="term">callAgent</span>.</td>
+          <td class="probe">Grep <span class="term">src/domain/</span> for non-AI-Core LLM imports (anthropic, openai, etc.) — expect none. Cross-check <span class="term">callAgent</span> import sites.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="s2">
+  <div class="sec-head"><div class="sec-num">§ 02</div><h2>Judge-required rows</h2></div>
+  <div class="sec-body">
+    <p>These criteria are spec invariants the Judge cannot mechanically check — they require a read of the rendered artifact and a one-sentence Gulf tag on every FAIL. Each row names the Gulf the FAIL would belong to so the Judge has a target.</p>
+
+    <table>
+      <thead><tr><th style="width:8%">ID</th><th style="width:14%">Source</th><th>Assertion</th><th style="width:14%">Gulf (on FAIL)</th><th style="width:24%">Judge probe</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="id">C-J-01</td><td class="src">HAPPY-1 / HAPPY-5</td>
+          <td class="assertion">Customer Workspace reads as an <em>admin-facing</em> configuration screen, not an end-user document upload form: form copy, panel headings, and CTA wording address the admin.</td>
+          <td class="gulf">Comprehension</td>
+          <td class="probe">Read <span class="term">src/routes/customer.tsx</span> + <span class="term">IntentInputPanel</span>; judge the audience of the surface text.</td>
+        </tr>
+        <tr>
+          <td class="id">C-J-02</td><td class="src">HAPPY-5 / A7</td>
+          <td class="assertion">Readiness reasons are written in <em>business language</em> grounded in field / evidence / rule — not in agent-internal jargon, not in raw extraction values, not in prompt scaffolding.</td>
+          <td class="gulf">Generalization</td>
+          <td class="probe">Read <span class="term">NEEDS_REVIEW_READINESS</span> fixture + <span class="term">generateOperationalReasons</span> prompt; sample 3 reasons from rendered output and judge whether an admin who cannot see the prompt would understand them.</td>
+        </tr>
+        <tr>
+          <td class="id">C-J-03</td><td class="src">A8 / HAPPY-6</td>
+          <td class="assertion">Customer · Admin · Internal each <em>render their own concern</em> over the shared domain objects — i.e. the same <span class="term">ProductSignal</span> would render as containment in /internal but is structurally absent from /customer + /admin view-models.</td>
+          <td class="gulf">Specification</td>
+          <td class="probe">Read all three view-model types: confirm <span class="term">CustomerViewModel</span> and <span class="term">AdminViewModel</span> have no <span class="term">ProductSignal</span> field; <span class="term">InternalViewModel</span> does.</td>
+        </tr>
+        <tr>
+          <td class="id">C-J-04</td><td class="src">HAPPY-4 / A2 / N1</td>
+          <td class="assertion">When the capability agent classifies a fragment, the customer-visible row carries a workaround description that <em>matches</em> the workaround the system actually applies — not boilerplate, not a generic apology.</td>
+          <td class="gulf">Generalization</td>
+          <td class="probe">Read <span class="term">assessCapabilities.ts</span> + the HAPPY-4 fixture row (<span class="term">commercial_value_indicator</span>); judge whether <span class="term">workaroundDescription</span> tells the admin what will happen on this document.</td>
+        </tr>
+        <tr>
+          <td class="id">C-J-05</td><td class="src">RED-2 / N3</td>
+          <td class="assertion">The DAEJOO disposal-phrase signal renders in <span class="term">/internal</span> in a form that an internal PM can act on — categorised, attributed to <span class="term">unsupported_free_text_business_condition</span>, with the verbatim fragment readable.</td>
+          <td class="gulf">Comprehension</td>
+          <td class="probe">Read <span class="term">RoadmapSignalsPanel.tsx</span> and the RED-2 second assertion; judge whether the rendering preserves both the category and the verbatim fragment.</td>
+        </tr>
+        <tr>
+          <td class="id">C-J-06</td><td class="src">HAPPY-5 / AF1</td>
+          <td class="assertion">When an admin recommendation changes a prompt version, schema field, or auto-confirm criterion, the recommendation surface communicates the <em>change scope</em> (this document · this supplier · all suppliers) before any accept action.</td>
+          <td class="gulf">Specification</td>
+          <td class="probe">Read <span class="term">RecommendationQueuePanel.tsx</span> + <span class="term">AdminRecommendation.scope</span> field; judge whether scope is visibly rendered, not just stored.</td>
+        </tr>
+        <tr>
+          <td class="id">C-J-07</td><td class="src">A6 / AF2 / EDGE-3</td>
+          <td class="assertion">The Internal governance queue shows why each candidate did <em>or did not</em> promote — the F-09 gating reason is rendered, not silenced.</td>
+          <td class="gulf">Specification</td>
+          <td class="probe">Read <span class="term">GovernanceQueuePanel.tsx</span> + <span class="term">governProductSignals.ts</span> <span class="term">GovernRunLogEntry.reason</span>; judge whether held rows surface the threshold gap.</td>
+        </tr>
+        <tr>
+          <td class="id">C-J-08</td><td class="src">EDGE-2 / A5 / N4</td>
+          <td class="assertion">The clarification raised by a failed agent reads as a <em>question to the operator</em>, not a stack trace and not a canned apology — and it names the failing agent honestly.</td>
+          <td class="gulf">Comprehension</td>
+          <td class="probe">Read <span class="term">buildAgentFailurePrompts</span> in <span class="term">agentFailureSurface.ts</span>; judge whether the three prompts ask the operator to make a decision.</td>
+        </tr>
+        <tr>
+          <td class="id">C-J-09</td><td class="src">RED-1 / N2 / AF3</td>
+          <td class="assertion">When a document is held at <span class="term">Needs review</span> because of a low-confidence field, the admin surface offers acting on the schema / prompt / instruction — not on the threshold itself.</td>
+          <td class="gulf">Generalization</td>
+          <td class="probe">Read <span class="term">RecommendationQueuePanel.tsx</span> + the RED-1 eval fixture; judge whether the rendered recommendation types are schema/prompt/instruction-shaped.</td>
+        </tr>
+        <tr>
+          <td class="id">C-J-10</td><td class="src">EDGE-4 / HAPPY-6</td>
+          <td class="assertion">The three-workspace walkthrough reads as a single coherent demo flow — each route mounts in sequence, the next concern is reachable from the previous, and the operator does not need to context-switch between unrelated screens.</td>
+          <td class="gulf">Comprehension</td>
+          <td class="probe">Read <span class="term">src/App.tsx</span> navigation strip + <span class="term">F-20 walkthrough.test.tsx</span>; judge whether <span class="term">/customer → /admin → /internal</span> is an obvious flow.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="s3">
+  <div class="sec-head"><div class="sec-num">§ 03</div><h2>Eval-level kill rows</h2></div>
+  <div class="sec-body">
+    <p>From <span class="term">spec.html §6 Constraints</span> and <span class="term">app/contract.html</span> kill switches. Each is numeric and time-bounded — failing any one means the build fails its release bar regardless of how many other criteria pass.</p>
+    <p><strong>Push-back note.</strong> §6 carries one soft-language risk ("flaky network during a live demo blocks every agent") that resists a numeric threshold; it is intentionally left out of this section and absorbed by C-S-06 (every agent failure surfaces) and OQ-E2 (live-demo latency budget).</p>
+    <table>
+      <thead><tr><th style="width:8%">ID</th><th style="width:14%">Source</th><th>Assertion</th><th style="width:30%">Probe</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="id">C-K-01</td><td class="src">EDGE-4 / §6 perf</td>
+          <td class="assertion">A scripted walkthrough through <span class="term">/customer → /admin → /internal</span> completes in <span class="term">&lt; 300_000 ms</span> on three consecutive runs.</td>
+          <td class="probe">Run <span class="term">src/evals/walkthrough.test.tsx</span>; expect 3/3 runs under bound.</td>
+        </tr>
+        <tr>
+          <td class="id">C-K-02</td><td class="src">EDGE-4 supplier sub-clause / §6 portability</td>
+          <td class="assertion">Adding a second supplier fixture renders through <span class="term">CustomerRoute</span> without editing any file under <span class="term">src/domain/*</span>.</td>
+          <td class="probe">Run the F-20 Amazon-stub test; assert no <span class="term">src/domain/*</span> import is added.</td>
+        </tr>
+        <tr>
+          <td class="id">C-K-03</td><td class="src">12 binary evals / spec §3</td>
+          <td class="assertion"><span class="term">npm run evals</span> returns <span class="term">17 passed (17)</span> — the 12 spec §3 cases (6 HAPPY + 4 EDGE + 2 RED, with RED-1/RED-2 each split into 2) plus the 3-test walkthrough harness, all green.</td>
+          <td class="probe">Capture <span class="term">vitest run src/evals</span> output; expect zero failures.</td>
+        </tr>
+        <tr>
+          <td class="id">C-K-04</td><td class="src">§6 stack constraints</td>
+          <td class="assertion"><span class="term">tsc --noEmit</span> exits 0 across the whole repo and <span class="term">eslint src --max-warnings=0</span> exits 0.</td>
+          <td class="probe">Run <span class="term">npm run typecheck</span> + <span class="term">npm run lint</span>; expect exit 0 from both.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="s4">
+  <div class="sec-head"><div class="sec-num">§ 04</div><h2>Open Questions (OQ-E)</h2></div>
+  <div class="sec-body">
+    <p>Criteria the spec gestures at but does not operationalise. The Judge returns <span class="term">N/A</span> for each, with a pointer to the OQ-E entry. <em>N/A is not PASS and not FAIL</em> — it is a flag that the spec has not authorised a verdict yet.</p>
+    <table>
+      <thead><tr><th style="width:8%">ID</th><th>Gap</th><th style="width:24%">Spec anchor</th><th style="width:24%">Suggested resolution</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="id">OQ-E1</td>
+          <td>Live AI Core invariants (compile returns a 9-field CompiledConfiguration on the live tenant; capability + readiness + admin-recs prompts elicit the expected refusal patterns) cannot be exercised from a hermetic eval — they need a real tenant call, but the AI Core API contract (auth model, endpoint shape, JSON contract) is still <span class="term">OQ-1</span> in the spec. The Judge cannot turn HAPPY-2 / HAPPY-3 / HAPPY-4 from "shape correct against mocked wire" into "behaviour correct against live tenant" without that.</td>
+          <td class="src">spec.html §6, §7 OQ-1; OQ-1 in <span class="term">app-spec.json</span></td>
+          <td class="src">Resolve by 2026-06-15 (S4 OBSERVE live-tenant exercise window). Until then, criteria HAPPY-2 / HAPPY-3 / HAPPY-4 stay verified at the mocked-wire layer only.</td>
+        </tr>
+        <tr>
+          <td class="id">OQ-E2</td>
+          <td>Spec §6 calls flaky network during a live demo a real risk, but does not name a latency budget — neither per-agent (e.g. compile p95 &lt; 4 s) nor walkthrough-end-to-end (live, not mocked). Without a number, the Judge cannot rule on whether the live-demo perf is acceptable, only on the mocked harness bound (C-K-01).</td>
+          <td class="src">spec.html §6 (live AI Core risk row); EDGE-4 is mock-bounded only</td>
+          <td class="src">Resolve by 2026-06-01 with a per-agent p95 latency target and an end-to-end live walkthrough cap.</td>
+        </tr>
+        <tr>
+          <td class="id">OQ-E3</td>
+          <td>OQ-2 governance thresholds got a v1 decision (<span class="term">min_frequency=3 · min_distinct_suppliers=2 · forbidden_customer_impacts=['low']</span>) but no <em>eval</em> proves the demo dataset actually exercises that gate — the DAEJOO scenario has frequency=1 by construction, so the bar is never crossed in v1. A "minimum demonstrable governance event" is needed before the Judge can pass A6 end-to-end rather than at the predicate-correctness layer.</td>
+          <td class="src">spec.html §5 A6, §7 OQ-2 (v1 decision in <span class="term">app-spec.json#OQ-2</span>)</td>
+          <td class="src">Resolve by S4 OBSERVE: add a synthetic 3-correction fixture so a positive governance promotion is observable, distinct from the EDGE-3 "single correction does not promote" path.</td>
+        </tr>
+        <tr>
+          <td class="id">OQ-E4</td>
+          <td>OQ-3 auto-confirm thresholds were resolved as a uniform 0.85 default. Per-field calibration (supplier · PO · invoice date · payment terms · payable amount) is deferred to S4 OBSERVE. The Judge cannot rule on whether 0.85 is the <em>right</em> bar for any specific field without observed telemetry.</td>
+          <td class="src">spec.html §7 OQ-3 (v1 decision in <span class="term">app-spec.json#OQ-3</span>)</td>
+          <td class="src">Resolve by 2026-07-01 with per-field thresholds derived from first-week S4 OBSERVE traces.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="s5">
+  <div class="sec-head"><div class="sec-num">§ 05</div><h2>How the Judge applies these</h2></div>
+  <div class="sec-body">
+    <p>One verdict per (criterion × applicable pick) in <span class="term">app/eval-results.html</span>. Picks are the artifacts the running app produces: the three routes, the agent modules, the view-models, the eval suite output, and the typecheck / lint state.</p>
+    <p>Every FAIL row names a Gulf — <strong>Comprehension</strong> (model misread the spec), <strong>Specification</strong> (spec was ambiguous), or <strong>Generalization</strong> (right for this case, wrong reasoning for the next) — and a one-sentence why. Every N/A row names the <span class="term">OQ-E#</span> id and the suggested resolution date.</p>
+  </div>
+</section>
+
+<div class="colophon">
+  <span>S4 · Step 1 · <b>eval-criteria.html</b></span>
+  <span>Next: S4 · Step 2 · eval-results.html</span>
+</div>
+
+</div>
+</body>
+</html>

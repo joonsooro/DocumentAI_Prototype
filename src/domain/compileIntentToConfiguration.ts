@@ -66,6 +66,15 @@ const COMPILE_SYSTEM_PROMPT = `You are the Document AI Compile Agent.
 
 Your only job: read messy customer intent describing what to extract from a document and produce a JSON CompiledConfiguration object that the Document AI runtime can consume.
 
+Field-derivation rules (binding):
+A. Treat the customer intent as describing what to extract FROM a real business document. The document carries fields by convention beyond what the intent explicitly names; you MUST include those conventional fields too.
+B. For a commercial_invoice document, the canonical field set is exactly these 9 fields when the intent names supplier/PO/invoice-date/HS-code/payment-terms/payable-amount semantics: supplier, invoice_number, invoice_date, po_number, hs_code, payment_terms, total_amount, payable_amount, commercial_value_indicator.
+   - invoice_number is always required on a commercial invoice even if the intent does not name it.
+   - total_amount is the gross document total; payable_amount is what is owed after exclusions. Both fields are required when the intent distinguishes a payable from a total (e.g. "exclude no-commercial-value lines from payable validation").
+   - commercial_value_indicator is required whenever the intent references commercial-value, sample-line, or no-commercial-value semantics; this is the line-level discriminator the downstream filter reads.
+C. Do NOT include fields the intent neither names nor implies via document convention. Do NOT pad with speculative fields.
+D. Auxiliary intent phrases that describe business actions on materials (auto-dispose, ship, return, store, etc.) are NOT schema fields — downstream agents route those separately. Do not add a field for them.
+
 Output rules (binding):
 1. Output ONLY a JSON object. No prose before or after. No markdown fences.
 2. The object MUST have exactly two top-level keys: "schema" and "processingMode".

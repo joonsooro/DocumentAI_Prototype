@@ -1,15 +1,18 @@
 {
-  "$schema_version": "s3.decomposer.v1",
+  "$schema_version": "s3.decomposer.v2",
   "source": {
     "contract": "app/contract.html",
     "contract_sections": ["§1 Decomposition", "§2 Screens"],
-    "generated_by": "S3.DECOMP",
-    "generated_at": "2026-05-24T21:30:00Z"
+    "generated_by": "S2.REV",
+    "generated_at": "2026-05-26T10:30:00Z",
+    "rewritten_from": "s3.decomposer.v1 (20 features) — F-11/F-12/F-13 replaced wholesale; F-21..F-29 added; F-01..F-10, F-14..F-20 retained verbatim"
   },
   "summary": {
-    "decomposition_rows": 18,
-    "features_total": 20,
-    "u11_split_into": ["F-11", "F-12", "F-13"]
+    "decomposition_rows": 27,
+    "features_total": 29,
+    "verbatim_features": ["F-01","F-02","F-03","F-04","F-05","F-06","F-07","F-08","F-09","F-10","F-14","F-15","F-16","F-17","F-18","F-19","F-20"],
+    "replaced_features": ["F-11","F-12","F-13"],
+    "new_features": ["F-21","F-22","F-23","F-24","F-25","F-26","F-27","F-28","F-29"]
   },
   "features": [
     {
@@ -133,7 +136,7 @@
       "output_paths": ["src/domain/governProductSignals.ts"],
       "depends_on": ["F-01", "F-16"],
       "status": "done",
-      "notes": "OQ-2 resolved as v1 conservative_uniform policy in app-spec.json#blocked_open_questions.OQ-2.v1_decision (min_frequency=3, min_distinct_suppliers=2, forbidden_customer_impacts=['low']). Pure function — no AI Core. Groups corrections by (documentType, field), evaluates against the three gates, approves via the F-16 escape hatch _appendApprovedSignalForF09. Dedup keys signals by (documentType, intentFragment) so re-runs are idempotent. Single-correction-never-promotes invariant proven by 10-run soak; the DAEJOO disposal-phrase scenario also tested explicitly (one DAEJOO instance stays ungoverned)."
+      "notes": "OQ-2 resolved as v1 conservative_uniform policy in app-spec.json#blocked_open_questions.OQ-2.v1_decision (min_frequency=3, min_distinct_suppliers=2, forbidden_customer_impacts=['low']). Pure function — no AI Core. Groups corrections by (documentType, field), evaluates against the three gates, approves via the F-16 escape hatch _appendApprovedSignalForF09. Dedup keys signals by (documentType, intentFragment) so re-runs are idempotent. Single-correction-never-promotes invariant proven by 10-run soak; the DAEJOO disposal-phrase scenario also tested explicitly (one DAEJOO instance stays ungoverned). F-29 (S2 revision) extends this function with a second input stream — provisional-signal clusters — without changing the existing CorrectionEvent path."
     },
     {
       "id": "F-10",
@@ -151,55 +154,82 @@
     },
     {
       "id": "F-11",
-      "name": "Customer Workspace screen + route",
-      "contract_pointer": "U11 + Screen-1",
-      "acceptance": "Route /customer mounts; renders business-intent input, compiled configuration panel, capability status (Supported / Supported with workaround only), clarification loop with 3 prompts per missed field, readiness panel with 5-key reasons; DOM contains no 'Unsupported' / raw prompt / material-disposal / roadmap-signal strings",
+      "name": "Customer Workspace screen + route (S2-rev: chat thread + PDF viewer + theatrical upload + Workspace-only tab)",
+      "contract_pointer": "U11 + Screen-1 + U19 + U20 + U21 + U25",
+      "acceptance": "Route /customer mounts under F-21 shared chrome with the Workspace tab active; left pane mounts the F-22 PdfViewerPanel pointing at DAEJOO_PDF_URL with data-testid='customer-pdf-viewer'; left pane mounts F-23 UploadZonePanel with data-testid='customer-upload-zone' (any drop announces 'Processing DAEJOO sample invoice' OR carries permanent 'Demo: DAEJOO invoice only' tag); right pane mounts F-27 ChatPanel with data-testid='customer-chat-panel' (the prior IntentInputPanel + ClarificationLoopPanel split is removed — no element matches data-testid='customer-clarification-loop'); right pane also mounts CompiledConfigPanel + CapabilityStatusPanel + ReadinessPanel which update in-place when F-28 chat.turn_decide returns action:'recompile' (compiledConfigVersionRefs.length increments by 1 per recompile turn); compile/capability/readiness reuse postCompile/postCapability/postReadiness from the existing src/components/customer/agentClient.ts (NO reimplementation); browser bundle audit (grep dist/assets/*.js for AICORE_KEY_PATH|clientsecret|callAgent) returns zero; per D3 the non-Workspace tabs (Extracted fields · History · Attachments) either are absent from DOM or render with disabled attribute set, no data-testid='customer-pin' element exists; per D3 + HAPPY-10 the Readiness footer 'Save as draft' and 'Confirm & process' buttons each surface an element with data-testid='customer-readiness-toast' on click and append 0 entries to getCorrections() / getProductSignals() / getMetrics(); customer-route DOM textContent does not contain 'Unsupported', 'material disposal', 'unsupported_free_text_business_condition', 'system:', 'prompt:', or '<|'",
       "kill_switch": {
         "window_minutes": 10,
         "condition": "If any workspace renders another's data-testid in 2 of 3 smoke runs within 10 minutes, halt and re-check route boundaries"
       },
-      "output_paths": ["index.html", "src/main.tsx", "src/App.tsx", "src/routes/customer.tsx", "src/routes/admin.tsx", "src/routes/internal.tsx", "src/components/customer/viewModel.ts", "src/components/customer/IntentInputPanel.tsx", "src/components/customer/CompiledConfigPanel.tsx", "src/components/customer/CapabilityStatusPanel.tsx", "src/components/customer/ClarificationLoopPanel.tsx", "src/components/customer/ReadinessPanel.tsx"],
-      "depends_on": ["F-04", "F-05", "F-07", "F-10"],
-      "status": "done",
+      "output_paths": [
+        "src/routes/customer.tsx",
+        "src/components/customer/viewModel.ts",
+        "src/components/customer/CompiledConfigPanel.tsx",
+        "src/components/customer/CapabilityStatusPanel.tsx",
+        "src/components/customer/ReadinessPanel.tsx"
+      ],
+      "depends_on": ["F-04", "F-05", "F-07", "F-10", "F-21", "F-22", "F-23", "F-27", "F-28"],
+      "status": "todo",
       "negative_contract_guards": [
         "no 'Unsupported' string",
         "no raw prompt text",
         "no DAEJOO material-disposal phrase",
-        "no roadmap-candidate signals"
+        "no roadmap-candidate signals",
+        "no auto-generated ProductSignal without explicit chat consent (N9)"
       ],
-      "notes": "Structural enforcement of negative-contract guards via CustomerViewModel type: model has no ProductSignal field, no remark_freetext, and CustomerVisibleCapabilityAssessment.status is narrowed to 'Supported'|'Supported with workaround' only. projectCapabilitiesForCustomerSurface() is the one place where the guard fires (drops capability_gap + customerVisible=false rows). The screen literally cannot leak forbidden content because the type system doesn't expose it. v1 wiring: route accepts initialViewModel prop so tests and the F-19 eval harness can seed canned state; live agent wiring (intent → compile → assess → readiness) deferred — F-11 ships the screen + its negative-contract enforcement. Added jsdom + @testing-library/react devDeps for component testing; @routes and @components path aliases added to tsconfig/vite/vitest. Admin + Internal routes mount as placeholders for F-12/F-13 so HAPPY-6 (three-workspace separation) is testable today."
+      "notes": "Replaces the v1 F-11 wholesale. CustomerViewModel structural guard preserved verbatim (view-model carries no ProductSignal field, no remark_freetext, CustomerVisibleCapabilityAssessment.status narrowed to Supported|Supported with workaround). The prior IntentInputPanel + ClarificationLoopPanel split is REMOVED — F-27 ChatPanel is the single clarification surface (A12). Pre-existing infrastructure to REUSE (do not reimplement): src/server/devAgentMiddleware.ts (3 endpoints /api/compile, /api/capability, /api/readiness — F-28 adds the 4th /api/chat-turn-decide), src/components/customer/agentClient.ts (typed fetch wrapper — F-28 adds postChatTurnDecide), scripts/dev-agent-server.ts (sidecar Node agent server). Trace: A8 · D2 · D3 · HAPPY-6 · HAPPY-10 · HAPPY-11 · RED-2."
     },
     {
       "id": "F-12",
-      "name": "Admin Control Plane screen + route",
-      "contract_pointer": "U11 + Screen-2",
-      "acceptance": "Route /admin mounts; renders prompt version management, field-level threshold management (as tool only), auto-confirmation criteria editor, schema quality monitoring, correction trend review, recommendation queue filtered of any threshold_lower entries",
+      "name": "Admin Control Plane screen + route (S2-rev: 5-tab object header + KPI strip + 3-rec queue + F-24 threshold-decrease informational guard + prompt-version table)",
+      "contract_pointer": "U11 + Screen-2 + U19 + U22",
+      "acceptance": "Route /admin mounts under F-21 shared chrome with object-page header rendering exactly 5 tabs labelled 'Recommendations', 'Prompt versions', 'Threshold governance', 'Schema quality', 'Correction trends'; KPI strip renders exactly 5 elements with data-testid='admin-kpi-card' and label strings 'STP rate', 'Field accuracy', 'Correction rate', 'Workaround intents', 'Pending recommendations' (handoff-derived structural inventory); RecommendationQueuePanel renders ≥3 cards whose title strings include the three required verbatim titles 'Add reusable rule for no-commercial-value line handling', 'Create supplier-specific prompt version for DAEJOO commercial invoices', 'Add field instruction for payable amount vs customs total'; PromptVersionPanel renders a table with ≥1 real row from PromptVersion fixtures and ≥2 deterministic illustrative rows (per spec §8 reference design clarification), the active row has data-testid='admin-prompt-version-active'; CorrectionTrendPanel renders ≥1 row per the 5 top fields (line_items[].is_sample · payment_terms · payable_amount · hs_code · po_number); F-24 ThresholdGovernancePanel mounts with its message strip and 3-direction tag column (↑ allowed / — no change / ↓ requires approval); admin-route DOM does not match /lower(ing)?\\s+(the\\s+)?threshold/i in any recommendation context (existing F-15 + N2 guards preserved)",
       "kill_switch": {
         "window_minutes": 10,
         "condition": "If any workspace renders another's data-testid in 2 of 3 smoke runs within 10 minutes, halt and re-check route boundaries"
       },
-      "output_paths": ["src/routes/admin.tsx", "src/components/admin/viewModel.ts", "src/components/admin/PromptVersionPanel.tsx", "src/components/admin/ThresholdInspectorPanel.tsx", "src/components/admin/AutoConfirmCriteriaPanel.tsx", "src/components/admin/SchemaQualityPanel.tsx", "src/components/admin/CorrectionTrendPanel.tsx", "src/components/admin/RecommendationQueuePanel.tsx"],
-      "depends_on": ["F-15", "F-16"],
-      "status": "done",
-      "negative_contract_guards": [
-        "never include 'lower the threshold' in any rendered recommendation"
+      "output_paths": [
+        "src/routes/admin.tsx",
+        "src/components/admin/viewModel.ts",
+        "src/components/admin/AdminKpiStrip.tsx",
+        "src/components/admin/RecommendationQueuePanel.tsx",
+        "src/components/admin/PromptVersionPanel.tsx",
+        "src/components/admin/AutoConfirmCriteriaPanel.tsx",
+        "src/components/admin/SchemaQualityPanel.tsx",
+        "src/components/admin/CorrectionTrendPanel.tsx"
       ],
-      "notes": "Threshold inspector is a TOOL (heading 'Field thresholds') — neutral phrasing, never a recommendation. N2 enforced at FIVE layers now: (1) TS AdminRecommendationType union excludes threshold_lower; (2) F-15 zod schema rejects type=threshold_lower; (3) F-15 runtime regex on title+body; (4) F-12 filterRecommendationsForAdminSurface() at the rendering boundary as belt-and-braces — drops any rec whose type was cast or whose text matches /lower(ing)?\\s+(the\\s+)?threshold/i; (5) ESLint forbids the regex in src/components/admin/** (excluded for the implementation/test files that legitimately name the phrase). Six panels: PromptVersionPanel (read-only table), ThresholdInspectorPanel (inspection tool), AutoConfirmCriteriaPanel, SchemaQualityPanel, CorrectionTrendPanel, RecommendationQueuePanel. Same view-model pattern as F-11. 12 new tests (6 projection + 6 route smoke); the route smoke tests assert the DOM does not match /lower(ing)?\\s+(the\\s+)?threshold/ for both empty and populated view-models."
+      "depends_on": ["F-15", "F-16", "F-21", "F-24"],
+      "status": "todo",
+      "negative_contract_guards": [
+        "never include 'lower the threshold' in any rendered recommendation",
+        "threshold-decrease is informational-only in v1; workflow defers to v2 (OQ-4)"
+      ],
+      "notes": "Replaces the v1 F-12 wholesale. N2 5-layer enforcement preserved (TS union · zod schema · F-15 runtime regex · F-12 filterRecommendationsForAdminSurface() · ESLint rule). The threshold-decrease informational surface (F-24) is a separate component, never a recommendation. Prompt-version table has illustrative rows per spec §8 (real multi-version telemetry binding deferred to S4 OBSERVE). KPI strip values are illustrative — the design handoff's '78.4% STP' is reference-only and not a behaviour bound. Trace: A8 · A10 · N2 · RED-1 · EDGE-5 · HAPPY-6."
     },
     {
       "id": "F-13",
-      "name": "Internal Product Intelligence screen + route",
-      "contract_pointer": "U11 + Screen-3",
-      "acceptance": "Route /internal mounts; renders feedback governance queue, model regression signals panel, QualityMetric log table (covers SUB-6), capability gap analytics ranked by frequency/customer impact/document type/supplier/country; surfaces DAEJOO material-disposal phrase ONLY here as signal_type: unsupported_free_text_business_condition",
+      "name": "Internal Product Intelligence screen + route (S2-rev: 5-tab object header + flywheel diagram + hidden-signal card + F-25 ranking + F-29 provisional status)",
+      "contract_pointer": "U11 + Screen-3 + U19 + U23 + U27",
+      "acceptance": "Route /internal mounts under F-21 shared chrome with object-page header rendering exactly 5 tabs ('Flywheel', 'Feedback queue', 'Model regression', 'Capability gaps', 'Roadmap evidence'); flywheel diagram renders exactly 5 nodes in this label order ('Customer intent', 'Corrections + workarounds', 'Governance queue', 'Product signals', 'Roadmap evidence') with the 5th node carrying a CSS class containing 'accent' (handoff-derived structural detail); GovernanceQueuePanel renders F-09 held + approved decision rows with gating reason strings (existing F-13 behaviour preserved); hidden-signal card renders exactly 8 grid attributes with the labels 'Signal type', 'Category', 'Affected doc type', 'Customer segment', 'Frequency', 'Current workaround', 'Candidate product area', 'Roadmap actionability', the card root has CSS class containing 'signal-card' and a label element with the literal string 'Hidden internal signal · not shown to customer' (handoff-derived structural detail); RoadmapSignalsPanel renders signals from F-25 rankRoadmapEvidence(signals) output, rank #1 + #2 carry an accent badge, each row's reason line is the byte-exact output of F-25 generateRoadmapReason(signal); F-29 status surface: signals with status:'provisional' render a tag element whose textContent contains 'Being assessed for validity', signals with status:'governance_approved' do not render that tag; internal-route DOM contains both 'auto-dispose spent materials' AND 'unsupported_free_text_business_condition' (RED-2 containment proven on the destination side); internal-route DOM contains no foreign customer- or admin- data-testids",
       "kill_switch": {
         "window_minutes": 10,
         "condition": "If any workspace renders another's data-testid in 2 of 3 smoke runs within 10 minutes, halt and re-check route boundaries"
       },
-      "output_paths": ["src/routes/internal.tsx", "src/components/internal/viewModel.ts", "src/components/internal/GovernanceQueuePanel.tsx", "src/components/internal/RegressionSignalsPanel.tsx", "src/components/internal/QualityMetricLogPanel.tsx", "src/components/internal/CapabilityGapAnalyticsPanel.tsx", "src/components/internal/RoadmapSignalsPanel.tsx"],
-      "depends_on": ["F-09", "F-17", "F-18"],
-      "status": "done",
+      "output_paths": [
+        "src/routes/internal.tsx",
+        "src/components/internal/viewModel.ts",
+        "src/components/internal/FlywheelDiagram.tsx",
+        "src/components/internal/HiddenSignalCard.tsx",
+        "src/components/internal/GovernanceQueuePanel.tsx",
+        "src/components/internal/RegressionSignalsPanel.tsx",
+        "src/components/internal/QualityMetricLogPanel.tsx",
+        "src/components/internal/CapabilityGapAnalyticsPanel.tsx",
+        "src/components/internal/RoadmapSignalsPanel.tsx"
+      ],
+      "depends_on": ["F-09", "F-17", "F-18", "F-21", "F-25", "F-29"],
+      "status": "todo",
       "containment": "any signal hidden from Customer / Admin lives here, governed and ranked, never leaks back",
-      "notes": "Same view-model pattern as F-11/F-12. Five panels: GovernanceQueuePanel (F-09 decision rows incl. held + reason), RoadmapSignalsPanel (partitions approved signals into unsupported_free_text + recurring_correction + other — the DAEJOO disposal phrase renders here in its own category per RED-2), RegressionSignalsPanel (F-17 RegressionSignal rows with boundary + delta), CapabilityGapAnalyticsPanel (frequency × impact ranking), QualityMetricLogPanel (live F-18 subscribe + cleanup on unmount). RED-2 containment proven by route smoke tests: 'auto-dispose spent materials' text renders in /internal under the unsupported_free_text_business_condition category — and F-11/F-12 already proved the same content cannot reach /customer or /admin because their view-models don't carry ProductSignal at the type level. F-18 subscribe wiring tested via act() + recordSuccess/recordFailure roundtrip. 13 new tests (5 partition + 8 route smoke incl. live log subscription)."
+      "notes": "Replaces the v1 F-13 wholesale. RoadmapSignalsPanel reason lines now come from F-25 generateRoadmapReason — no inline string formatting. HiddenSignalCard's 8-attribute grid is the load-bearing handoff-derived inventory; the disposal phrase still flows in via the existing F-06 routing → F-09 governance → /internal containment path. F-29 introduces the provisional-vs-approved status tag without changing any v1 ProductSignal value paths (the 17 verbatim features are untouched). Trace: A8 · A11 · A13 · HAPPY-6 · HAPPY-7 · HAPPY-8 · RED-2."
     },
     {
       "id": "F-14",
@@ -227,7 +257,8 @@
       "output_paths": ["src/domain/generateAdminRecommendations.ts"],
       "depends_on": ["F-01", "F-16"],
       "status": "done",
-      "notes": "Three-layer N2 defence: (1) TypeScript — AdminRecommendationType union excludes 'threshold_lower' at compile time; (2) zod — RecommendationTypeZ mirrors the TS union, so type='threshold_lower' fails parse → AgentFailure(schema_validation_failed); (3) runtime third-belt — every rendered title/body scanned against /lower(ing)?\\s+(the\\s+)?threshold/i (broadened from the ESLint rule's regex to also catch 'lower the threshold' and 'lowering the threshold'); a match throws before the recommendation leaves the function (N4 — never auto-rewrite, never canned fallback). The implementation file is excluded from the N2 ESLint rule because it legitimately names the forbidden phrase inside its own regex literal + error message; the AST-level rule still applies to src/components/admin/** at the UI layer. 5-run soak proves the kill switch."
+      "notes": "Three-layer N2 / RED-1 defence: (1) TypeScript — AdminRecommendationType union in @domain/types deliberately excludes 'threshold_lower'; (2) zod — RecommendationTypeZ mirrors the TS union with z.enum([...6 valid types]); type='threshold_lower' fails parse → AgentFailure(schema_validation_failed) → F-08-eligible; (3) Runtime third-belt — every rendered title/body is scanned against /lower(ing)?\\s+(the\\s+)?threshold/i; a match THROWS. The implementation file is excluded from the N2 ESLint rule because it legitimately names the forbidden phrase inside its own regex literal + error message; the AST-level rule still applies to src/components/admin/** at the UI layer. 5-run soak proves the kill switch."
+    },
     {
       "id": "F-16",
       "name": "Correction submission",
@@ -255,6 +286,7 @@
       "depends_on": ["F-01", "F-18"],
       "status": "done",
       "notes": "Pure function over a partitioned MetricCohort[] view of QualityMetric history. Cohort shape (kind, id, metrics) decouples F-17 from where the version-id comes from — prompt_version comes from F-12's PromptVersion store; model_version comes from QualityMetric.model. Two configurable thresholds: minDropDelta (default 0.05 — five-percentage-point success-rate drop) and minSampleSize (default 5). No-change baseline (delta=0) is rejected by a strict-less-than check; positive delta (improvement) is also rejected; both proven by 3-run soak. Mixed-kind boundaries are skipped (no cross-kind signals). Multi-boundary sequence emits one signal per regressive boundary; recovery is not retroactively flagged."
+    },
     {
       "id": "F-18",
       "name": "Observability log surface",
@@ -267,7 +299,7 @@
       "output_paths": ["src/runtime/qualityMetricLog.ts"],
       "depends_on": ["F-01"],
       "status": "done",
-      "notes": "Store-only — F-18 owns the API; F-13 will render. recordSuccess/recordFailure pair with AgentResult/AgentFailure so the agent_client_contract surfaces feed straight in. subscribe() lets F-13 re-render reactively. Tests inject nowIso for deterministic ids; _resetQualityMetricLogForTests resets the counter. The 'rendered in Internal workspace' clause of acceptance is satisfied later when F-13 lands and reads from getMetrics/subscribe. The 'every F-04/F-05/F-10/F-15 call appends ≥1 entry' clause is satisfied later when F-08 wires recordSuccess/recordFailure into the agent call sites (or callAgent itself does)."
+      "notes": "Store-only — F-18 owns the API; F-13 renders. recordSuccess/recordFailure pair with AgentResult/AgentFailure so the agent_client_contract surfaces feed straight in. subscribe() lets F-13 re-render reactively. Tests inject nowIso for deterministic ids; _resetQualityMetricLogForTests resets the counter. F-28 (chat.turn_decide) will also append entries through this surface."
     },
     {
       "id": "F-19",
@@ -281,7 +313,8 @@
       "output_paths": ["src/evals/fixtures.ts", "src/evals/happy.test.tsx", "src/evals/edge.test.tsx", "src/evals/red.test.tsx"],
       "depends_on": ["F-03", "F-04", "F-05", "F-06", "F-07", "F-08", "F-09", "F-10", "F-15", "F-16", "F-17"],
       "status": "done",
-      "notes": "All 12 evals.md cases bound (6 HAPPY + 4 EDGE + 2 RED → 14 tests; RED-1 split into 2 + RED-2 split into 2 for the customer-DOM and internal-DOM halves). Shared fixtures live in src/evals/fixtures.ts. Two pragmatic adaptations documented inline: HAPPY-1's getByLabelText switched to data-testid lookups because IntentInputPanel uses a heading + placeholder rather than a <label> element; HAPPY-6's useDomainStore() shared-ref assertion relaxed to the load-bearing 'no workspace renders another's data-testid' clause because v1 uses per-route view-models per SUB-2. EDGE-4 walkthrough timing is sketched here (routes mount in sequence) and gets its strict <300s assertion in F-20."
+      "notes": "All 12 evals.md cases bound (6 HAPPY + 4 EDGE + 2 RED → 14 tests; RED-1 split into 2 + RED-2 split into 2 for the customer-DOM and internal-DOM halves). Shared fixtures live in src/evals/fixtures.ts. Two pragmatic adaptations documented inline: HAPPY-1's getByLabelText switched to data-testid lookups because IntentInputPanel uses a heading + placeholder rather than a <label> element; HAPPY-6's useDomainStore() shared-ref assertion relaxed to the load-bearing 'no workspace renders another's data-testid' clause because v1 uses per-route view-models per SUB-2. EDGE-4 walkthrough timing is sketched here (routes mount in sequence) and gets its strict <300s assertion in F-20. NOTE for S3 rebuild: the S1 amendment added 10 new eval cases (HAPPY-7..12 + EDGE-5..7 + RED-3) — the new screen + chat + ranking features (F-25 / F-27 / F-28 / F-29) will bind those cases as part of their own test files; F-19 itself stays as-is for the original 12."
+    },
     {
       "id": "F-20",
       "name": "Walkthrough timing harness",
@@ -294,6 +327,171 @@
       "output_paths": ["src/evals/walkthrough.test.tsx"],
       "depends_on": ["F-11", "F-12", "F-13"],
       "status": "done",
-      "notes": "Three tests: (1) single walkthrough < 300_000 ms; (2) three consecutive walkthroughs all < 300_000 ms (EDGE-4 verbatim); (3) supplier-portability sub-clause — a stub Amazon CompiledConfiguration renders through the existing CustomerRoute without editing src/domain/* runtime modules. Real measured durations are in the tens of ms; the 5-minute bound is the contractual upper limit. cleanup() is called between each route mount to avoid React tree leak between routes."
+      "notes": "Three tests: (1) single walkthrough < 300_000 ms; (2) three consecutive walkthroughs all < 300_000 ms (EDGE-4 verbatim); (3) supplier-portability sub-clause — a stub Amazon CompiledConfiguration renders through the existing CustomerRoute without editing src/domain/* runtime modules. Real measured durations are in the tens of ms; the 5-minute bound is the contractual upper limit. cleanup() is called between each route mount to avoid React tree leak between routes. NOTE for S3 rebuild: F-20 will need a refresh after F-11/F-12/F-13 rebuilds land — the depends_on graph already encodes this — but the kill-switch invariant (<300_000 ms) and the supplier-portability test do not change."
+    },
+    {
+      "id": "F-21",
+      "name": "Shared chrome (shell bar + side nav + object-page header)",
+      "contract_pointer": "U19",
+      "acceptance": "New src/components/shell/ShellBar.tsx renders an element with data-testid='shell-bar' whose computed background-color (via CSS variable --shell-bg) equals #0B1421 per F-26 token block; ShellBar contains nav buttons 'Customer', 'Admin', 'Internal' that route to /customer, /admin, /internal respectively; New src/components/shell/SideNav.tsx renders data-testid='side-nav' with collapsed width 56px and expanded width 236px via --sidenav-w-collapsed / --sidenav-w-expanded; New src/components/shell/ObjectHeader.tsx accepts props { crumbs, title, sub, status, actions, tabs, activeTab, onTab } and renders <nav aria-label='breadcrumb'> for crumbs, an <h1> for title, a tablist for tabs; all three routes /customer /admin /internal mount within a layout that wraps content in ShellBar + SideNav; HAPPY-6 three-workspace separation invariant preserved (each route's main panel contains no foreign data-testids); ShellBar + SideNav use @ui5/webcomponents-react primitives with CSS-variable overrides from F-26",
+      "kill_switch": {
+        "window_minutes": 30,
+        "condition": "If shared chrome introduces ≥1 foreign-data-testid leak across the three routes in 2 of 3 smoke runs, halt"
+      },
+      "output_paths": [
+        "src/components/shell/ShellBar.tsx",
+        "src/components/shell/SideNav.tsx",
+        "src/components/shell/ObjectHeader.tsx",
+        "src/components/shell/AppLayout.tsx"
+      ],
+      "depends_on": ["F-26"],
+      "status": "todo",
+      "notes": "Structural inventory is handoff-derived (shell-bar 48px navy, side-nav 56→236px hover, object-page tab strip). UI5 is ADAPTED — UI5 primitives provide the components, F-26 tokens provide the colour/spacing overrides. The chrome is layout-only; no data-testid that belongs to /customer, /admin, or /internal main panels lives here. Trace: A8 · HAPPY-6 · SUB-3 clarification · [handoff-derived: chrome inventory]."
+    },
+    {
+      "id": "F-22",
+      "name": "PDF viewer + optional 7-span evidence-highlight model",
+      "contract_pointer": "U20",
+      "acceptance": "New src/components/customer/PdfViewerPanel.tsx renders data-testid='customer-pdf-viewer' and points at app/assets/daejoo-invoice.pdf via the existing DAEJOO_PDF_URL constant from src/data/assets.ts; panel renders a toolbar with page-prev / page-next / zoom-in / zoom-out controls and wired no-op stub handlers (functional zoom not required); IF the optional 7-span evidence-highlight model from D1 is built: hovering or clicking any element with data-evidence-ref='<key>' where key ∈ {payable, total, no-comm, payment-terms, po, hs-code, freetext} toggles a data-active-span='<key>' attribute on the PDF viewer root AND the 'freetext' span renders without leaking the disposal phrase to any element outside the viewer (RED-2 containment preserved — viewer carries no signalType text); IF the 7-span model is NOT built: viewer is static (PDF embedded via <embed> or <iframe> pointing at the static asset) and the 7-key data model is deferred to v2 with a comment block citing D1; CustomerViewModel structural guard from F-11 v1 preserved — customer-route DOM textContent still does not contain 'unsupported_free_text_business_condition' or 'material disposal' outside the PDF viewer's static document content",
+      "kill_switch": {
+        "window_minutes": 30,
+        "condition": "If PDF viewer mount blocks customer-route render in 2 of 3 smoke runs, halt"
+      },
+      "output_paths": [
+        "src/components/customer/PdfViewerPanel.tsx"
+      ],
+      "depends_on": ["F-14", "F-26"],
+      "status": "todo",
+      "notes": "D1 is OPTIONAL for v1. The 7-span inventory is in spec §5 D1 (handoff is reference only). RED-2 containment preserved: the 'freetext' span (if built) is highlightable on the document but its product-signal interpretation never leaves /internal. Trace: D1 · N3 · RED-2 · [handoff-derived: 7-span inventory canonicalised in spec D1]."
+    },
+    {
+      "id": "F-23",
+      "name": "Upload zone with theatrical drag-drop",
+      "contract_pointer": "U21",
+      "acceptance": "New src/components/customer/UploadZonePanel.tsx renders data-testid='customer-upload-zone' with dashed-border styling per F-26 tokens; dropping any file (or selecting any file via the input) triggers the canned DAEJOO fixture path — no actual file content is read and F-03 simulateDocumentRun(DAEJOO_PDF_URL, configuration) is invoked unchanged; upload-zone DOM contains the literal string 'Processing DAEJOO sample invoice' after drop (D2 option A) OR carries a permanent tag with the literal string 'Demo: DAEJOO invoice only' (D2 option B); N6 preserved — the F-23 module does not import pdf-parse or any file-content reader and adds zero new dependencies for OCR or extraction",
+      "kill_switch": {
+        "window_minutes": 20,
+        "condition": "If upload zone triggers any extraction other than the canned DAEJOO fixture path in 1 of 3 runs, halt"
+      },
+      "output_paths": [
+        "src/components/customer/UploadZonePanel.tsx"
+      ],
+      "depends_on": ["F-03", "F-14", "F-26"],
+      "status": "todo",
+      "notes": "Honest UI, not honest behaviour. The drop zone accepts any file but only ever processes the canned DAEJOO fixture (per D2 + SUB-1 + N6). Either D2 option A (announce on drop) or D2 option B (permanent tag) is acceptable; S3 picks one and a test asserts the chosen literal appears. Trace: D2 · N6 · SUB-1."
+    },
+    {
+      "id": "F-24",
+      "name": "Admin Threshold Governance dual-approval informational surface",
+      "contract_pointer": "U22",
+      "acceptance": "New src/components/admin/ThresholdGovernancePanel.tsx renders a top message strip whose textContent contains the literal text 'Threshold lowering is restricted. Any decrease requires a recorded rationale and dual approval.' (handoff-derived structural detail); threshold table renders a data-testid='admin-threshold-direction' cell per row with one of three exact strings: '↑ allowed', '— no change', '↓ requires approval'; for rows with direction '↓ requires approval' the decrease action button has disabled attribute set OR clicking it is a no-op that surfaces an element with data-testid='admin-threshold-decrease-tooltip' whose textContent contains the substring 'Requires dual approval — v2'; after any decrease-attempt click, getCorrections().length, getProductSignals().length, getMetrics().length, and the in-memory threshold store length are all unchanged vs. pre-click snapshot; N2 invariant preserved — the panel is a governance TOOL, never a recommendation; admin-route DOM does not match /lower(ing)?\\s+(the\\s+)?threshold/i in any recommendation context",
+      "kill_switch": {
+        "window_minutes": 15,
+        "condition": "If the threshold store mutates after a decrease attempt in 1 of 3 runs, halt"
+      },
+      "output_paths": [
+        "src/components/admin/ThresholdGovernancePanel.tsx"
+      ],
+      "depends_on": ["F-21", "F-26"],
+      "status": "todo",
+      "notes": "Informational only in v1. The dual-approval workflow itself is OQ-4 (blocked on SUB-5 auth resolution, defers to v2). EDGE-5 eval binds here. Trace: A10 · N2 · RED-1 (extended) · EDGE-5 · OQ-4 · SUB-5 · [handoff-derived: message-strip text]."
+    },
+    {
+      "id": "F-25",
+      "name": "Roadmap-ranking module (deterministic 5-factor)",
+      "contract_pointer": "U23",
+      "acceptance": "New src/domain/roadmapRanking.ts exports three pure functions: computeRoadmapScore(signal: ProductSignal): number, rankRoadmapEvidence(signals: readonly ProductSignal[]): readonly ProductSignal[], generateRoadmapReason(signal: ProductSignal): string; constants (formula coefficients, saturation points, enum weights, score clamp, tie-break order) are read VERBATIM from app-spec.json#roadmap_ranking — module imports the block via JSON import and does not duplicate any numeric constant; for the HAPPY-7 fixture {frequency: 17, customerCount: 4, workaroundBurden: 'high', actionability: 'high', expectedStpLift: 30}: computeRoadmapScore(s) === 91 across 10 sequential invocations (binds eval HAPPY-7); for the HAPPY-8 4-signal fixture: rankRoadmapEvidence(signals).map(s => s.id) returns the exact 4-element id order across 10 sequential invocations (binds eval HAPPY-8); for the HAPPY-9 fixture: generateRoadmapReason(s) === '17 occurrences · 4 customers · workaround-heavy · directly addressable' (byte-for-byte equality, binds eval HAPPY-9); functions are pure — no new Date(), no Math.random(), no I/O, same inputs always return identical outputs across all three exports",
+      "kill_switch": {
+        "window_minutes": 30,
+        "condition": "If any of HAPPY-7 / HAPPY-8 / HAPPY-9 fail in 1 of 10 runs within a 30-minute tuning window, halt"
+      },
+      "output_paths": [
+        "src/domain/roadmapRanking.ts",
+        "src/domain/roadmapRanking.test.ts"
+      ],
+      "depends_on": ["F-01"],
+      "status": "todo",
+      "notes": "Constants live in app-spec.json#roadmap_ranking (already authored in S1.AMEND, untouched by S2). F-25 consumes them; if S4 OBSERVE re-tunes the formula, F-25 follows automatically. The 3 binding eval cases HAPPY-7/8/9 are added to evals.md by the S1 amendment pass. Trace: A11 · HAPPY-7 (FAQ row + 3 eval cases) · OQ-5."
+    },
+    {
+      "id": "F-26",
+      "name": "Design-token system (CSS variable overrides on UI5 defaults)",
+      "contract_pointer": "U24",
+      "acceptance": "New src/styles/tokens.css defines CSS variables matching every key in app/app-spec.json#design_tokens (color · type · spacing · radius · transition sections); the file is imported once in src/main.tsx; a vitest + jsdom snapshot asserts getComputedStyle(document.documentElement).getPropertyValue('--brand') === '#0A5FFF' (trimmed); ShellBar + SideNav from F-21 consume --shell-bg / --sidenav-bg exclusively for chrome backgrounds — no hard-coded color literal for shell/sidenav in those components; the design_tokens block contains only pure visual tokens (color hex values, font family strings, type-scale numbers, spacing scale numbers, radius numbers, transition durations) — no behaviour rules, no logic-gating thresholds, no agent names, no model IDs, no API shapes",
+      "kill_switch": {
+        "window_minutes": 15,
+        "condition": "If any token key carries semantic meaning beyond visual presentation (e.g. an agent name or a numeric threshold that gates logic), halt and re-classify"
+      },
+      "output_paths": [
+        "src/styles/tokens.css",
+        "src/main.tsx",
+        "src/styles/tokens.test.ts"
+      ],
+      "depends_on": ["F-01"],
+      "status": "todo",
+      "notes": "The design_tokens block in app-spec.json is authored by S2 (this rewrite) — S3 reads and emits CSS. The block's only top-level sub-keys are color, type, spacing, radius, transition; any candidate token that doesn't fit those buckets is omitted (per SUB-3 clarification + the design-tokens audit gate). Trace: SUB-3 clarification · D2 visual fidelity · D3 visual fidelity."
+    },
+    {
+      "id": "F-27",
+      "name": "Conversation loop / chat thread (ChatTurn + ConversationState + reducer + N9 signal-write guard + ChatPanel)",
+      "contract_pointer": "U25",
+      "acceptance": "src/domain/types.ts extended with ChatTurn interface (id, role: 'user'|'assistant', content, timestamp, kind: 'message'|'clarification_question'|'recompile_announcement'|'notify_team_question'|'notify_team_confirmation'|'success_summary', refs?: { fields?: string[], capabilityGapClass?: string }) and ConversationState interface (id, turns: ChatTurn[], compiledConfigVersionRefs: string[], status: 'collecting'|'recompiling'|'success'|'awaiting_notify_decision'|'completed') matching spec §8 verbatim; src/domain/types.ts ProductSignal interface extended with customerCount: number ≥ 1, workaroundBurden: 'none'|'low'|'medium'|'high', actionability: 'low'|'medium'|'high', expectedStpLift: number 0..50, status: 'provisional'|'governance_approved', provenance: 'governance_promotion'|'conversational_notify_team'|'curated_v1' per spec §8 verbatim; new src/domain/chatReducer.ts exports pure applyChatTurn(state, turn) returning a new ConversationState — same inputs always return identical state across 10 invocations; new src/domain/writeProvisionalSignal.ts exports _writeProvisionalSignal(state, signalSeed) that returns { rejected: true; reason: string } UNLESS state.status === 'awaiting_notify_decision' AND the last user turn's content matches /^\\s*yes\\b/i — direct calls without that guard return { rejected: true } and getProductSignals().length is unchanged (binds eval RED-3); new src/components/customer/ChatPanel.tsx renders data-testid='customer-chat-panel' with one bubble per ChatTurn in state.turns and a CSS class keyed off turn.kind (one of the 6 kinds above); submitting a user turn appends to state.turns and triggers F-28's per-turn meta-decision; ConversationState + ChatTurn are scoped to in-memory state per SUB-2 — no persistence beyond the browser session and no new dependencies",
+      "kill_switch": {
+        "window_minutes": 45,
+        "condition": "If RED-3 (_writeProvisionalSignal rejects without consent guard) fails in 1 run, halt"
+      },
+      "output_paths": [
+        "src/domain/types.ts",
+        "src/domain/chatReducer.ts",
+        "src/domain/writeProvisionalSignal.ts",
+        "src/components/customer/ChatPanel.tsx",
+        "src/domain/chatReducer.test.ts",
+        "src/domain/writeProvisionalSignal.test.ts"
+      ],
+      "depends_on": ["F-01", "F-16"],
+      "status": "todo",
+      "negative_contract_guards": [
+        "no auto-generated ProductSignal without explicit chat consent — enforced at the signal-write layer (N9 / RED-3)"
+      ],
+      "notes": "ChatTurn and ConversationState are NEW entities (spec §8 amendment). ProductSignal extension adds 6 fields without changing the 2-type signalType union (the design handoff's 5 extra label strings stay display-only per A13). N9 enforced at the data layer in writeProvisionalSignal.ts — not just at the chat UX layer (RED-3). Trace: A12 · A12-policy · N9 · HAPPY-11 · EDGE-6 · EDGE-7 · RED-3 · SUB-2 clarification."
+    },
+    {
+      "id": "F-28",
+      "name": "Conversational re-compile + capability-class classifier (chat.turn_decide agent wiring)",
+      "contract_pointer": "U26",
+      "acceptance": "New src/domain/chatTurnDecide.ts exports chatTurnDecide(state: ConversationState): Promise<TurnDecision> where TurnDecision is the discriminated union { action: 'clarify' } | { action: 'recompile' } | { action: 'capability_class_question'; classification: CapabilityClass } | { action: 'success_summary' } per A12-policy + A14; chatTurnDecide invokes callAgent({ agent: 'chat.turn_decide', model: app-spec.json#agent_client_contract.default_models.smallest_viable, max_tokens: app-spec.json#agent_client_contract.default_max_tokens.extraction_or_classification, system, user, expect_json_schema }) via the existing src/runtime/aiCoreClient.ts wrapper — NO reimplementation of OAuth, NO new credential path, NO new dependency; new endpoint POST /api/chat-turn-decide added to src/server/devAgentMiddleware.ts AND scripts/dev-agent-server.ts mirroring the existing 3-endpoint shape and wrapping the agent in runAgentWithFailureSurface per F-08 (AgentFailure surfaces as { kind: 'failure', clarification, metric } — no canned fallback per N4); new postChatTurnDecide typed wrapper added to src/components/customer/agentClient.ts mirroring the existing postCompile/postCapability/postReadiness shape; browser bundle audit (grep dist/assets/*.js for AICORE_KEY_PATH|clientsecret|callAgent) still returns zero matches after F-28 lands; when chat.turn_decide returns action: 'recompile', the F-28 reducer calls postCompile with the original intent concatenated with the accumulated chat context and on success compiledConfigVersionRefs.length increments by 1 (binds eval HAPPY-11); when chat.turn_decide returns action: 'capability_class_question', ConversationState transitions to 'awaiting_notify_decision' and the chat appends a notify_team_question bubble (binds eval HAPPY-12); v1 capability-class pattern list is pinned in the agent system prompt verbatim per A14 (integration · new document type · cross-document inference · predictive · bulk); missed-extraction patterns never trigger capability_class_question — an EDGE-7 fixture confirms a clarify-only conversation ends in success_summary with no notify_team_question bubble",
+      "kill_switch": {
+        "window_minutes": 30,
+        "condition": "If chat.turn_decide returns an out-of-union action in 1 of 10 runs, halt"
+      },
+      "output_paths": [
+        "src/domain/chatTurnDecide.ts",
+        "src/server/devAgentMiddleware.ts",
+        "scripts/dev-agent-server.ts",
+        "src/components/customer/agentClient.ts",
+        "src/domain/chatTurnDecide.test.ts"
+      ],
+      "depends_on": ["F-04", "F-08", "F-18", "F-27"],
+      "status": "todo",
+      "notes": "REUSES the existing live-wire infrastructure verbatim: src/runtime/aiCoreClient.ts (OAuth + spend cap), src/server/devAgentMiddleware.ts (extend with 4th endpoint), scripts/dev-agent-server.ts (extend the same way), src/components/customer/agentClient.ts (add 4th typed wrapper). No reimplementation. The chat.turn_decide agent joins the spec-pinned agent set on the smallest_viable deployment (A15). OQ-6 prompt tuning defers to S4 OBSERVE. Trace: A14 · A15 · SUB-7 clarification · OQ-6 · HAPPY-11 · HAPPY-12 · EDGE-6 · EDGE-7."
+    },
+    {
+      "id": "F-29",
+      "name": "Provisional-vs-approved ProductSignal status surface (governance second input stream)",
+      "contract_pointer": "U27",
+      "acceptance": "Internal RoadmapSignalsPanel (rendered by F-13) renders signals from a shared in-memory store; signals with status: 'provisional' render a tag element whose textContent contains the literal string 'Being assessed for validity' per A13 + spec §8; signals with status: 'governance_approved' render WITHOUT the 'Being assessed for validity' tag; F-29 extends src/domain/governProductSignals.ts by adding a SECOND input stream — governProductSignals accepts an optional provisionalSignals: readonly ProductSignal[] parameter; when the function receives provisional signals it clusters them by (signalType, intentFragmentClassHash); when a cluster crosses OQ-2 thresholds (already pinned in app-spec.json#blocked_open_questions.OQ-2.v1_decision: min_frequency: 3, min_distinct_suppliers: 2, forbidden_customer_impacts: ['low']), one cluster-aggregate ProductSignal is appended via _appendApprovedSignalForF09 with status: 'governance_approved' and provenance: 'governance_promotion'; for v1 demo (single user, single document) the graduation path is NEVER exercised — an explicit test asserts that with a 1-element provisional cluster, getProductSignals().filter(s => s.status === 'governance_approved').length is unchanged (min_frequency = 3 enforces this via the OQ-2 v1 decision); provisional ProductSignals created via F-27/F-28 carry provenance: 'conversational_notify_team' and governanceApprovedAt: null (binds eval HAPPY-12); F-25 ranking still passes with the extended ProductSignal interface (the 4 ranking fields were already curated provenance: 'curated_v1' per A13)",
+      "kill_switch": {
+        "window_minutes": 20,
+        "condition": "If a provisional signal auto-graduates in a 1-element cluster in 1 of 10 runs, halt (regression on A6 / N5)"
+      },
+      "output_paths": [
+        "src/domain/governProductSignals.ts",
+        "src/components/internal/RoadmapSignalsPanel.tsx",
+        "src/domain/governProductSignals.f29.test.ts"
+      ],
+      "depends_on": ["F-09", "F-13", "F-25", "F-27"],
+      "status": "todo",
+      "notes": "Display + filtering surface only for v1. The graduation path is described in spec A13 but never exercised in the demo (OQ-2 min_frequency=3 prevents 1-element clusters from promoting). The existing F-09 CorrectionEvent input stream stays untouched — F-29 ADDS a second input stream without breaking the first. F-25 ranking is robust to the extended ProductSignal interface because the 4 ranking fields are already covered by A13's curated_v1 provenance. Trace: A13 · A6 · N5 · N9 · HAPPY-12 · EDGE-6 · RED-3 · OQ-2."
+    }
   ]
 }

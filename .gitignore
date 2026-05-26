@@ -31,6 +31,9 @@ Thumbs.db
 *.swp
 *.log
 
+# Transient prompt caches (RTF snapshots saved from the assistant UI; not an artifact)
+saved-*-prompt.txt
+
 # Local backup of modules/ — rollback escape hatch, never commit
 modules.bak/
 
