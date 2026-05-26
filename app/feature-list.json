@@ -490,7 +490,7 @@
         "src/domain/governProductSignals.f29.test.ts"
       ],
       "depends_on": ["F-09", "F-13", "F-25", "F-27"],
-      "status": "todo",
+      "status": "done",
       "notes": "Display + filtering surface only for v1. The graduation path is described in spec A13 but never exercised in the demo (OQ-2 min_frequency=3 prevents 1-element clusters from promoting). The existing F-09 CorrectionEvent input stream stays untouched — F-29 ADDS a second input stream without breaking the first. F-25 ranking is robust to the extended ProductSignal interface because the 4 ranking fields are already covered by A13's curated_v1 provenance. Trace: A13 · A6 · N5 · N9 · HAPPY-12 · EDGE-6 · RED-3 · OQ-2."
     }
   ]
