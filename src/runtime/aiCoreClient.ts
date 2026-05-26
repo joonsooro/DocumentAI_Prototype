@@ -26,6 +26,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { instrumentCallAgent } from '@runtime/langfuseClient';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -251,118 +252,138 @@ export async function callAgent<T = string>(params: CallAgentParams<T>): Promise
     });
   }
 
-  const key = loadServiceKey();
-  const token = await ensureToken(key);
-  const resourceGroup = params.resource_group ?? key.resourcegroup ?? 'default';
-  const url =
-    `${key.serviceurls.AI_API_URL.replace(/\/$/, '')}` +
-    `/v2/inference/deployments/${encodeURIComponent(params.model)}/invoke`;
+  // Wrap the post-spend-cap body in a Langfuse generation observation.
+  // The wrapper re-throws AgentFailure unchanged so F-08 still routes to
+  // ClarificationRequest + QualityMetric per N4 / EDGE-2. The spend-cap
+  // guards above stay OUTSIDE the wrapper — a programmer-error throw
+  // (missing_model / missing_max_tokens) is not an interesting trace.
+  const { result } = await instrumentCallAgent(
+    { agent: params.agent, model: params.model, max_tokens: params.max_tokens },
+    async () => {
+      const key = loadServiceKey();
+      const token = await ensureToken(key);
+      const resourceGroup = params.resource_group ?? key.resourcegroup ?? 'default';
+      const url =
+        `${key.serviceurls.AI_API_URL.replace(/\/$/, '')}` +
+        `/v2/inference/deployments/${encodeURIComponent(params.model)}/invoke`;
 
-  const requestBody = {
-    anthropic_version: 'bedrock-2023-05-31',
-    max_tokens: params.max_tokens,
-    system: params.system,
-    messages: [{ role: 'user' as const, content: params.user }],
-  };
+      const requestBody = {
+        anthropic_version: 'bedrock-2023-05-31',
+        max_tokens: params.max_tokens,
+        system: params.system,
+        messages: [{ role: 'user' as const, content: params.user }],
+      };
 
-  const started = Date.now();
-  let resp: Response;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), params.timeout_ms ?? DEFAULT_TIMEOUT_MS);
-  try {
-    resp = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'AI-Resource-Group': resourceGroup,
-      },
-      body: JSON.stringify(requestBody),
-      signal: controller.signal,
-    });
-  } catch (err) {
-    clearTimeout(timer);
-    const isAbort = (err as Error).name === 'AbortError';
-    throw new AgentFailure({
-      agent: params.agent,
-      reason: isAbort ? 'timeout' : 'http_error',
-      message: `AI Core fetch ${isAbort ? 'timed out' : 'failed'}: ${(err as Error).message}`,
-    });
-  }
-  clearTimeout(timer);
+      const started = Date.now();
+      let resp: Response;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), params.timeout_ms ?? DEFAULT_TIMEOUT_MS);
+      try {
+        resp = await fetch(url, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'AI-Resource-Group': resourceGroup,
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal,
+        });
+      } catch (err) {
+        clearTimeout(timer);
+        const isAbort = (err as Error).name === 'AbortError';
+        throw new AgentFailure({
+          agent: params.agent,
+          reason: isAbort ? 'timeout' : 'http_error',
+          message: `AI Core fetch ${isAbort ? 'timed out' : 'failed'}: ${(err as Error).message}`,
+        });
+      }
+      clearTimeout(timer);
 
-  if (!resp.ok) {
-    const body = await safeText(resp);
-    throw new AgentFailure({
-      agent: params.agent,
-      reason: 'http_error',
-      message: `AI Core returned ${resp.status} ${resp.statusText}.`,
-      raw: body,
-      httpStatus: resp.status,
-    });
-  }
+      if (!resp.ok) {
+        const body = await safeText(resp);
+        throw new AgentFailure({
+          agent: params.agent,
+          reason: 'http_error',
+          message: `AI Core returned ${resp.status} ${resp.statusText}.`,
+          raw: body,
+          httpStatus: resp.status,
+        });
+      }
 
-  let body: unknown;
-  try {
-    body = await resp.json();
-  } catch (err) {
-    throw new AgentFailure({
-      agent: params.agent,
-      reason: 'malformed_json',
-      message: `AI Core response body is not valid JSON: ${(err as Error).message}`,
-    });
-  }
+      let body: unknown;
+      try {
+        body = await resp.json();
+      } catch (err) {
+        throw new AgentFailure({
+          agent: params.agent,
+          reason: 'malformed_json',
+          message: `AI Core response body is not valid JSON: ${(err as Error).message}`,
+        });
+      }
 
-  // Extract assistant text from Anthropic-shaped response.
-  const text = extractAssistantText(body);
-  if (!text) {
-    throw new AgentFailure({
-      agent: params.agent,
-      reason: 'empty_response',
-      message: 'AI Core response contained no assistant text.',
-      raw: body,
-    });
-  }
+      // Extract assistant text from Anthropic-shaped response.
+      const text = extractAssistantText(body);
+      if (!text) {
+        throw new AgentFailure({
+          agent: params.agent,
+          reason: 'empty_response',
+          message: 'AI Core response contained no assistant text.',
+          raw: body,
+        });
+      }
 
-  // If a JSON schema validator was supplied, parse + validate. Otherwise
-  // return the raw text. Either way, the result is stamped.
-  let value: T;
-  if (params.expect_json_schema) {
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(stripJsonFences(text));
-    } catch (err) {
-      throw new AgentFailure({
+      // If a JSON schema validator was supplied, parse + validate. Otherwise
+      // return the raw text. Either way, the result is stamped.
+      let value: T;
+      if (params.expect_json_schema) {
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(stripJsonFences(text));
+        } catch (err) {
+          throw new AgentFailure({
+            agent: params.agent,
+            reason: 'malformed_json',
+            message: `Assistant text is not parseable JSON: ${(err as Error).message}`,
+            raw: text,
+          });
+        }
+        try {
+          value = params.expect_json_schema(parsed);
+        } catch (err) {
+          throw new AgentFailure({
+            agent: params.agent,
+            reason: 'schema_validation_failed',
+            message: `Assistant JSON failed schema validation: ${(err as Error).message}`,
+            raw: parsed,
+          });
+        }
+      } else {
+        value = text as unknown as T;
+      }
+
+      const agentResult: AgentResult<T> = {
         agent: params.agent,
-        reason: 'malformed_json',
-        message: `Assistant text is not parseable JSON: ${(err as Error).message}`,
-        raw: text,
-      });
-    }
-    try {
-      value = params.expect_json_schema(parsed);
-    } catch (err) {
-      throw new AgentFailure({
-        agent: params.agent,
-        reason: 'schema_validation_failed',
-        message: `Assistant JSON failed schema validation: ${(err as Error).message}`,
-        raw: parsed,
-      });
-    }
-  } else {
-    value = text as unknown as T;
-  }
+        source: 'aiCore',
+        templateUsed: false,
+        latency_ms: Date.now() - started,
+        token_usage: extractUsage(body),
+        model: params.model,
+        max_tokens: params.max_tokens,
+        value,
+      };
+      return {
+        result: agentResult,
+        meta: {
+          status: resp.status,
+          latency_ms: agentResult.latency_ms,
+          token_usage: agentResult.token_usage,
+        },
+      };
+    },
+  );
 
-  return {
-    agent: params.agent,
-    source: 'aiCore',
-    templateUsed: false,
-    latency_ms: Date.now() - started,
-    token_usage: extractUsage(body),
-    model: params.model,
-    max_tokens: params.max_tokens,
-    value,
-  };
+  return result;
 }
 
 // ---------------------------------------------------------------------------
