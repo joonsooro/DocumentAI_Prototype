@@ -377,7 +377,7 @@
         "src/components/customer/UploadZonePanel.tsx"
       ],
       "depends_on": ["F-03", "F-14", "F-26"],
-      "status": "todo",
+      "status": "done",
       "notes": "Honest UI, not honest behaviour. The drop zone accepts any file but only ever processes the canned DAEJOO fixture (per D2 + SUB-1 + N6). Either D2 option A (announce on drop) or D2 option B (permanent tag) is acceptable; S3 picks one and a test asserts the chosen literal appears. Trace: D2 · N6 · SUB-1."
     },
     {
