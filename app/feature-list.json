@@ -169,7 +169,7 @@
         "src/components/customer/ReadinessPanel.tsx"
       ],
       "depends_on": ["F-04", "F-05", "F-07", "F-10", "F-21", "F-22", "F-23", "F-27", "F-28"],
-      "status": "todo",
+      "status": "done",
       "negative_contract_guards": [
         "no 'Unsupported' string",
         "no raw prompt text",
