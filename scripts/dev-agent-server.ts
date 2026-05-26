@@ -30,6 +30,7 @@ import {
   handleChatTurnDecide,
 } from '../src/server/devAgentMiddleware';
 import { initLangfuseTracerProvider, shutdownLangfuse } from '../src/runtime/langfuseClient';
+import { registerLangfuseSink } from '../src/runtime/qualityMetricLog';
 
 const PORT = Number(process.env.AGENT_SERVER_PORT ?? 3001);
 
@@ -38,6 +39,13 @@ const PORT = Number(process.env.AGENT_SERVER_PORT ?? 3001);
 // with trace capture disabled. The rest of the server runs identically
 // either way.
 initLangfuseTracerProvider();
+
+// Register the QualityMetric → Langfuse event mirror sink. Every push to
+// the in-memory store also emits a Langfuse event with safe metadata only
+// (agent / status / latency / token counts / error reason). Fire-and-forget:
+// SDK throws are caught at the langfuseClient boundary; the in-memory store
+// + the F-18 Internal panel stay the system of record (SUB-6).
+registerLangfuseSink();
 
 type Handler = (body: unknown) => Promise<unknown>;
 const HANDLERS: Record<string, Handler> = {

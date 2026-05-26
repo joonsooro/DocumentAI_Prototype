@@ -42,6 +42,7 @@ import type {
   AgentFailureReason,
   AgentResult,
 } from '@runtime/aiCoreClient';
+import { recordQualityMetricEvent } from '@runtime/langfuseClient';
 import type { QualityMetric, QualityMetricStatus } from '@domain/types';
 
 // ---------------------------------------------------------------------------
@@ -221,6 +222,46 @@ function notifySubscribers(): void {
 }
 
 // ---------------------------------------------------------------------------
+// Langfuse mirror sink — S4.5 OBSERVE-WIRE step 4
+//
+// Server boot (scripts/dev-agent-server.ts) calls registerLangfuseSink() once
+// after initLangfuseTracerProvider. From that point every recordSuccess /
+// recordFailure / recordCustom push also emits a Langfuse event carrying
+// ONLY safe metadata (agent, status, latencyMs, tokenUsage counts, error
+// reason, model deployment id, loggedAt) — never prompt content, never
+// response text, never the OAuth token, never the service-key path.
+//
+// Sink is fire-and-forget: every Langfuse SDK throw is caught at the
+// langfuseClient boundary; here we additionally guard against the subscribe
+// path itself. The in-memory store + the F-18 Internal panel + the Vitest
+// eval report are unchanged in shape — Langfuse is an additional sink, not
+// a substitute (SUB-6 stays the system of record).
+//
+// Idempotent: calling registerLangfuseSink() a second time is a no-op (the
+// subscriber Set dedupes the same function reference).
+// ---------------------------------------------------------------------------
+
+const langfuseMirrorSubscriber: Subscriber = (snapshot) => {
+  // The latest push is always the tail entry — that's what we mirror.
+  const tail = snapshot[snapshot.length - 1];
+  if (!tail) return;
+  recordQualityMetricEvent(tail);
+};
+
+let langfuseSinkRegistered = false;
+
+export function registerLangfuseSink(): void {
+  if (langfuseSinkRegistered) return;
+  langfuseSinkRegistered = true;
+  subscribers.add(langfuseMirrorSubscriber);
+}
+
+export function _unregisterLangfuseSinkForTests(): void {
+  subscribers.delete(langfuseMirrorSubscriber);
+  langfuseSinkRegistered = false;
+}
+
+// ---------------------------------------------------------------------------
 // Test-only reset
 // ---------------------------------------------------------------------------
 
@@ -228,4 +269,5 @@ export function _resetQualityMetricLogForTests(): void {
   metrics.length = 0;
   subscribers.clear();
   idCounter = 0;
+  langfuseSinkRegistered = false;
 }

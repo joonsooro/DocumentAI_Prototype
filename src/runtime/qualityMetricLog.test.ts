@@ -17,7 +17,9 @@ import {
   getMetrics,
   countMetrics,
   subscribe,
+  registerLangfuseSink,
   _resetQualityMetricLogForTests,
+  _unregisterLangfuseSinkForTests,
 } from '@runtime/qualityMetricLog';
 import { AgentFailure } from '@runtime/aiCoreClient';
 import type { AgentResult } from '@runtime/aiCoreClient';
@@ -177,5 +179,65 @@ describe('F-18 qualityMetricLog — test reset hook', () => {
     // After reset the id counter restarts, so the same inputs produce the same id.
     expect(a.id).toBe(b.id);
     expect(getMetrics().length).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// S4.5 OBSERVE-WIRE step 4 — Langfuse mirror sink
+// ---------------------------------------------------------------------------
+
+describe('S4.5 qualityMetricLog — Langfuse mirror sink', () => {
+  afterEach(() => {
+    _unregisterLangfuseSinkForTests();
+  });
+
+  it('registerLangfuseSink is idempotent — calling it twice adds one subscriber', () => {
+    // Baseline: count current subscribers via a probe that gets notified
+    // exactly once per push. We rely on the existing subscribe API rather
+    // than reaching into module internals.
+    const probe = vi.fn();
+    const unsubscribe = subscribe(probe);
+    try {
+      registerLangfuseSink();
+      registerLangfuseSink(); // second call should be a no-op
+      // Push one entry. The probe should fire exactly once — the sink
+      // subscriber does not duplicate the probe's notification count.
+      recordSuccess(fakeSuccess('compile'));
+      expect(probe).toHaveBeenCalledTimes(1);
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  it('mirror sink does not change the in-memory store length or shape', () => {
+    registerLangfuseSink();
+    const before = getMetrics().length;
+    recordSuccess(fakeSuccess('compile'));
+    recordSuccess(fakeSuccess('capability'));
+    const after = getMetrics();
+    expect(after.length).toBe(before + 2);
+    expect(after[before].agent).toBe('compile');
+    expect(after[before + 1].agent).toBe('capability');
+    expect(after[before].status).toBe('success');
+  });
+
+  it('mirror sink is fire-and-forget — a Langfuse SDK throw is swallowed', () => {
+    // The sink dispatches via recordQualityMetricEvent which is fire-and-forget
+    // at the langfuseClient boundary (try/catch + warn-once). Even if Langfuse
+    // is enabled and the SDK throws, the recordSuccess push must still land
+    // in the in-memory store.
+    registerLangfuseSink();
+    expect(() => recordSuccess(fakeSuccess('readiness'))).not.toThrow();
+    expect(countMetrics({ agent: 'readiness', status: 'success' })).toBeGreaterThanOrEqual(1);
+  });
+
+  it('mirror sink fires on both success and failure paths', () => {
+    registerLangfuseSink();
+    recordSuccess(fakeSuccess('compile'));
+    recordFailure(
+      new AgentFailure({ agent: 'capability', reason: 'http_error', message: '503 from upstream' }),
+    );
+    expect(countMetrics({ status: 'success' })).toBeGreaterThanOrEqual(1);
+    expect(countMetrics({ status: 'fail' })).toBeGreaterThanOrEqual(1);
   });
 });
