@@ -27,6 +27,7 @@ import {
   handleCompile,
   handleCapability,
   handleReadiness,
+  handleChatTurnDecide,
 } from '../src/server/devAgentMiddleware';
 
 const PORT = Number(process.env.AGENT_SERVER_PORT ?? 3001);
@@ -36,6 +37,7 @@ const HANDLERS: Record<string, Handler> = {
   '/api/compile': handleCompile as Handler,
   '/api/capability': handleCapability as Handler,
   '/api/readiness': handleReadiness as Handler,
+  '/api/chat-turn-decide': handleChatTurnDecide as Handler,
 };
 
 function isHandled(url: string | undefined): url is keyof typeof HANDLERS {
@@ -50,6 +52,10 @@ function validate(url: keyof typeof HANDLERS, body: unknown): { ok: true } | { o
   if (url === '/api/compile') {
     if (typeof b.raw !== 'string' || b.raw.trim().length === 0) {
       return { ok: false, error: 'raw_required' };
+    }
+  } else if (url === '/api/chat-turn-decide') {
+    if (typeof b.conversation !== 'object' || b.conversation === null) {
+      return { ok: false, error: 'conversation_required' };
     }
   } else {
     if (typeof b.intent !== 'object' || b.intent === null) {

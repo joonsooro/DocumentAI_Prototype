@@ -472,7 +472,7 @@
         "src/domain/chatTurnDecide.test.ts"
       ],
       "depends_on": ["F-04", "F-08", "F-18", "F-27"],
-      "status": "todo",
+      "status": "done",
       "notes": "REUSES the existing live-wire infrastructure verbatim: src/runtime/aiCoreClient.ts (OAuth + spend cap), src/server/devAgentMiddleware.ts (extend with 4th endpoint), scripts/dev-agent-server.ts (extend the same way), src/components/customer/agentClient.ts (add 4th typed wrapper). No reimplementation. The chat.turn_decide agent joins the spec-pinned agent set on the smallest_viable deployment (A15). OQ-6 prompt tuning defers to S4 OBSERVE. Trace: A14 · A15 · SUB-7 clarification · OQ-6 · HAPPY-11 · HAPPY-12 · EDGE-6 · EDGE-7."
     },
     {

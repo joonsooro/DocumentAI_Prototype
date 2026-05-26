@@ -28,6 +28,7 @@ import type {
   CapabilityAssessment,
   ClarificationRequest,
   CompiledConfiguration,
+  ConversationState,
   CustomerIntent,
   QualityMetric,
   ReadinessDecision,
@@ -38,6 +39,7 @@ import { decideReadiness } from '@domain/decideReadiness';
 import { generateClarificationRequests } from '@domain/generateClarificationRequests';
 import { simulateDocumentRun } from '@domain/simulateDocumentRun';
 import { runAgentWithFailureSurface } from '@domain/agentFailureSurface';
+import { chatTurnDecide, type TurnDecision } from '@domain/chatTurnDecide';
 import { DAEJOO_PDF_URL } from '@data/assets';
 
 // ---------------------------------------------------------------------------
@@ -75,6 +77,13 @@ export type ReadinessResponse =
       readiness: ReadinessDecision;
       clarifications: readonly ClarificationRequest[];
     }>
+  | AgentFailureWire;
+
+interface ChatTurnDecideRequest {
+  readonly conversation: ConversationState;
+}
+export type ChatTurnDecideResponse =
+  | AgentSuccess<{ decision: TurnDecision }>
   | AgentFailureWire;
 
 // ---------------------------------------------------------------------------
@@ -138,6 +147,19 @@ export async function handleReadiness(body: ChainRequest): Promise<ReadinessResp
   return { kind: 'failure', clarification: outcome.clarification, metric: outcome.metric };
 }
 
+export async function handleChatTurnDecide(
+  body: ChatTurnDecideRequest,
+): Promise<ChatTurnDecideResponse> {
+  const outcome = await runAgentWithFailureSurface(
+    'chat.turn_decide',
+    () => chatTurnDecide(body.conversation),
+  );
+  if (outcome.kind === 'success') {
+    return { kind: 'success', decision: outcome.value };
+  }
+  return { kind: 'failure', clarification: outcome.clarification, metric: outcome.metric };
+}
+
 // ---------------------------------------------------------------------------
 // Connect-style middleware — used by vite.config.ts configureServer
 // ---------------------------------------------------------------------------
@@ -146,6 +168,7 @@ const HANDLERS = {
   '/api/compile': handleCompile as (body: unknown) => Promise<unknown>,
   '/api/capability': handleCapability as (body: unknown) => Promise<unknown>,
   '/api/readiness': handleReadiness as (body: unknown) => Promise<unknown>,
+  '/api/chat-turn-decide': handleChatTurnDecide as (body: unknown) => Promise<unknown>,
 } satisfies Record<string, (body: unknown) => Promise<unknown>>;
 
 type Handled = keyof typeof HANDLERS;
@@ -162,6 +185,10 @@ function validate(url: Handled, body: unknown): { ok: true } | { ok: false; erro
   if (url === '/api/compile') {
     if (typeof b.raw !== 'string' || b.raw.trim().length === 0) {
       return { ok: false, error: 'raw_required' };
+    }
+  } else if (url === '/api/chat-turn-decide') {
+    if (typeof b.conversation !== 'object' || b.conversation === null) {
+      return { ok: false, error: 'conversation_required' };
     }
   } else {
     if (typeof b.intent !== 'object' || b.intent === null) {

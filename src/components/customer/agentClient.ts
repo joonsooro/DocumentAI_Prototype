@@ -16,10 +16,16 @@ import type {
   CapabilityAssessment,
   ClarificationRequest,
   CompiledConfiguration,
+  ConversationState,
   CustomerIntent,
   QualityMetric,
   ReadinessDecision,
 } from '@domain/types';
+
+// F-28 type-only import — the actual chatTurnDecide module lives on the
+// server side; the browser sees ONLY its TurnDecision shape, which the
+// TypeScript compiler strips at build time (no runtime import).
+import type { TurnDecision } from '@domain/chatTurnDecide';
 
 type AgentFailureWire = {
   readonly kind: 'failure';
@@ -41,6 +47,10 @@ export type ReadinessResponse =
       readonly readiness: ReadinessDecision;
       readonly clarifications: readonly ClarificationRequest[];
     }
+  | AgentFailureWire;
+
+export type ChatTurnDecideResponse =
+  | { readonly kind: 'success'; readonly decision: TurnDecision }
   | AgentFailureWire;
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {
@@ -78,4 +88,10 @@ export async function postReadiness(args: {
   readonly configuration: CompiledConfiguration;
 }): Promise<ReadinessResponse> {
   return postJson<ReadinessResponse>('/api/readiness', args);
+}
+
+export async function postChatTurnDecide(args: {
+  readonly conversation: ConversationState;
+}): Promise<ChatTurnDecideResponse> {
+  return postJson<ChatTurnDecideResponse>('/api/chat-turn-decide', args);
 }
