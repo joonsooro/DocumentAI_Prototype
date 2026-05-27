@@ -3,9 +3,11 @@
  *
  * F-23 — UploadZonePanel tests.
  *
- * D2 option A: drop announces "Processing DAEJOO sample invoice"
- * (literal text). N6: no extraction library imported; the panel always
- * processes the canned DAEJOO fixture.
+ * D2 option A only: drop announces "Processing DAEJOO sample invoice"
+ * (literal text). The D2 option B permanent demo tag was stripped per
+ * S5 SF 2026-05-27; an absence assertion guards against regression.
+ * N6: no extraction library imported; the panel always processes the
+ * canned DAEJOO fixture.
  */
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
@@ -42,10 +44,10 @@ describe('F-23 UploadZonePanel', () => {
     expect(screen.getByTestId('customer-upload-zone')).toBeTruthy();
   });
 
-  it('renders the permanent demo tag and the file input affordance', () => {
+  it('does NOT render the permanent demo tag (D2 option B stripped per S5 SF 2026-05-27) but does render the file input affordance', () => {
     render(<UploadZonePanel />);
-    const tag = screen.getByTestId('customer-upload-zone-demo-tag');
-    expect(tag.textContent).toBe('Demo: DAEJOO invoice only');
+    expect(screen.queryByTestId('customer-upload-zone-demo-tag')).toBeNull();
+    expect(screen.queryByText('Demo: DAEJOO invoice only')).toBeNull();
     expect(screen.getByTestId('customer-upload-zone-input')).toBeTruthy();
   });
 

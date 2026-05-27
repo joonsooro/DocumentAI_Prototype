@@ -82,9 +82,6 @@ export function UploadZonePanel(props: UploadZonePanelProps) {
           style={hiddenInputStyle}
           onChange={() => handleAccepted()}
         />
-        <p data-testid="customer-upload-zone-demo-tag" style={demoTagStyle}>
-          Demo: DAEJOO invoice only
-        </p>
         {announcement && (
           <p
             data-testid="customer-upload-zone-announcement"
@@ -158,17 +155,6 @@ const hiddenInputStyle: CSSProperties = {
   overflow: 'hidden',
   clip: 'rect(0,0,0,0)',
   border: 0,
-};
-
-const demoTagStyle: CSSProperties = {
-  margin: '6px 0 0',
-  padding: '2px 10px',
-  background: 'var(--warn-bg)',
-  color: 'var(--warn)',
-  fontFamily: 'var(--font-mono)',
-  fontSize: '10.5px',
-  letterSpacing: '0.06em',
-  borderRadius: 'var(--radius-tag)',
 };
 
 const announcementStyle: CSSProperties = {

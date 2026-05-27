@@ -3,16 +3,16 @@
   "source": {
     "contract": "app/contract.html",
     "contract_sections": ["§1 Decomposition", "§2 Screens"],
-    "generated_by": "S2.REV",
-    "generated_at": "2026-05-26T10:30:00Z",
-    "rewritten_from": "s3.decomposer.v1 (20 features) — F-11/F-12/F-13 replaced wholesale; F-21..F-29 added; F-01..F-10, F-14..F-20 retained verbatim"
+    "generated_by": "S2.REV + S2.ADDITIVE (2026-05-27)",
+    "generated_at": "2026-05-27T00:00:00Z",
+    "rewritten_from": "s3.decomposer.v1 (20 features) — F-11/F-12/F-13 replaced wholesale; F-21..F-29 added in S2.REV; F-30 added in S2.ADDITIVE (Agent I/O Log · HAPPY-13 · A16 · D5 · §8 subhead); F-01..F-10, F-14..F-20 retained verbatim"
   },
   "summary": {
-    "decomposition_rows": 27,
-    "features_total": 29,
+    "decomposition_rows": 28,
+    "features_total": 30,
     "verbatim_features": ["F-01","F-02","F-03","F-04","F-05","F-06","F-07","F-08","F-09","F-10","F-14","F-15","F-16","F-17","F-18","F-19","F-20"],
     "replaced_features": ["F-11","F-12","F-13"],
-    "new_features": ["F-21","F-22","F-23","F-24","F-25","F-26","F-27","F-28","F-29"]
+    "new_features": ["F-21","F-22","F-23","F-24","F-25","F-26","F-27","F-28","F-29","F-30"]
   },
   "features": [
     {
@@ -156,7 +156,7 @@
       "id": "F-11",
       "name": "Customer Workspace screen + route (S2-rev: chat thread + PDF viewer + theatrical upload + Workspace-only tab)",
       "contract_pointer": "U11 + Screen-1 + U19 + U20 + U21 + U25",
-      "acceptance": "Route /customer mounts under F-21 shared chrome with the Workspace tab active; left pane mounts the F-22 PdfViewerPanel pointing at DAEJOO_PDF_URL with data-testid='customer-pdf-viewer'; left pane mounts F-23 UploadZonePanel with data-testid='customer-upload-zone' (any drop announces 'Processing DAEJOO sample invoice' OR carries permanent 'Demo: DAEJOO invoice only' tag); right pane mounts F-27 ChatPanel with data-testid='customer-chat-panel' (the prior IntentInputPanel + ClarificationLoopPanel split is removed — no element matches data-testid='customer-clarification-loop'); right pane also mounts CompiledConfigPanel + CapabilityStatusPanel + ReadinessPanel which update in-place when F-28 chat.turn_decide returns action:'recompile' (compiledConfigVersionRefs.length increments by 1 per recompile turn); compile/capability/readiness reuse postCompile/postCapability/postReadiness from the existing src/components/customer/agentClient.ts (NO reimplementation); browser bundle audit (grep dist/assets/*.js for AICORE_KEY_PATH|clientsecret|callAgent) returns zero; per D3 the non-Workspace tabs (Extracted fields · History · Attachments) either are absent from DOM or render with disabled attribute set, no data-testid='customer-pin' element exists; per D3 + HAPPY-10 the Readiness footer 'Save as draft' and 'Confirm & process' buttons each surface an element with data-testid='customer-readiness-toast' on click and append 0 entries to getCorrections() / getProductSignals() / getMetrics(); customer-route DOM textContent does not contain 'Unsupported', 'material disposal', 'unsupported_free_text_business_condition', 'system:', 'prompt:', or '<|'",
+      "acceptance": "Route /customer mounts under F-21 shared chrome with the Workspace tab active; left pane mounts the F-22 PdfViewerPanel pointing at DAEJOO_PDF_URL with data-testid='customer-pdf-viewer'; left pane mounts F-23 UploadZonePanel with data-testid='customer-upload-zone' (any drop announces 'Processing DAEJOO sample invoice' — D2 option A only, option B permanent tag stripped per S5 SF 2026-05-27); right pane mounts F-27 ChatPanel with data-testid='customer-chat-panel' (the prior IntentInputPanel + ClarificationLoopPanel split is removed — no element matches data-testid='customer-clarification-loop'); right pane also mounts CompiledConfigPanel + CapabilityStatusPanel + ReadinessPanel which update in-place when F-28 chat.turn_decide returns action:'recompile' (compiledConfigVersionRefs.length increments by 1 per recompile turn); compile/capability/readiness reuse postCompile/postCapability/postReadiness from the existing src/components/customer/agentClient.ts (NO reimplementation); browser bundle audit (grep dist/assets/*.js for AICORE_KEY_PATH|clientsecret|callAgent) returns zero; per D3 the non-Workspace tabs (Extracted fields · History · Attachments) either are absent from DOM or render with disabled attribute set, no data-testid='customer-pin' element exists; per D3 + HAPPY-10 the Readiness footer 'Save as draft' and 'Confirm & process' buttons each surface an element with data-testid='customer-readiness-toast' on click and append 0 entries to getCorrections() / getProductSignals() / getMetrics(); customer-route DOM textContent does not contain 'Unsupported', 'material disposal', 'unsupported_free_text_business_condition', 'system:', 'prompt:', or '<|'",
       "kill_switch": {
         "window_minutes": 10,
         "condition": "If any workspace renders another's data-testid in 2 of 3 smoke runs within 10 minutes, halt and re-check route boundaries"
@@ -368,7 +368,7 @@
       "id": "F-23",
       "name": "Upload zone with theatrical drag-drop",
       "contract_pointer": "U21",
-      "acceptance": "New src/components/customer/UploadZonePanel.tsx renders data-testid='customer-upload-zone' with dashed-border styling per F-26 tokens; dropping any file (or selecting any file via the input) triggers the canned DAEJOO fixture path — no actual file content is read and F-03 simulateDocumentRun(DAEJOO_PDF_URL, configuration) is invoked unchanged; upload-zone DOM contains the literal string 'Processing DAEJOO sample invoice' after drop (D2 option A) OR carries a permanent tag with the literal string 'Demo: DAEJOO invoice only' (D2 option B); N6 preserved — the F-23 module does not import pdf-parse or any file-content reader and adds zero new dependencies for OCR or extraction",
+      "acceptance": "New src/components/customer/UploadZonePanel.tsx renders data-testid='customer-upload-zone' with dashed-border styling per F-26 tokens; dropping any file (or selecting any file via the input) triggers the canned DAEJOO fixture path — no actual file content is read and F-03 simulateDocumentRun(DAEJOO_PDF_URL, configuration) is invoked unchanged; upload-zone DOM contains the literal string 'Processing DAEJOO sample invoice' after drop (D2 option A only — option B permanent tag stripped per S5 SF 2026-05-27); N6 preserved — the F-23 module does not import pdf-parse or any file-content reader and adds zero new dependencies for OCR or extraction",
       "kill_switch": {
         "window_minutes": 20,
         "condition": "If upload zone triggers any extraction other than the canned DAEJOO fixture path in 1 of 3 runs, halt"
@@ -378,7 +378,7 @@
       ],
       "depends_on": ["F-03", "F-14", "F-26"],
       "status": "done",
-      "notes": "Honest UI, not honest behaviour. The drop zone accepts any file but only ever processes the canned DAEJOO fixture (per D2 + SUB-1 + N6). Either D2 option A (announce on drop) or D2 option B (permanent tag) is acceptable; S3 picks one and a test asserts the chosen literal appears. Trace: D2 · N6 · SUB-1."
+      "notes": "Honest UI, not honest behaviour. The drop zone accepts any file but only ever processes the canned DAEJOO fixture (per D2 + SUB-1 + N6). S5 SF (Window 4, 2026-05-27) stripped the permanent 'Demo: DAEJOO invoice only' tag per user verdict; option A announcement remains. Trace: D2 · N6 · SUB-1."
     },
     {
       "id": "F-24",
@@ -492,6 +492,34 @@
       "depends_on": ["F-09", "F-13", "F-25", "F-27"],
       "status": "done",
       "notes": "Display + filtering surface only for v1. The graduation path is described in spec A13 but never exercised in the demo (OQ-2 min_frequency=3 prevents 1-element clusters from promoting). The existing F-09 CorrectionEvent input stream stays untouched — F-29 ADDS a second input stream without breaking the first. F-25 ranking is robust to the extended ProductSignal interface because the 4 ranking fields are already covered by A13's curated_v1 provenance. Trace: A13 · A6 · N5 · N9 · HAPPY-12 · EDGE-6 · RED-3 · OQ-2."
+    },
+    {
+      "id": "F-30",
+      "name": "Agent I/O Log screen + route (S1-additive: HAPPY-13 + A16 + D5)",
+      "contract_pointer": "U28 + Screen-04",
+      "acceptance": "New src/components/admin/AgentIoLogPanel.tsx and src/components/internal/AgentIoLogPanel.tsx mount inline on /admin and /internal respectively under data-testid='agent-io-log-panel'; a visible 'Agent I/O Log' entry-point button renders in the F-21 workspace shell on both /admin and /internal and clicking it mounts the panel on the same route (no new React Router route is introduced); the panel renders one row per QualityMetric in the current session ordered newest-first via data-testid='agent-io-log-row-<i>'; panel.querySelectorAll('[data-testid^=\"agent-io-log-row-\"]').length === getMetrics().length across 10 sequential invocations (binds the HAPPY-13 row-count assertion); every row's textContent enumerates the 9 fields verbatim — agent · model · status · latency_ms · tokens_in · tokens_out · timestamp · redacted input-shape summary · redacted output-shape summary (binds the HAPPY-13 9-field shape assertion); for failure rows row.textContent additionally includes one of the 9 AgentFailure.reason enum values surfaced via F-08 (binds the HAPPY-13 AgentFailure.reason-on-failure-rows assertion and preserves N4 — no canned fallback substituted); the row formatter strips the substrings 'system:', 'prompt:', and '<|' (reuses the A7 sanitiser from F-10) and the full-DOM text snapshot of the panel does NOT contain 'system:', 'prompt:', '<|', 'AICORE_KEY_PATH', 'clientsecret', or 'material disposal' (binds the HAPPY-13 no-forbidden-substrings assertion and preserves N3 + N8); on route /customer the same screen.queryByTestId('agent-io-log-panel') query returns null and no 'Agent I/O Log' button is rendered (binds the HAPPY-13 panel-absent-on-/customer assertion and preserves N1 + N3 via the CustomerViewModel structural guard — the view-model carries no field for agent payloads, so /customer cannot mount this panel even if a future writer tries); the panel reactively re-renders on every recordSuccess / recordFailure push from the F-18 qualityMetricLog.subscribe() surface; module introduces NO new substrate (spec §9 closed list still binds — no new agent, no new data source, no new persistence layer) and adds zero new dependencies",
+      "kill_switch": {
+        "window_minutes": 15,
+        "condition": "If the AgentIoLogPanel mounts on /customer (i.e. screen.queryByTestId('agent-io-log-panel') is non-null on the /customer route) in 2 of 3 smoke runs, halt — regression on N1 + N3 and on the CustomerViewModel structural guard"
+      },
+      "output_paths": [
+        "src/routes/admin.tsx",
+        "src/routes/internal.tsx",
+        "src/components/admin/AgentIoLogPanel.tsx",
+        "src/components/internal/AgentIoLogPanel.tsx",
+        "src/components/admin/viewModel.ts",
+        "src/components/internal/viewModel.ts"
+      ],
+      "depends_on": ["F-08", "F-13", "F-18", "F-21"],
+      "status": "pending",
+      "notes": "S1 additive pass (2026-05-27) — propagates the new spec §3 FAQ row HAPPY-13, new spec §5 Always rule A16, new spec §5 design-fidelity row D5 amendment, and the new spec §8 subhead 'Agent I/O Log screen (HAPPY-13 · A16)'. F-30 introduces NO new substrate and NO new data source — it is a read-only render over the existing in-memory qualityMetricLog stream (F-18) that is already populated by F-04 / F-05 / F-07 / F-10 / F-15 / F-28 agent calls and already mirrored to Langfuse per S4.5 OBSERVE-WIRE (the panel itself does NOT call Langfuse at render time — SUB-6 privacy + offline-demo guarantee). Entry points live on /admin and /internal only; the Customer Workspace has no entry point because the CustomerViewModel structurally has no field carrying agent payloads, so the mount is impossible by construction (preserves N1 + N3 per A16 and per the spec §8 subhead). Failure rows reuse the F-08 AgentFailure.reason enum so N4 still binds (no canned fallback substituted). Row formatter reuses the A7 sanitiser from F-10 to strip the forbidden substrings (preserves N3 + N8). D5 binds because the Admin Control Plane is intentionally theatrical and the Agent I/O Log is the trace-derived component that makes the theatrical posture honest — it shows recent qualityMetricLog activity, not a live tenant workbench. Trace: HAPPY-13 · A16 · D5 · spec §8 Agent I/O Log subhead · N1 · N3 · N4 · N8 · F-18 (store reuse) · F-08 (failure surface reuse) · F-13 (QualityMetricLogPanel reuse-shape).",
+      "negative_contract_guards": [
+        "N1 — Agent I/O Log entry point never renders on /customer (no button, no inline mount, no data-testid='agent-io-log-panel' element)",
+        "N3 — panel never renders raw system or user prompt text, raw model output, roadmap-candidate signals, or the DAEJOO material-disposal phrase; row formatter strips 'system:', 'prompt:', '<|' substrings",
+        "N4 — failure rows surface AgentFailure.reason from F-08; no canned fallback substituted",
+        "N8 — panel never references the ~/Downloads path; reads the DAEJOO PDF only via the canonical app/assets/daejoo-invoice.pdf binding from F-14",
+        "Structural guard — CustomerViewModel has no field carrying agent payloads, so /customer cannot mount this panel even if a future writer tries (preserves N1 + N3 by construction per A16 and the spec §8 subhead)"
+      ]
     }
   ]
 }
