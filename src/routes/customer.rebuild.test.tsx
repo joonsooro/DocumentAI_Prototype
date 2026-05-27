@@ -67,12 +67,16 @@ describe('F-11 CustomerRoute REBUILD — chrome + chat-first surface', () => {
     expect(attachments.disabled).toBe(true);
   });
 
-  it('mounts the F-22 PdfViewerPanel empty-state + F-23 UploadZonePanel on initial render; viewer mounts after upload (S5 SF-1)', () => {
+  it('mounts the F-22 PdfViewerPanel empty-state + F-23 UploadZonePanel + ExtractedFieldsPanel empty-state on initial render; viewer mounts after upload (S5 SF-1 / SF-2)', () => {
     render(<CustomerRoute />);
     // Initial render: upload zone always mounted, viewer is empty-state.
     expect(screen.getByTestId('customer-upload-zone')).toBeTruthy();
     expect(screen.getByTestId('customer-pdf-viewer-empty')).toBeTruthy();
     expect(screen.queryByTestId('customer-pdf-viewer')).toBeNull();
+    // SF-2: the extracted-fields panel also renders its empty-state
+    // before any DocumentRun lands.
+    expect(screen.getByTestId('customer-extracted-fields-panel-empty')).toBeTruthy();
+    expect(screen.queryByTestId('customer-extracted-fields-panel')).toBeNull();
     // After a drop on the upload zone, the viewer toolbar + embed mount.
     fireEvent.drop(screen.getByTestId('customer-upload-zone'));
     expect(screen.getByTestId('customer-pdf-viewer')).toBeTruthy();

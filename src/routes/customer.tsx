@@ -5,7 +5,8 @@
  * CustomerViewModel structural guard:
  *
  *   - F-21 ObjectHeader with a Workspace-only functional tab (D3).
- *   - Left pane: F-22 PdfViewerPanel + F-23 UploadZonePanel.
+ *   - Left pane: F-23 UploadZonePanel + F-22 PdfViewerPanel (gated on
+ *     upload, SF-1) + ExtractedFieldsPanel (SF-2).
  *   - Right pane: F-27 ChatPanel as the SINGLE clarification surface
  *     per A12. The prior IntentInputPanel + ClarificationLoopPanel
  *     split is removed — no element matches
@@ -38,13 +39,14 @@ import { CapabilityStatusPanel } from '@components/customer/CapabilityStatusPane
 import { ReadinessPanel } from '@components/customer/ReadinessPanel';
 import { PdfViewerPanel } from '@components/customer/PdfViewerPanel';
 import { UploadZonePanel } from '@components/customer/UploadZonePanel';
+import { ExtractedFieldsPanel } from '@components/customer/ExtractedFieldsPanel';
 import { ChatPanel } from '@components/customer/ChatPanel';
 import {
   applyChatTurn,
   createConversation,
   recordCompiledConfig,
 } from '@domain/chatReducer';
-import type { ChatTurn, ConversationState } from '@domain/types';
+import type { ChatTurn, ConversationState, DocumentRun } from '@domain/types';
 import type { TurnDecision } from '@domain/chatTurnDecide';
 import {
   postCompile,
@@ -90,6 +92,10 @@ export default function CustomerRoute({
   // DAEJOO preview). Fixes the regression where the preview was always
   // visible regardless of upload, contradicting D2's honest-UI posture.
   const [uploadedFile, setUploadedFile] = useState<{ name: string } | null>(null);
+  // S5 SF-2: captures the F-03 DocumentRun emitted by UploadZonePanel
+  // and feeds it to ExtractedFieldsPanel. The run is the EXISTING mock
+  // extractor output (N6 preserved — no live OCR, fixture-backed).
+  const [extractedRun, setExtractedRun] = useState<DocumentRun | null>(null);
 
   function nextTurnId(): { id: string; counter: number } {
     const counter = turnCounter + 1;
@@ -273,11 +279,10 @@ export default function CustomerRoute({
           <UploadZonePanel
             configuration={vm.configuration}
             onUpload={(f) => setUploadedFile(f)}
-            onDocumentRun={() => {
-              /* run already produced by /api/readiness server-side. */
-            }}
+            onDocumentRun={(run) => setExtractedRun(run)}
           />
           <PdfViewerPanel hasUpload={uploadedFile !== null} />
+          <ExtractedFieldsPanel run={extractedRun} />
         </div>
         <div style={paneStyle}>
           <ChatPanel
