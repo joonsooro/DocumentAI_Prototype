@@ -473,7 +473,7 @@
       ],
       "depends_on": ["F-04", "F-08", "F-18", "F-27"],
       "status": "done",
-      "notes": "REUSES the existing live-wire infrastructure verbatim: src/runtime/aiCoreClient.ts (OAuth + spend cap), src/server/devAgentMiddleware.ts (extend with 4th endpoint), scripts/dev-agent-server.ts (extend the same way), src/components/customer/agentClient.ts (add 4th typed wrapper). No reimplementation. The chat.turn_decide agent joins the spec-pinned agent set on the smallest_viable deployment (A15). OQ-6 prompt tuning defers to S4 OBSERVE. Trace: A14 · A15 · SUB-7 clarification · OQ-6 · HAPPY-11 · HAPPY-12 · EDGE-6 · EDGE-7."
+      "notes": "REUSES the existing live-wire infrastructure verbatim: src/runtime/aiCoreClient.ts (OAuth + spend cap), src/server/devAgentMiddleware.ts (extend with 4th endpoint), scripts/dev-agent-server.ts (extend the same way), src/components/customer/agentClient.ts (add 4th typed wrapper). No reimplementation. The chat.turn_decide agent joins the spec-pinned agent set on the smallest_viable deployment (A15). OQ-6 prompt tuning defers to S4 OBSERVE. S2 (2026-05-27) extended the trace to cite A12 alongside A14 because S1 commit 3320055 folded a new A12 negative sub-rule (D2-binding, never-ask-for-a-file) into the existing A12 row that F-28 enforces in its system prompt; D2 + N6 + SUB-1 + N1 + HAPPY-3 binding lives in the contract.html U26 row, not duplicated here per the existing feature-list.json trace convention (A-rule + FAQ form). Trace: A12 · A14 · A15 · SUB-7 clarification · OQ-6 · HAPPY-3 · HAPPY-11 · HAPPY-12 · EDGE-6 · EDGE-7."
     },
     {
       "id": "F-29",
