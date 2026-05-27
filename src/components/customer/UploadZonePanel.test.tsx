@@ -81,6 +81,32 @@ describe('F-23 UploadZonePanel', () => {
     expect(callback).not.toHaveBeenCalled();
   });
 
+  it('drop fires onUpload before simulateDocumentRun + renders the filename chip (S5 SF-1)', () => {
+    const uploads: Array<{ name: string }> = [];
+    const runs: DocumentRun[] = [];
+    const config = makeConfiguration();
+    render(
+      <UploadZonePanel
+        configuration={config}
+        onUpload={(f) => uploads.push(f)}
+        onDocumentRun={(r) => runs.push(r)}
+      />,
+    );
+    expect(screen.queryByTestId('customer-upload-zone-filename')).toBeNull();
+    fireEvent.drop(screen.getByTestId('customer-upload-zone'));
+    // onUpload was called with a { name } payload (fallback name applies
+    // when fireEvent.drop carries no dataTransfer.files).
+    expect(uploads.length).toBe(1);
+    expect(typeof uploads[0].name).toBe('string');
+    expect(uploads[0].name.length).toBeGreaterThan(0);
+    // The simulateDocumentRun still fired after onUpload (order: onUpload
+    // first, F-03 second — the parent gates the viewer on onUpload).
+    expect(runs.length).toBe(1);
+    // The filename chip is mounted.
+    const chip = screen.getByTestId('customer-upload-zone-filename');
+    expect(chip.textContent).toContain(uploads[0].name);
+  });
+
   it('panel imports no extraction library (N6 — static module-graph check)', async () => {
     // The module surface is the only place a pdf-parse / OCR import could
     // land. Verify by inspecting the runtime exports: the module exports

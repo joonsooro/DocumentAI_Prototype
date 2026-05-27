@@ -26,20 +26,30 @@ const FORBIDDEN_PHRASES: readonly string[] = [
 describe('F-22 PdfViewerPanel', () => {
   beforeEach(() => cleanup());
 
-  it("renders with data-testid='customer-pdf-viewer'", () => {
+  it('renders empty-state when hasUpload is false (default) — S5 SF-1', () => {
+    // No upload yet: the toolbar + embed must NOT mount; the empty-state
+    // section is the sole DOM signature. Fixes the regression where the
+    // DAEJOO preview was permanently visible, contradicting D2.
     render(<PdfViewerPanel />);
+    expect(screen.getByTestId('customer-pdf-viewer-empty')).toBeTruthy();
+    expect(screen.queryByTestId('customer-pdf-viewer')).toBeNull();
+    expect(screen.queryByTestId('customer-pdf-viewer-embed')).toBeNull();
+  });
+
+  it("renders with data-testid='customer-pdf-viewer'", () => {
+    render(<PdfViewerPanel hasUpload={true} />);
     expect(screen.getByTestId('customer-pdf-viewer')).toBeTruthy();
   });
 
   it('embeds the DAEJOO PDF via the canonical static asset URL', () => {
-    render(<PdfViewerPanel />);
+    render(<PdfViewerPanel hasUpload={true} />);
     const embed = screen.getByTestId('customer-pdf-viewer-embed') as HTMLEmbedElement;
     expect(embed.getAttribute('src')).toBe(DAEJOO_PDF_URL);
     expect(embed.getAttribute('type')).toBe('application/pdf');
   });
 
   it('renders the 4 toolbar controls (page-prev / page-next / zoom-in / zoom-out)', () => {
-    render(<PdfViewerPanel />);
+    render(<PdfViewerPanel hasUpload={true} />);
     expect(screen.getByTestId('customer-pdf-viewer-page-prev')).toBeTruthy();
     expect(screen.getByTestId('customer-pdf-viewer-page-next')).toBeTruthy();
     expect(screen.getByTestId('customer-pdf-viewer-zoom-in')).toBeTruthy();
@@ -47,7 +57,7 @@ describe('F-22 PdfViewerPanel', () => {
   });
 
   it('clicking page-next increments the page indicator (stub handler wired)', () => {
-    render(<PdfViewerPanel />);
+    render(<PdfViewerPanel hasUpload={true} />);
     const indicator = screen.getByTestId('customer-pdf-viewer-page-indicator');
     expect(indicator.textContent).toBe('Page 1');
     fireEvent.click(screen.getByTestId('customer-pdf-viewer-page-next'));
@@ -55,7 +65,7 @@ describe('F-22 PdfViewerPanel', () => {
   });
 
   it('clicking zoom-in steps the zoom indicator from 100% to 110%', () => {
-    render(<PdfViewerPanel />);
+    render(<PdfViewerPanel hasUpload={true} />);
     const indicator = screen.getByTestId('customer-pdf-viewer-zoom-indicator');
     expect(indicator.textContent).toBe('100%');
     fireEvent.click(screen.getByTestId('customer-pdf-viewer-zoom-in'));
@@ -63,7 +73,7 @@ describe('F-22 PdfViewerPanel', () => {
   });
 
   it('panel DOM does not leak forbidden customer-surface phrases (RED-2)', () => {
-    render(<PdfViewerPanel />);
+    render(<PdfViewerPanel hasUpload={true} />);
     const root = screen.getByTestId('customer-pdf-viewer');
     const text = root.textContent ?? '';
     // The PDF document itself is not rendered as DOM text (it's inside

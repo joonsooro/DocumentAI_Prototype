@@ -9,6 +9,15 @@
  * pdf.js (a new dependency) or browser-native viewer behaviour we can't
  * rely on across the test harness.
  *
+ * S5 SF-1 (2026-05-27): the viewer is gated on `hasUpload`. Until an
+ * upload has fired (customer-upload-zone drop / file-input change), the
+ * panel renders an empty-state section (data-testid =
+ * 'customer-pdf-viewer-empty') instead of the toolbar + embed. This
+ * fixes the user-reported regression where the DAEJOO preview was
+ * permanently visible in the left pane regardless of upload — that
+ * posture contradicted D2's honest-UI stance (announcement-only on
+ * drop, no permanent preview).
+ *
  * v1 ships the OPTIONAL 7-span evidence-highlight model as DEFERRED.
  * D1 specifies seven span keys: payable / total / no-comm /
  * payment-terms / po / hs-code / freetext. v2 will toggle a
@@ -25,9 +34,25 @@
 import { CSSProperties, useState } from 'react';
 import { DAEJOO_PDF_URL } from '@data/assets';
 
-export function PdfViewerPanel() {
+export type PdfViewerPanelProps = {
+  /** Gates the viewer: false = empty-state, true = toolbar + embed. */
+  readonly hasUpload?: boolean;
+};
+
+export function PdfViewerPanel({ hasUpload = false }: PdfViewerPanelProps = {}) {
   const [page, setPage] = useState(1);
   const [zoom, setZoom] = useState(100);
+
+  if (!hasUpload) {
+    return (
+      <section data-testid="customer-pdf-viewer-empty" style={emptyStyle}>
+        <p style={emptyHeadlineStyle}>No document uploaded yet</p>
+        <p style={emptySubStyle}>
+          Drop a file in the upload zone above to preview it here.
+        </p>
+      </section>
+    );
+  }
 
   // Stub handlers — see header docs. These exist so the toolbar buttons
   // are functional click targets (clicks register, state updates) but
@@ -138,4 +163,33 @@ const embedStyle: CSSProperties = {
   width: '100%',
   minHeight: '380px',
   border: 'none',
+};
+
+const emptyStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '6px',
+  background: 'var(--panel)',
+  border: '1px dashed var(--line)',
+  borderRadius: 'var(--radius-card)',
+  minHeight: '420px',
+  padding: '24px var(--card-padding)',
+  textAlign: 'center',
+};
+
+const emptyHeadlineStyle: CSSProperties = {
+  margin: 0,
+  color: 'var(--ink-1)',
+  fontFamily: 'var(--font-sans)',
+  fontSize: '14px',
+  fontWeight: 500,
+};
+
+const emptySubStyle: CSSProperties = {
+  margin: 0,
+  color: 'var(--ink-3)',
+  fontFamily: 'var(--font-sans)',
+  fontSize: '12px',
 };

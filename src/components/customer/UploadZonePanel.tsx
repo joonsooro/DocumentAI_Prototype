@@ -14,26 +14,40 @@
  * customer sees the UI fire, but F-03 is not invoked because there is
  * no configuration to run against. F-11 wires the configuration in via
  * its view-model state.
+ *
+ * S5 SF-1 (2026-05-27): emits `onUpload({ name })` BEFORE invoking
+ * F-03 so the parent route can gate the PdfViewerPanel on whether an
+ * upload has actually happened. The forwarded name comes from the real
+ * File when present (dataTransfer.files[0] / input.files[0]) and falls
+ * back to 'daejoo-invoice.pdf' when absent (e.g. fireEvent.drop with
+ * no dataTransfer). The chip data-testid='customer-upload-zone-filename'
+ * surfaces the most recent name; the announcement testid + text are
+ * UNCHANGED to preserve eval bindings.
  */
-import { CSSProperties, DragEvent, useId, useState } from 'react';
+import { ChangeEvent, CSSProperties, DragEvent, useId, useState } from 'react';
 import type { CompiledConfiguration, DocumentRun } from '@domain/types';
 import { simulateDocumentRun } from '@domain/simulateDocumentRun';
 import { DAEJOO_PDF_URL } from '@data/assets';
 
 const DROP_ANNOUNCEMENT = 'Processing DAEJOO sample invoice';
+const FALLBACK_UPLOAD_NAME = 'daejoo-invoice.pdf';
 
 export type UploadZonePanelProps = {
   configuration?: CompiledConfiguration | null;
   onDocumentRun?: (run: DocumentRun) => void;
+  onUpload?: (file: { name: string }) => void;
 };
 
 export function UploadZonePanel(props: UploadZonePanelProps) {
-  const { configuration, onDocumentRun } = props;
+  const { configuration, onDocumentRun, onUpload } = props;
   const inputId = useId();
   const [announcement, setAnnouncement] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [uploadedName, setUploadedName] = useState<string | null>(null);
 
-  const handleAccepted = () => {
+  const handleAccepted = (name: string) => {
+    setUploadedName(name);
+    onUpload?.({ name });
     setAnnouncement(DROP_ANNOUNCEMENT);
     setDragging(false);
     if (configuration) {
@@ -44,7 +58,13 @@ export function UploadZonePanel(props: UploadZonePanelProps) {
 
   const onDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
-    handleAccepted();
+    const dropped = event.dataTransfer?.files?.[0];
+    handleAccepted(dropped?.name ?? FALLBACK_UPLOAD_NAME);
+  };
+
+  const onInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const picked = event.target.files?.[0];
+    handleAccepted(picked?.name ?? FALLBACK_UPLOAD_NAME);
   };
 
   const onDragOver = (event: DragEvent<HTMLDivElement>) => {
@@ -80,7 +100,7 @@ export function UploadZonePanel(props: UploadZonePanelProps) {
           data-testid="customer-upload-zone-input"
           type="file"
           style={hiddenInputStyle}
-          onChange={() => handleAccepted()}
+          onChange={onInputChange}
         />
         {announcement && (
           <p
@@ -90,6 +110,14 @@ export function UploadZonePanel(props: UploadZonePanelProps) {
             style={announcementStyle}
           >
             {announcement}
+          </p>
+        )}
+        {uploadedName && (
+          <p
+            data-testid="customer-upload-zone-filename"
+            style={filenameStyle}
+          >
+            ✓ {uploadedName}
           </p>
         )}
       </div>
@@ -162,6 +190,16 @@ const announcementStyle: CSSProperties = {
   padding: '4px 12px',
   background: 'var(--brand-50)',
   color: 'var(--brand-700)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: '11px',
+  borderRadius: 'var(--radius-tag)',
+};
+
+const filenameStyle: CSSProperties = {
+  margin: '4px 0 0',
+  padding: '2px 10px',
+  background: 'var(--ok-bg)',
+  color: 'var(--ok)',
   fontFamily: 'var(--font-mono)',
   fontSize: '11px',
   borderRadius: 'var(--radius-tag)',

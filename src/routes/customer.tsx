@@ -85,6 +85,11 @@ export default function CustomerRoute({
   );
   const [toast, setToast] = useState<string | null>(null);
   const [turnCounter, setTurnCounter] = useState<number>(0);
+  // S5 SF-1: gates the PdfViewerPanel. Until UploadZonePanel fires its
+  // onUpload callback, the viewer renders an empty-state (no permanent
+  // DAEJOO preview). Fixes the regression where the preview was always
+  // visible regardless of upload, contradicting D2's honest-UI posture.
+  const [uploadedFile, setUploadedFile] = useState<{ name: string } | null>(null);
 
   function nextTurnId(): { id: string; counter: number } {
     const counter = turnCounter + 1;
@@ -267,11 +272,12 @@ export default function CustomerRoute({
         <div style={paneStyle}>
           <UploadZonePanel
             configuration={vm.configuration}
+            onUpload={(f) => setUploadedFile(f)}
             onDocumentRun={() => {
               /* run already produced by /api/readiness server-side. */
             }}
           />
-          <PdfViewerPanel />
+          <PdfViewerPanel hasUpload={uploadedFile !== null} />
         </div>
         <div style={paneStyle}>
           <ChatPanel
