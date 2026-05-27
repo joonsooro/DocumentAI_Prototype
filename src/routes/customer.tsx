@@ -1,38 +1,30 @@
 /**
- * F-11 — Customer Workspace route (S3.REBUILD).
+ * F-11 — Customer Workspace route (S5 SF · chat-wiring fix).
  *
- * Composes the new chat-first surface on top of the existing
+ * Composes the chat-first surface on top of the existing
  * CustomerViewModel structural guard:
  *
  *   - F-21 ObjectHeader with a Workspace-only functional tab (D3).
- *     Extracted fields / History / Attachments tabs are present but
- *     disabled with "Available in v2" tooltips.
  *   - Left pane: F-22 PdfViewerPanel + F-23 UploadZonePanel.
- *   - Right pane: F-27 ChatPanel (primary clarification surface per
- *     A12) + the existing CompiledConfigPanel / CapabilityStatusPanel /
- *     ReadinessPanel which update in-place as F-28 returns decisions.
- *   - D3 Readiness footer: Save as draft + Confirm & process buttons,
- *     both non-destructive. Clicking surfaces an aria-live toast at
- *     data-testid='customer-readiness-toast' and mutates ZERO entity
- *     stores (HAPPY-10 binding).
+ *   - Right pane: F-27 ChatPanel as the SINGLE clarification surface
+ *     per A12. The prior IntentInputPanel + ClarificationLoopPanel
+ *     split is removed — no element matches
+ *     data-testid='customer-intent-textarea' or
+ *     data-testid='customer-clarification-loop' on /customer.
+ *   - CompiledConfigPanel / CapabilityStatusPanel / ReadinessPanel
+ *     remain as auxiliary status displays that update in-place when
+ *     F-28 chat.turn_decide returns action:'recompile'.
+ *   - D3 Readiness footer: Save as draft + Confirm & process,
+ *     both non-destructive (HAPPY-10).
  *
- * The legacy IntentInputPanel + ClarificationLoopPanel are still
- * rendered alongside the new surface so the v1 F-19 evals (HAPPY-1
- * etc.) + customer.test.tsx smoke tests stay green. F-27 ChatPanel is
- * the primary surface for live work; the legacy panels keep their
- * testids as a compatibility shim. S4 OBSERVE may drop the legacy
- * panels once eval-results.html confirms the chat surface covers the
- * happy path end-to-end.
- *
- * Live-wire (F-28): the ChatPanel's submit invokes postChatTurnDecide
- * via the agentClient.ts wrapper which targets /api/chat-turn-decide
- * (the 4th endpoint added by F-28). compiledConfigVersionRefs in the
- * ConversationState increments on each successful recompile turn.
- *
- * CustomerViewModel structural guard is preserved verbatim — see
- * src/components/customer/viewModel.ts. The legacy panel + the new
- * chat panel share the same model; both consume the customer-visible
- * narrowing.
+ * Live-wire: every chat submit calls postChatTurnDecide via
+ * src/components/customer/agentClient.ts. On action:'recompile' the
+ * route invokes postCompile + postCapability + postReadiness (no
+ * reimplementation — F-11 acceptance forbids that). On action:
+ * 'capability_class_question' the conversation transitions to
+ * 'awaiting_notify_decision' and the notify-team question bubble is
+ * appended (N9 governance still enforced at the signal-write layer
+ * in src/domain/writeProvisionalSignal.ts).
  */
 import { useState } from 'react';
 import {
@@ -41,10 +33,8 @@ import {
   type CustomerViewModel,
 } from '@components/customer/viewModel';
 import { ObjectHeader, type ObjectHeaderTab } from '@components/shell/ObjectHeader';
-import { IntentInputPanel } from '@components/customer/IntentInputPanel';
 import { CompiledConfigPanel } from '@components/customer/CompiledConfigPanel';
 import { CapabilityStatusPanel } from '@components/customer/CapabilityStatusPanel';
-import { ClarificationLoopPanel } from '@components/customer/ClarificationLoopPanel';
 import { ReadinessPanel } from '@components/customer/ReadinessPanel';
 import { PdfViewerPanel } from '@components/customer/PdfViewerPanel';
 import { UploadZonePanel } from '@components/customer/UploadZonePanel';
@@ -52,17 +42,21 @@ import { ChatPanel } from '@components/customer/ChatPanel';
 import {
   applyChatTurn,
   createConversation,
+  recordCompiledConfig,
 } from '@domain/chatReducer';
 import type { ChatTurn, ConversationState } from '@domain/types';
+import type { TurnDecision } from '@domain/chatTurnDecide';
 import {
   postCompile,
   postCapability,
   postReadiness,
+  postChatTurnDecide,
 } from '@components/customer/agentClient';
 
-type LoadingStage = 'idle' | 'compile' | 'capability' | 'readiness';
+type LoadingStage = 'idle' | 'turn_decide' | 'compile' | 'capability' | 'readiness';
 
 const STAGE_LABEL: Record<Exclude<LoadingStage, 'idle'>, string> = {
+  turn_decide: 'Thinking…',
   compile: 'Compiling configuration…',
   capability: 'Assessing capabilities…',
   readiness: 'Deciding readiness…',
@@ -78,17 +72,10 @@ const OBJECT_HEADER_TABS: readonly ObjectHeaderTab[] = Object.freeze([
 interface CustomerRouteProps {
   /** Optional seed for tests + eval harness. Defaults to an empty model. */
   readonly initialViewModel?: CustomerViewModel;
-  /**
-   * Optional handler called when the customer submits intent. Tests pass
-   * this to bypass the live /api/* wire. When omitted, the route runs the
-   * live three-stage chain itself.
-   */
-  readonly onSubmitIntent?: (raw: string) => void;
 }
 
 export default function CustomerRoute({
   initialViewModel = EMPTY_CUSTOMER_VIEW_MODEL,
-  onSubmitIntent,
 }: CustomerRouteProps) {
   const [vm, setVm] = useState<CustomerViewModel>(initialViewModel);
   const [stage, setStage] = useState<LoadingStage>('idle');
@@ -97,40 +84,156 @@ export default function CustomerRoute({
     createConversation('conv::customer::v0'),
   );
   const [toast, setToast] = useState<string | null>(null);
+  const [turnCounter, setTurnCounter] = useState<number>(0);
 
-  async function runLiveChain(raw: string): Promise<void> {
-    setRequestError(null);
+  function nextTurnId(): { id: string; counter: number } {
+    const counter = turnCounter + 1;
+    return { id: `t::${counter}`, counter };
+  }
+
+  function appendAssistantBubble(
+    prev: ConversationState,
+    counter: number,
+    kind: ChatTurn['kind'],
+    content: string,
+  ): { state: ConversationState; counter: number } {
+    const nextCounter = counter + 1;
+    const turn: ChatTurn = {
+      id: `t::${nextCounter}`,
+      role: 'assistant',
+      content,
+      timestamp: new Date().toISOString(),
+      kind,
+    };
+    return { state: applyChatTurn(prev, turn), counter: nextCounter };
+  }
+
+  async function runCompileChain(
+    raw: string,
+    convAtRecompile: ConversationState,
+    counterAtRecompile: number,
+  ): Promise<{ conv: ConversationState; counter: number }> {
+    let conv = convAtRecompile;
+    let counter = counterAtRecompile;
+
     setStage('compile');
+    const compileResp = await postCompile({ raw, documentType: 'commercial_invoice' });
+    if (compileResp.kind === 'failure') {
+      setVm((prev) => ({
+        ...prev,
+        clarifications: [...prev.clarifications, compileResp.clarification],
+      }));
+      const failBubble = appendAssistantBubble(
+        conv,
+        counter,
+        'message',
+        `The compile agent reported a failure: ${compileResp.clarification.operatorFacingError ?? 'see clarification queue'}.`,
+      );
+      conv = failBubble.state;
+      counter = failBubble.counter;
+      return { conv, counter };
+    }
+
+    const { intent, configuration } = compileResp;
+    setVm((prev) => ({ ...prev, intent, configuration }));
+    conv = recordCompiledConfig(conv, configuration.id);
+
+    setStage('capability');
+    const capResp = await postCapability({ intent, configuration });
+    if (capResp.kind === 'success') {
+      const assessments = projectCapabilitiesForCustomerSurface(capResp.assessments);
+      setVm((prev) => ({ ...prev, assessments }));
+    } else {
+      setVm((prev) => ({
+        ...prev,
+        clarifications: [...prev.clarifications, capResp.clarification],
+      }));
+    }
+
+    setStage('readiness');
+    const readyResp = await postReadiness({ intent, configuration });
+    if (readyResp.kind === 'success') {
+      setVm((prev) => ({
+        ...prev,
+        readiness: readyResp.readiness,
+        clarifications: [...prev.clarifications, ...readyResp.clarifications],
+      }));
+    } else {
+      setVm((prev) => ({
+        ...prev,
+        clarifications: [...prev.clarifications, readyResp.clarification],
+      }));
+    }
+    return { conv, counter };
+  }
+
+  function decisionBubble(
+    decision: TurnDecision,
+  ): { kind: ChatTurn['kind']; content: string } {
+    switch (decision.action) {
+      case 'clarify':
+        return { kind: 'clarification_question', content: decision.clarificationContent };
+      case 'recompile':
+        return { kind: 'recompile_announcement', content: decision.recompileSummary };
+      case 'capability_class_question':
+        return { kind: 'notify_team_question', content: decision.questionContent };
+      case 'success_summary':
+        return { kind: 'success_summary', content: decision.summaryContent };
+    }
+  }
+
+  async function handleChatSubmit(content: string): Promise<void> {
+    setRequestError(null);
+
+    const { id: userTurnId, counter: counterAfterUser } = nextTurnId();
+    const userTurn: ChatTurn = {
+      id: userTurnId,
+      role: 'user',
+      content,
+      timestamp: new Date().toISOString(),
+      kind: 'message',
+    };
+    let conv = applyChatTurn(conversation, userTurn);
+    let counter = counterAfterUser;
+    setConversation(conv);
+    setTurnCounter(counter);
+
     try {
-      const compileResp = await postCompile({ raw, documentType: 'commercial_invoice' });
-      if (compileResp.kind === 'failure') {
-        setVm((prev) => ({ ...prev, clarifications: [...prev.clarifications, compileResp.clarification] }));
-        setStage('idle');
+      setStage('turn_decide');
+      const decideResp = await postChatTurnDecide({ conversation: conv });
+
+      if (decideResp.kind === 'failure') {
+        setVm((prev) => ({
+          ...prev,
+          clarifications: [...prev.clarifications, decideResp.clarification],
+        }));
+        const fail = appendAssistantBubble(
+          conv,
+          counter,
+          'message',
+          `The chat agent reported a failure: ${decideResp.clarification.operatorFacingError ?? 'see clarification queue'}.`,
+        );
+        conv = fail.state;
+        counter = fail.counter;
+        setConversation(conv);
+        setTurnCounter(counter);
         return;
       }
 
-      const { intent, configuration } = compileResp;
-      setVm((prev) => ({ ...prev, intent, configuration }));
+      const decision = decideResp.decision;
+      const bubble = decisionBubble(decision);
+      const announced = appendAssistantBubble(conv, counter, bubble.kind, bubble.content);
+      conv = announced.state;
+      counter = announced.counter;
+      setConversation(conv);
+      setTurnCounter(counter);
 
-      setStage('capability');
-      const capResp = await postCapability({ intent, configuration });
-      if (capResp.kind === 'success') {
-        const assessments = projectCapabilitiesForCustomerSurface(capResp.assessments);
-        setVm((prev) => ({ ...prev, assessments }));
-      } else {
-        setVm((prev) => ({ ...prev, clarifications: [...prev.clarifications, capResp.clarification] }));
-      }
-
-      setStage('readiness');
-      const readyResp = await postReadiness({ intent, configuration });
-      if (readyResp.kind === 'success') {
-        setVm((prev) => ({
-          ...prev,
-          readiness: readyResp.readiness,
-          clarifications: [...prev.clarifications, ...readyResp.clarifications],
-        }));
-      } else {
-        setVm((prev) => ({ ...prev, clarifications: [...prev.clarifications, readyResp.clarification] }));
+      if (decision.action === 'recompile') {
+        const recompiled = await runCompileChain(content, conv, counter);
+        conv = recompiled.conv;
+        counter = recompiled.counter;
+        setConversation(conv);
+        setTurnCounter(counter);
       }
     } catch (err) {
       setRequestError((err as Error).message);
@@ -139,34 +242,8 @@ export default function CustomerRoute({
     }
   }
 
-  function handleSubmit(raw: string) {
-    if (onSubmitIntent) {
-      onSubmitIntent(raw);
-      return;
-    }
-    void runLiveChain(raw);
-  }
-
-  function handleChatSubmit(content: string) {
-    // Append the user turn locally; the F-28 chat.turn_decide call lives
-    // behind postChatTurnDecide and is wired into a richer state machine
-    // in a follow-on commit. For v1 demo + smoke coverage, the chat
-    // surface appends turns deterministically so the bubble taxonomy and
-    // the N9 / RED-3 data-layer guard are exercisable end-to-end without
-    // requiring a live tenant.
-    const turn: ChatTurn = {
-      id: `t::${conversation.turns.length + 1}`,
-      role: 'user',
-      content,
-      timestamp: new Date().toISOString(),
-      kind: 'message',
-    };
-    setConversation((prev) => applyChatTurn(prev, turn));
-    // If no compile has happened yet, also kick off the v1 three-stage
-    // chain so the right-pane panels populate alongside the chat thread.
-    if (!vm.intent) {
-      handleSubmit(content);
-    }
+  function handleChatSubmitSync(content: string): void {
+    void handleChatSubmit(content);
   }
 
   function handleFooterAction(label: string) {
@@ -199,17 +276,8 @@ export default function CustomerRoute({
         <div style={paneStyle}>
           <ChatPanel
             conversation={conversation}
-            onSubmitTurn={handleChatSubmit}
+            onSubmitTurn={handleChatSubmitSync}
             disabled={loading}
-          />
-          {/* Legacy v1 surfaces preserved for backwards-compatible test
-              coverage. The Chat panel above is the primary clarification
-              surface per A12; these mirror the same view-model so v1
-              tests + the F-19 eval harness keep passing. */}
-          <IntentInputPanel
-            initialValue={vm.intent?.raw ?? ''}
-            disabled={loading}
-            onSubmit={handleSubmit}
           />
           {loading ? (
             <div data-testid="customer-loading-indicator" style={loadingStyle}>
@@ -224,7 +292,6 @@ export default function CustomerRoute({
           ) : null}
           <CompiledConfigPanel configuration={vm.configuration} />
           <CapabilityStatusPanel assessments={vm.assessments} />
-          <ClarificationLoopPanel clarifications={vm.clarifications} />
           <ReadinessPanel readiness={vm.readiness} />
         </div>
       </div>

@@ -1,19 +1,19 @@
 // @vitest-environment jsdom
 /**
- * F-11 — Customer Workspace REBUILD tests (S3.REBUILD).
+ * F-11 — Customer Workspace REBUILD tests (S5 SF · chat-wiring fix).
  *
- * Asserts the new chrome + chat-first surface on top of the v1 view-model:
+ * Asserts the chrome + chat-first surface:
  *   - F-21 ObjectHeader tablist with the Workspace-only functional tab (D3)
  *   - F-22 PdfViewerPanel mounted in left pane
  *   - F-23 UploadZonePanel mounted in left pane
  *   - F-27 ChatPanel mounted in right pane as data-testid='customer-chat-panel'
  *   - HAPPY-10: Readiness footer buttons surface a non-destructive
  *     toast and mutate ZERO entity stores.
- *   - The forbidden v1 data-testid 'customer-clarification-loop' is
- *     absent (the F-11 acceptance pins this — the legacy
- *     'customer-clarification-panel' testid stays for v1 test compat).
+ *   - The legacy IntentInputPanel + ClarificationLoopPanel mounts are
+ *     gone (F-11 acceptance — the chat surface is the single
+ *     clarification surface per A12).
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import CustomerRoute from './customer';
 import {
@@ -31,6 +31,21 @@ describe('F-11 CustomerRoute REBUILD — chrome + chat-first surface', () => {
     cleanup();
     _resetCorrectionStoreForTests();
     _resetQualityMetricLogForTests();
+    // Stub fetch so the chat-panel submit test's postChatTurnDecide call
+    // does not hit the network; the user-turn bubble is appended
+    // synchronously BEFORE the await, so the assertion still holds even
+    // if the stubbed response never resolves.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ kind: 'success', decision: { action: 'clarify', clarificationContent: 'ok' } }),
+      }),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('mounts the F-21 ObjectHeader with the Workspace tab active', () => {
@@ -63,12 +78,14 @@ describe('F-11 CustomerRoute REBUILD — chrome + chat-first surface', () => {
     expect(screen.getByTestId('customer-chat-panel')).toBeTruthy();
   });
 
-  it("does NOT render the forbidden data-testid 'customer-clarification-loop'", () => {
+  it("does NOT render the legacy ClarificationLoopPanel or IntentInputPanel testids", () => {
     render(<CustomerRoute />);
+    // F-11 acceptance: the prior IntentInputPanel + ClarificationLoopPanel
+    // split is removed. ChatPanel (A12) is the single clarification surface.
     expect(screen.queryByTestId('customer-clarification-loop')).toBeNull();
-    // The v1 'customer-clarification-panel' testid IS still present for
-    // backwards compatibility with v1 F-19 eval bindings.
-    expect(screen.getByTestId('customer-clarification-panel')).toBeTruthy();
+    expect(screen.queryByTestId('customer-clarification-panel')).toBeNull();
+    expect(screen.queryByTestId('customer-intent-panel')).toBeNull();
+    expect(screen.queryByTestId('customer-intent-textarea')).toBeNull();
   });
 
   it('HAPPY-10: Save-as-draft click surfaces a toast and mutates ZERO entity stores', () => {

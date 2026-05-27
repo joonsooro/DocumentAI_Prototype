@@ -67,16 +67,17 @@ afterEach(() => {
 // ===========================================================================
 // HAPPY-1 — Operator opens prototype: admin-facing intent form, no end-user upload.
 // ===========================================================================
-// Adaptation: spec assertion uses `screen.getByLabelText(/customer intent/i)`
-// but our IntentInputPanel renders a heading + textarea (not a <label>). The
-// invariant — admin-facing form, no end-user upload affordance — is satisfied
-// by checking the intent form exists and no upload affordance is present.
+// Adaptation (S5 SF · chat-wiring): A12 made the conversational ChatPanel the
+// single primary input surface — the legacy IntentInputPanel is unmounted per
+// F-11 acceptance. The HAPPY-1 invariant — "admin-facing form, no end-user
+// upload affordance" — is preserved by asserting the ChatPanel's input +
+// submit affordances render and no `end-user-upload` element exists.
 describe('F-19 HAPPY-1 — operator opens the prototype with no prior context', () => {
-  it('Customer Workspace renders the admin-facing intent form and a CustomerIntent panel; no end-user upload affordance', () => {
+  it('Customer Workspace renders the admin-facing ChatPanel input + submit; no end-user upload affordance', () => {
     const { getByTestId, queryByTestId } = render(<CustomerRoute />);
-    expect(getByTestId('customer-intent-panel')).toBeTruthy();
-    expect(getByTestId('customer-intent-textarea')).toBeTruthy();
-    expect(getByTestId('customer-intent-submit')).toBeTruthy();
+    expect(getByTestId('customer-chat-panel')).toBeTruthy();
+    expect(getByTestId('customer-chat-panel-input')).toBeTruthy();
+    expect(getByTestId('customer-chat-panel-submit')).toBeTruthy();
     expect(queryByTestId('end-user-upload')).toBeNull();
   });
 });

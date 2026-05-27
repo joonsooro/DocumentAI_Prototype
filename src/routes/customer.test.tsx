@@ -1,15 +1,14 @@
 // @vitest-environment jsdom
 /**
- * F-11 — Customer Workspace smoke tests.
+ * F-11 — Customer Workspace smoke tests (S5 SF · chat-wiring fix).
  *
- * Asserts the route mounts, renders the five panels, and respects ALL
- * negative-contract guards from app/contract.html §2 Screen 1:
- *   - no 'Unsupported' string anywhere in DOM
- *   - no raw prompt text ('system:' / 'prompt:' / '<|')
- *   - no DAEJOO material-disposal phrase
- *   - no roadmap-candidate / ProductSignal text
- * Also asserts three-workspace separation: the customer DOM contains no
- * data-testid registered to admin or internal.
+ * Asserts the route mounts under the chat-first surface (A12), respects
+ * ALL negative-contract guards from app/contract.html §2 Screen 1, and
+ * preserves three-workspace separation. The legacy IntentInputPanel +
+ * ClarificationLoopPanel testids are GONE — the SF removed those mounts
+ * per F-11 acceptance ("the prior IntentInputPanel + ClarificationLoopPanel
+ * split is removed — no element matches data-testid='customer-clarification-
+ * loop'").
  */
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
@@ -52,21 +51,7 @@ const VIEW_MODEL: CustomerViewModel = {
     { id: 'cap-1', intentFragment: 'extract supplier', status: 'Supported', workaroundDescription: null, fieldRefs: ['supplier'] },
     { id: 'cap-2', intentFragment: 'exclude no-commercial-value samples', status: 'Supported with workaround', workaroundDescription: 'filter line items where commercial_value_indicator === false', fieldRefs: ['payable_amount', 'commercial_value_indicator'] },
   ],
-  clarifications: [
-    {
-      id: 'clar-1',
-      kind: 'low_confidence',
-      field: 'payment_terms',
-      documentRunId: 'run::1',
-      prompts: {
-        fieldMeaning: 'Can you confirm what payment_terms should mean here?',
-        postingReviewReportingImpact: 'Should low-confidence payment_terms still auto-post?',
-        supplierScopeApplicability: 'Does this rule apply to all suppliers?',
-      },
-      operatorFacingError: null,
-      raisedAt: '2026-05-25T00:00:00Z',
-    },
-  ],
+  clarifications: [],
   readiness: {
     id: 'ready-1',
     documentRunId: 'run::1',
@@ -101,35 +86,48 @@ const FORBIDDEN_LITERALS = [
 // Mount tests
 // ---------------------------------------------------------------------------
 
-describe('F-11 CustomerRoute — mounts and renders all five panels', () => {
-  it('mounts the route with the empty view-model and shows the empty-state cues', () => {
+describe('F-11 CustomerRoute — mounts the chat surface + auxiliary panels', () => {
+  it('mounts the route with the empty view-model; chat panel is the input surface', () => {
     const { getByTestId, container } = render(<CustomerRoute />);
     expect(getByTestId('customer-route')).toBeTruthy();
-    expect(getByTestId('customer-intent-panel')).toBeTruthy();
+    expect(getByTestId('customer-chat-panel')).toBeTruthy();
+    expect(getByTestId('customer-chat-panel-input')).toBeTruthy();
+    expect(getByTestId('customer-chat-panel-submit')).toBeTruthy();
     expect(getByTestId('customer-compiled-config-panel')).toBeTruthy();
     expect(getByTestId('customer-capability-panel')).toBeTruthy();
-    expect(getByTestId('customer-clarification-panel')).toBeTruthy();
     expect(getByTestId('customer-readiness-panel')).toBeTruthy();
     // Empty model: configuration panel renders its prompt-to-submit body.
     expect(container.textContent).toMatch(/Submit your intent/i);
   });
 
-  it('mounts the route with a populated view-model and renders every component', () => {
+  it('mounts the route with a populated view-model and renders every auxiliary component', () => {
     const { getByTestId, queryAllByTestId } = render(
       <CustomerRoute initialViewModel={VIEW_MODEL} />,
     );
-    // Capability list has both rows
     const capRows = queryAllByTestId(/^customer-capability-row-/);
     expect(capRows.length).toBe(2);
-    // Clarification list has the low-confidence row + all 3 prompts
-    expect(getByTestId('customer-clarification-clar-1')).toBeTruthy();
-    expect(getByTestId('customer-clarification-fieldmeaning-clar-1')).toBeTruthy();
-    expect(getByTestId('customer-clarification-impact-clar-1')).toBeTruthy();
-    expect(getByTestId('customer-clarification-scope-clar-1')).toBeTruthy();
-    // Readiness has status + reasons
     expect(getByTestId('customer-readiness-status')).toBeTruthy();
     const reasons = queryAllByTestId(/^customer-readiness-reason-\d+$/);
     expect(reasons.length).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Legacy-panel absence — the load-bearing F-11 acceptance assertion
+// ---------------------------------------------------------------------------
+
+describe('F-11 CustomerRoute — legacy panels are unmounted (A12 / F-11 acceptance)', () => {
+  it('does NOT render the legacy IntentInputPanel testids', () => {
+    const { queryByTestId } = render(<CustomerRoute />);
+    expect(queryByTestId('customer-intent-panel')).toBeNull();
+    expect(queryByTestId('customer-intent-textarea')).toBeNull();
+    expect(queryByTestId('customer-intent-submit')).toBeNull();
+  });
+
+  it('does NOT render the legacy ClarificationLoopPanel testids', () => {
+    const { queryByTestId } = render(<CustomerRoute initialViewModel={VIEW_MODEL} />);
+    expect(queryByTestId('customer-clarification-panel')).toBeNull();
+    expect(queryByTestId('customer-clarification-loop')).toBeNull();
   });
 });
 
