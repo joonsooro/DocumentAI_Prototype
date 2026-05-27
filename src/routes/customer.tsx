@@ -26,6 +26,17 @@
  * 'awaiting_notify_decision' and the notify-team question bubble is
  * appended (N9 governance still enforced at the signal-write layer
  * in src/domain/writeProvisionalSignal.ts).
+ *
+ * S5 SF-3 (2026-05-27): a deterministic RE_EXTRACT_PATTERN shortcut
+ * fires BEFORE postChatTurnDecide whenever the user message matches
+ * the anchored re-extract verbs AND a configuration already exists.
+ * It runs capability + readiness against the current configuration
+ * (no recompile) and refreshes the F-03 DocumentRun via
+ * simulateDocumentRun. The closed A12 / A14 TurnDecision union is
+ * NOT widened; chatTurnDecide.ts and the wire contract are unchanged.
+ * Also: an upload that lands after a configuration exists triggers
+ * the same runExtractionChain so the demo never sits idle on a
+ * second drop.
  */
 import { useState } from 'react';
 import {
@@ -54,6 +65,8 @@ import {
   postReadiness,
   postChatTurnDecide,
 } from '@components/customer/agentClient';
+import { simulateDocumentRun } from '@domain/simulateDocumentRun';
+import { DAEJOO_PDF_URL } from '@data/assets';
 
 type LoadingStage = 'idle' | 'turn_decide' | 'compile' | 'capability' | 'readiness';
 
@@ -70,6 +83,17 @@ const OBJECT_HEADER_TABS: readonly ObjectHeaderTab[] = Object.freeze([
   { id: 'history', label: 'History', disabled: true, disabledTooltip: 'Available in v2' },
   { id: 'attachments', label: 'Attachments', disabled: true, disabledTooltip: 'Available in v2' },
 ]);
+
+/**
+ * S5 SF-3 (2026-05-27): deterministic re-extract trigger pattern.
+ * Anchored verbs only, so a legitimate clarification that happens
+ * to mention "extract" inside a longer phrase still routes through
+ * the normal chat.turn_decide path. The literal "extract from
+ * default compile" phrase the customer used is covered by the
+ * "extract from default compile" alternative.
+ */
+const RE_EXTRACT_PATTERN =
+  /\b(?:re[-\s]?extract|re[-\s]?run\s+extraction|run\s+extraction|extract\s+(?:fields?|from\s+default\s+compile|now))\b/i;
 
 interface CustomerRouteProps {
   /** Optional seed for tests + eval harness. Defaults to an empty model. */
@@ -117,6 +141,54 @@ export default function CustomerRoute({
       kind,
     };
     return { state: applyChatTurn(prev, turn), counter: nextCounter };
+  }
+
+  /**
+   * S5 SF-3: re-extract without recompile. Used by the deterministic
+   * RE_EXTRACT_PATTERN shortcut in handleChatSubmit AND by the upload
+   * onUpload callback when a configuration already exists. Mirrors
+   * the capability + readiness halves of runCompileChain, with one
+   * addition: refresh the F-03 DocumentRun via simulateDocumentRun
+   * FIRST so the ExtractedFieldsPanel updates immediately.
+   */
+  async function runExtractionChain(
+    intent: NonNullable<CustomerViewModel['intent']>,
+    configuration: NonNullable<CustomerViewModel['configuration']>,
+  ): Promise<void> {
+    try {
+      setExtractedRun(simulateDocumentRun(DAEJOO_PDF_URL, configuration));
+
+      setStage('capability');
+      const capResp = await postCapability({ intent, configuration });
+      if (capResp.kind === 'success') {
+        const assessments = projectCapabilitiesForCustomerSurface(capResp.assessments);
+        setVm((prev) => ({ ...prev, assessments }));
+      } else {
+        setVm((prev) => ({
+          ...prev,
+          clarifications: [...prev.clarifications, capResp.clarification],
+        }));
+      }
+
+      setStage('readiness');
+      const readyResp = await postReadiness({ intent, configuration });
+      if (readyResp.kind === 'success') {
+        setVm((prev) => ({
+          ...prev,
+          readiness: readyResp.readiness,
+          clarifications: [...prev.clarifications, ...readyResp.clarifications],
+        }));
+      } else {
+        setVm((prev) => ({
+          ...prev,
+          clarifications: [...prev.clarifications, readyResp.clarification],
+        }));
+      }
+    } catch (err) {
+      setRequestError((err as Error).message);
+    } finally {
+      setStage('idle');
+    }
   }
 
   async function runCompileChain(
@@ -209,6 +281,33 @@ export default function CustomerRoute({
     setConversation(conv);
     setTurnCounter(counter);
 
+    // S5 SF-3: deterministic re-extract shortcut. When the user's
+    // message matches RE_EXTRACT_PATTERN AND a configuration already
+    // exists, bypass the live haiku-class chat.turn_decide classifier
+    // (which drifts to success_summary / clarify on repeated extract
+    // requests) and run capability + readiness directly. The bubble
+    // kind reused is 'recompile_announcement' — one of the existing
+    // 6 ChatTurnKind values; no new kind is introduced, the closed
+    // A12 / A14 sets stay closed.
+    if (
+      RE_EXTRACT_PATTERN.test(content) &&
+      vm.configuration &&
+      vm.intent
+    ) {
+      const announced = appendAssistantBubble(
+        conv,
+        counter,
+        'recompile_announcement',
+        'Re-running extraction against the current compiled configuration.',
+      );
+      conv = announced.state;
+      counter = announced.counter;
+      setConversation(conv);
+      setTurnCounter(counter);
+      await runExtractionChain(vm.intent, vm.configuration);
+      return;
+    }
+
     try {
       setStage('turn_decide');
       const decideResp = await postChatTurnDecide({ conversation: conv });
@@ -278,7 +377,17 @@ export default function CustomerRoute({
         <div style={paneStyle}>
           <UploadZonePanel
             configuration={vm.configuration}
-            onUpload={(f) => setUploadedFile(f)}
+            onUpload={(f) => {
+              setUploadedFile(f);
+              // S5 SF-3: if a configuration already exists when an
+              // upload lands, re-run capability + readiness so the
+              // demo never sits idle on a second drop. When there is
+              // no configuration yet, only the PdfViewerPanel + the
+              // upload-announcement update (SF-1 contract).
+              if (vm.configuration && vm.intent) {
+                void runExtractionChain(vm.intent, vm.configuration);
+              }
+            }}
             onDocumentRun={(run) => setExtractedRun(run)}
           />
           <PdfViewerPanel hasUpload={uploadedFile !== null} />
