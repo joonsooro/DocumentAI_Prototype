@@ -17,7 +17,7 @@
  *     customer- or admin- data-testids.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, act } from '@testing-library/react';
+import { render, act, fireEvent } from '@testing-library/react';
 import InternalRoute from './internal';
 import type { InternalViewModel } from '@components/internal/viewModel';
 import type {
@@ -233,5 +233,37 @@ describe('F-13 three-workspace separation (HAPPY-6)', () => {
     const { container } = render(<InternalRoute initialViewModel={VIEW_MODEL} />);
     expect(container.querySelector('[data-testid^="customer-"]')).toBeNull();
     expect(container.querySelector('[data-testid^="admin-"]')).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F-30 — Agent I/O Log entry point + inline mount
+// ---------------------------------------------------------------------------
+
+describe('F-30 InternalRoute — Agent I/O Log entry point', () => {
+  it('renders the "Agent I/O Log" entry-point button in the F-21 shell on /internal', () => {
+    const { getByTestId } = render(<InternalRoute />);
+    const btn = getByTestId('internal-agent-io-log-button');
+    expect(btn).toBeTruthy();
+    expect(btn.textContent).toBe('Agent I/O Log');
+  });
+
+  it('does NOT mount the agent-io-log-panel until the button is clicked', () => {
+    const { queryByTestId } = render(<InternalRoute />);
+    expect(queryByTestId('agent-io-log-panel')).toBeNull();
+  });
+
+  it('mounts the agent-io-log-panel inline on /internal when the button is clicked', () => {
+    const { getByTestId, queryByTestId } = render(<InternalRoute />);
+    fireEvent.click(getByTestId('internal-agent-io-log-button'));
+    expect(queryByTestId('agent-io-log-panel')).not.toBeNull();
+  });
+
+  it('toggling the button again unmounts the panel', () => {
+    const { getByTestId, queryByTestId } = render(<InternalRoute />);
+    fireEvent.click(getByTestId('internal-agent-io-log-button'));
+    expect(queryByTestId('agent-io-log-panel')).not.toBeNull();
+    fireEvent.click(getByTestId('internal-agent-io-log-button'));
+    expect(queryByTestId('agent-io-log-panel')).toBeNull();
   });
 });

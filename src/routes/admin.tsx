@@ -33,6 +33,7 @@ import { AutoConfirmCriteriaPanel } from '@components/admin/AutoConfirmCriteriaP
 import { SchemaQualityPanel } from '@components/admin/SchemaQualityPanel';
 import { CorrectionTrendPanel } from '@components/admin/CorrectionTrendPanel';
 import { RecommendationQueuePanel } from '@components/admin/RecommendationQueuePanel';
+import { AgentIoLogPanel } from '@components/shared/AgentIoLogPanel';
 import type { AdminRecommendation } from '@domain/types';
 
 // 3 verbatim recommendation titles required by F-12 acceptance. These
@@ -87,6 +88,12 @@ interface AdminRouteProps {
 export default function AdminRoute({ initialViewModel = EMPTY_ADMIN_VIEW_MODEL }: AdminRouteProps) {
   const [vm] = useState<AdminViewModel>(initialViewModel);
   const [activeTab, setActiveTab] = useState<string>('recommendations');
+  // F-30: Agent I/O Log entry point — visible button in the F-21
+  // workspace shell on /admin. Clicking it mounts the panel inline on
+  // this route. The CustomerViewModel structurally has no field for
+  // agent payloads, so this affordance is impossible to mount on
+  // /customer (preserves N1 + N3 by construction per A16).
+  const [showAgentIoLog, setShowAgentIoLog] = useState<boolean>(false);
 
   // Seed the 3 verbatim recommendation titles when the view-model is
   // empty so the demo opens with visible content. F-15 + N2 filter
@@ -105,8 +112,20 @@ export default function AdminRoute({ initialViewModel = EMPTY_ADMIN_VIEW_MODEL }
         activeTab={activeTab}
         onTab={setActiveTab}
       />
+      <div style={shellActionsStyle}>
+        <button
+          type="button"
+          data-testid="admin-agent-io-log-button"
+          onClick={() => setShowAgentIoLog((prev) => !prev)}
+          aria-pressed={showAgentIoLog}
+          style={agentIoLogButtonStyle}
+        >
+          Agent I/O Log
+        </button>
+      </div>
       <AdminKpiStrip />
       <div style={contentStyle}>
+        {showAgentIoLog ? <AgentIoLogPanel /> : null}
         <RecommendationQueuePanel recommendations={recommendationsForRender} />
         <ThresholdGovernancePanel />
         <PromptVersionPanel versions={vm.promptVersions} />
@@ -130,4 +149,21 @@ const contentStyle: React.CSSProperties = {
   flexDirection: 'column',
   gap: 'var(--app-section-gap-y)',
   padding: '0 var(--app-padding-x) var(--app-padding-x)',
+};
+
+const shellActionsStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'flex-end',
+  padding: '0 var(--app-padding-x)',
+};
+
+const agentIoLogButtonStyle: React.CSSProperties = {
+  padding: '6px 12px',
+  borderRadius: 'var(--radius-button, 4px)',
+  border: '1px solid var(--line, #d9d9d9)',
+  background: 'var(--panel, #fff)',
+  color: 'var(--ink-1, #32363a)',
+  fontFamily: 'var(--font-sans)',
+  fontSize: 'var(--body-size, 13px)',
+  cursor: 'pointer',
 };

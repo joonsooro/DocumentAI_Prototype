@@ -9,8 +9,8 @@
  * Also asserts three-workspace separation: /admin DOM has no
  * customer-/internal- data-testids.
  */
-import { describe, it, expect } from 'vitest';
-import { render } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { render, fireEvent } from '@testing-library/react';
 import AdminRoute from './admin';
 import type { AdminViewModel } from '@components/admin/viewModel';
 import type {
@@ -19,6 +19,7 @@ import type {
   CorrectionEvent,
   PromptVersion,
 } from '@domain/types';
+import { _resetQualityMetricLogForTests } from '@runtime/qualityMetricLog';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -177,5 +178,47 @@ describe('F-12 three-workspace separation (HAPPY-6)', () => {
     const { container } = render(<AdminRoute initialViewModel={VIEW_MODEL} />);
     expect(container.querySelector('[data-testid^="customer-"]')).toBeNull();
     expect(container.querySelector('[data-testid^="internal-"]')).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F-30 — Agent I/O Log entry point + inline mount
+// ---------------------------------------------------------------------------
+
+describe('F-30 AdminRoute — Agent I/O Log entry point', () => {
+  beforeEach(() => {
+    _resetQualityMetricLogForTests();
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+  afterEach(() => {
+    _resetQualityMetricLogForTests();
+    vi.restoreAllMocks();
+  });
+
+  it('renders the "Agent I/O Log" entry-point button in the F-21 shell on /admin', () => {
+    const { getByTestId } = render(<AdminRoute />);
+    const btn = getByTestId('admin-agent-io-log-button');
+    expect(btn).toBeTruthy();
+    expect(btn.textContent).toBe('Agent I/O Log');
+  });
+
+  it('does NOT mount the agent-io-log-panel until the button is clicked', () => {
+    const { queryByTestId } = render(<AdminRoute />);
+    expect(queryByTestId('agent-io-log-panel')).toBeNull();
+  });
+
+  it('mounts the agent-io-log-panel inline on /admin when the button is clicked', () => {
+    const { getByTestId, queryByTestId } = render(<AdminRoute />);
+    fireEvent.click(getByTestId('admin-agent-io-log-button'));
+    expect(queryByTestId('agent-io-log-panel')).not.toBeNull();
+  });
+
+  it('toggling the button again unmounts the panel', () => {
+    const { getByTestId, queryByTestId } = render(<AdminRoute />);
+    fireEvent.click(getByTestId('admin-agent-io-log-button'));
+    expect(queryByTestId('agent-io-log-panel')).not.toBeNull();
+    fireEvent.click(getByTestId('admin-agent-io-log-button'));
+    expect(queryByTestId('agent-io-log-panel')).toBeNull();
   });
 });

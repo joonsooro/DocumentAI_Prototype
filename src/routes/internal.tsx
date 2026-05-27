@@ -36,6 +36,7 @@ import { RegressionSignalsPanel } from '@components/internal/RegressionSignalsPa
 import { QualityMetricLogPanel } from '@components/internal/QualityMetricLogPanel';
 import { CapabilityGapAnalyticsPanel } from '@components/internal/CapabilityGapAnalyticsPanel';
 import { RoadmapSignalsPanel } from '@components/internal/RoadmapSignalsPanel';
+import { AgentIoLogPanel } from '@components/shared/AgentIoLogPanel';
 
 const OBJECT_HEADER_TABS: readonly ObjectHeaderTab[] = Object.freeze([
   { id: 'flywheel', label: 'Flywheel' },
@@ -54,6 +55,10 @@ export default function InternalRoute({
 }: InternalRouteProps) {
   const [vm] = useState<InternalViewModel>(initialViewModel);
   const [activeTab, setActiveTab] = useState<string>('flywheel');
+  // F-30: Agent I/O Log entry point — visible button in the F-21
+  // workspace shell on /internal. Same affordance as /admin, same
+  // structural guard against /customer.
+  const [showAgentIoLog, setShowAgentIoLog] = useState<boolean>(false);
 
   const freeTextSignals = vm.approvedSignals.filter(
     (s) => s.signalType === 'unsupported_free_text_business_condition',
@@ -69,7 +74,19 @@ export default function InternalRoute({
         activeTab={activeTab}
         onTab={setActiveTab}
       />
+      <div style={shellActionsStyle}>
+        <button
+          type="button"
+          data-testid="internal-agent-io-log-button"
+          onClick={() => setShowAgentIoLog((prev) => !prev)}
+          aria-pressed={showAgentIoLog}
+          style={agentIoLogButtonStyle}
+        >
+          Agent I/O Log
+        </button>
+      </div>
       <div style={contentStyle}>
+        {showAgentIoLog ? <AgentIoLogPanel /> : null}
         <FlywheelDiagram />
         {freeTextSignals.map((signal) => (
           <HiddenSignalCard key={signal.id} signal={signal} />
@@ -95,4 +112,21 @@ const contentStyle: React.CSSProperties = {
   flexDirection: 'column',
   gap: 'var(--app-section-gap-y)',
   padding: '0 var(--app-padding-x) var(--app-padding-x)',
+};
+
+const shellActionsStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'flex-end',
+  padding: '0 var(--app-padding-x)',
+};
+
+const agentIoLogButtonStyle: React.CSSProperties = {
+  padding: '6px 12px',
+  borderRadius: 'var(--radius-button, 4px)',
+  border: '1px solid var(--line, #d9d9d9)',
+  background: 'var(--panel, #fff)',
+  color: 'var(--ink-1, #32363a)',
+  fontFamily: 'var(--font-sans)',
+  fontSize: 'var(--body-size, 13px)',
+  cursor: 'pointer',
 };

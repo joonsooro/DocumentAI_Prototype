@@ -198,3 +198,30 @@ describe('F-11 three-workspace separation (HAPPY-6)', () => {
     expect(container.querySelector('[data-testid="customer-route"]')).not.toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// F-30 — Agent I/O Log structural absence on /customer (N1 + N3 by
+// construction per A16 + the CustomerViewModel structural guard)
+// ---------------------------------------------------------------------------
+
+describe('F-30 CustomerRoute — Agent I/O Log structural absence (N1 + N3)', () => {
+  it('queryByTestId("agent-io-log-panel") returns null on /customer (empty view-model)', () => {
+    const { queryByTestId } = render(<CustomerRoute />);
+    expect(queryByTestId('agent-io-log-panel')).toBeNull();
+  });
+
+  it('queryByTestId("agent-io-log-panel") returns null on /customer (populated view-model)', () => {
+    const { queryByTestId } = render(<CustomerRoute initialViewModel={VIEW_MODEL} />);
+    expect(queryByTestId('agent-io-log-panel')).toBeNull();
+  });
+
+  it('no "Agent I/O Log" button text renders on /customer', () => {
+    const { container } = render(<CustomerRoute initialViewModel={VIEW_MODEL} />);
+    expect(container.textContent ?? '').not.toContain('Agent I/O Log');
+  });
+
+  it('no agent-io-log-* data-testid renders on /customer', () => {
+    const { container } = render(<CustomerRoute initialViewModel={VIEW_MODEL} />);
+    expect(container.querySelector('[data-testid^="agent-io-log-"]')).toBeNull();
+  });
+});
