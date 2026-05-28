@@ -1,0 +1,118 @@
+{
+  "generatedAt": "2026-05-28T14:41:56.731Z",
+  "status": "completed",
+  "port": 3101,
+  "smokeKind": "post-cycle-2-merged-agent",
+  "probes": [
+    {
+      "id": "A",
+      "label": "Stateless first-turn — the failing transcript verbatim (D2-binding bug-fix proof)",
+      "userMessage": "Extract the key AP invoice header fields from this DAEJOO invoice: supplier name, invoice number, PO number, invoice date, total amount, currency, tax amount, and supplier branch if available.",
+      "expectedAction": "compile",
+      "expectedNotes": "schema with 8-9 fields; extractionSystemPrompt non-empty; no D2-forbidden phrases in chat output",
+      "httpStatus": 200,
+      "latencyMs": 21212,
+      "responseKind": "success",
+      "decisionAction": "compile",
+      "payloadShape": {
+        "keys": [
+          "action",
+          "schema",
+          "processingMode",
+          "extractionSystemPrompt"
+        ],
+        "fieldCount": 8,
+        "processingMode": "auto_confirm",
+        "extractionSystemPromptLen": 1665
+      },
+      "chatVisibleExcerpt": "You are an intelligent document processing system specializing in commercial invoice data extraction. Your task is to extract accounts payable header fields from the provided DAEJOO commercial invoice",
+      "d2ForbiddenPhrasesDetected": [],
+      "failure": null,
+      "error": null
+    },
+    {
+      "id": "B",
+      "label": "Stateful follow-up — \"add tax amount and currency to the extraction\" → recompile",
+      "userMessage": "add tax amount and currency to the extraction",
+      "expectedAction": "recompile",
+      "expectedNotes": "schema includes the new fields; extractionSystemPrompt regenerated",
+      "httpStatus": 200,
+      "latencyMs": 18263,
+      "responseKind": "success",
+      "decisionAction": "recompile",
+      "payloadShape": {
+        "keys": [
+          "action",
+          "schema",
+          "processingMode",
+          "extractionSystemPrompt"
+        ],
+        "fieldCount": 8,
+        "processingMode": "auto_confirm",
+        "extractionSystemPromptLen": 1922
+      },
+      "chatVisibleExcerpt": "You are an intelligent document processing system specializing in commercial invoice data extraction. Your task is to extract accounts payable header fields from the provided DAEJOO commercial invoice",
+      "d2ForbiddenPhrasesDetected": [],
+      "failure": null,
+      "error": null
+    },
+    {
+      "id": "C",
+      "label": "Capability classification — \"link to S/4 HANA\"",
+      "userMessage": "can you link this to S/4 HANA?",
+      "expectedAction": "capability_class_question",
+      "expectedNotes": "confirmationQuestion / capabilityGapDescription / capabilitySurfaceCitation / pendingSignalDescription all non-empty; citation references a section of docs/document-ai-capability-surface.md",
+      "httpStatus": 200,
+      "latencyMs": 13530,
+      "responseKind": "success",
+      "decisionAction": "capability_class_question",
+      "payloadShape": {
+        "keys": [
+          "action",
+          "confirmationQuestion",
+          "capabilityGapDescription",
+          "capabilitySurfaceCitation",
+          "pendingSignalDescription"
+        ],
+        "confirmationQuestionLen": 544,
+        "capabilityGapDescriptionLen": 1014,
+        "capabilitySurfaceCitation": "Integration Boundaries & Consumption Patterns, Service Plans (p. 10-22) and Enrichment & Downstream Consumption (p. 45-50) of docs/document-ai-capability-surface.md",
+        "pendingSignalDescriptionLen": 551,
+        "allFourPresent": true
+      },
+      "capabilitySurfaceCitation": "Integration Boundaries & Consumption Patterns, Service Plans (p. 10-22) and Enrichment & Downstream Consumption (p. 45-50) of docs/document-ai-capability-surface.md",
+      "chatVisibleExcerpt": "Linking extracted invoice data to SAP S/4HANA involves integration capabilities beyond what Document AI's core extraction service provides directly. Document AI extracts and structures data from docum",
+      "d2ForbiddenPhrasesDetected": [],
+      "failure": null,
+      "error": null
+    },
+    {
+      "id": "D",
+      "label": "Show-me-the-prompt turn — \"show me the prompt\"",
+      "userMessage": "show me the prompt",
+      "expectedAction": "clarify OR a route-side prompt_display turn (either acceptable in v1; document which the merged agent emits)",
+      "httpStatus": 200,
+      "latencyMs": 3483,
+      "responseKind": "success",
+      "decisionAction": "clarify",
+      "payloadShape": {
+        "keys": [
+          "action",
+          "clarificationContent"
+        ],
+        "clarificationContentLen": 172
+      },
+      "chatVisibleExcerpt": "Would you like me to show you the extraction system prompt I generated for the previous configuration, or would you like to modify the field list and see an updated prompt?",
+      "d2ForbiddenPhrasesDetected": [],
+      "promptDisplayTurnEmitted": "route-side (v1 route renders prompt_display from the stored extractionSystemPrompt regardless of decision.action)",
+      "failure": null,
+      "error": null
+    }
+  ],
+  "bucket": {
+    "classification": "GREEN",
+    "justification": "All 4 probes returned the expected action shapes (or the defensible alternative for Probe D), and no D2-forbidden phrase appeared in any chat-visible output.",
+    "drifts": [],
+    "d2Hits": []
+  }
+}

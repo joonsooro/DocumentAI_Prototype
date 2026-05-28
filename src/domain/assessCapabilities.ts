@@ -35,23 +35,44 @@ import type {
   CustomerIntent,
   CustomerVisibleStatus,
 } from '@domain/types';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve as resolvePath } from 'node:path';
 import { callAgent } from '@runtime/aiCoreClient';
 import appSpec from '../../app/app-spec.json' with { type: 'json' };
+
 // A2 amendment / F-05 — Cycle 2 (2026-05-28). Curated SAP Document AI
-// capability surface (~6K tokens, 6 sections) imported as a static
-// string at build time via Vite's ?raw query suffix. No retrieval, no
-// chunking, no graph store in v1. Revisit conditions for swapping to
-// RAG / graph-RAG (Cognee) are tracked in OQ-8.
-import capabilitySurface from '../../docs/document-ai-capability-surface.md?raw';
+// capability surface (~6K tokens, 6 sections) loaded as a static
+// string at module load time. No retrieval, no chunking, no graph
+// store in v1. Revisit conditions for swapping to RAG / graph-RAG
+// (Cognee) are tracked in OQ-8.
+//
+// Cycle 2 interim-smoke note: this module is imported by BOTH the
+// Vite browser/SSR pipeline AND the tsx-based sidecar dev-agent-server
+// (scripts/dev-agent-server.ts) AND vitest. Vite's ?raw query suffix
+// works under Vite + vitest but not under raw tsx, so we use
+// node:fs.readFileSync at module load instead. Same semantics: the
+// curated artifact is embedded statically at module load time; same
+// fail-fast sanity check on length.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const CAPABILITY_SURFACE_PATH = resolvePath(
+  __dirname,
+  '..',
+  '..',
+  'docs',
+  'document-ai-capability-surface.md',
+);
+const capabilitySurface: string = readFileSync(CAPABILITY_SURFACE_PATH, 'utf8');
 
 // Fail-fast sanity check at module load time. If the curated artifact
-// is missing, truncated, or the ?raw import silently produced an empty
+// is missing, truncated, or the file read silently produced an empty
 // string, throw rather than ship empty grounding context.
 if (typeof capabilitySurface !== 'string' || capabilitySurface.length < 5000) {
   throw new Error(
     `assessCapabilities: curated capability surface failed length sanity check ` +
       `(expected >5000 chars, got ${typeof capabilitySurface === 'string' ? capabilitySurface.length : 'non-string'}). ` +
-      `Check docs/document-ai-capability-surface.md and Vite ?raw import.`,
+      `Check docs/document-ai-capability-surface.md and the module-load file read.`,
   );
 }
 

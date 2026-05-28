@@ -27,7 +27,6 @@ import {
   handleCompile,
   handleCapability,
   handleReadiness,
-  handleChatTurnDecide,
 } from '../src/server/devAgentMiddleware';
 import { initLangfuseTracerProvider, shutdownLangfuse } from '../src/runtime/langfuseClient';
 import { registerLangfuseSink } from '../src/runtime/qualityMetricLog';
@@ -52,7 +51,6 @@ const HANDLERS: Record<string, Handler> = {
   '/api/compile': handleCompile as Handler,
   '/api/capability': handleCapability as Handler,
   '/api/readiness': handleReadiness as Handler,
-  '/api/chat-turn-decide': handleChatTurnDecide as Handler,
 };
 
 function isHandled(url: string | undefined): url is keyof typeof HANDLERS {
@@ -65,10 +63,9 @@ function validate(url: keyof typeof HANDLERS, body: unknown): { ok: true } | { o
   }
   const b = body as Record<string, unknown>;
   if (url === '/api/compile') {
-    if (typeof b.raw !== 'string' || b.raw.trim().length === 0) {
-      return { ok: false, error: 'raw_required' };
-    }
-  } else if (url === '/api/chat-turn-decide') {
+    // Cycle 2 (2026-05-28): /api/compile now takes a ConversationState
+    // (the merged Compile Agent's input). The deleted /api/chat-turn-decide
+    // route is gone; its job is absorbed into /api/compile per A17.
     if (typeof b.conversation !== 'object' || b.conversation === null) {
       return { ok: false, error: 'conversation_required' };
     }

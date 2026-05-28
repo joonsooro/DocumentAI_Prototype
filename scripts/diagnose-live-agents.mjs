@@ -1,39 +1,38 @@
-// Cycle 0 (Architectural Re-derivation 2026-05-28) — Live-agent diagnostic.
+// Cycle 2 (Architectural Re-derivation 2026-05-28) — Post-Cycle-2 live smoke.
 //
-// Read-only probe of the four live agent endpoints currently mounted on the
-// dev agent server:
+// Originally a Cycle 0 diagnostic of the 4-agent surface; re-pointed in
+// Cycle 2 to exercise the MERGED Compile Agent (A17 / F-04) at /api/compile
+// with the 4-probe matrix the orchestrator handed off:
 //
-//   POST /api/compile            (F-04 — schema generation, Sonnet-class)
-//   POST /api/capability         (F-05 — capability assessment, today: 5 canned classes)
-//   POST /api/readiness          (F-06 — deterministic status + live prose for 5 keys)
-//   POST /api/chat-turn-decide   (F-28 — small-model router, KNOWN-DRIFTING)
+//   Probe A — stateless first-turn (the bug-fix proof).
+//   Probe B — stateful follow-up "add tax amount and currency" → 'recompile'.
+//   Probe C — capability_class_question ("link to S/4 HANA?").
+//   Probe D — show-me-the-prompt turn.
 //
-// For each (agent × transcript) pair we capture:
-//   - request shape (the URL + the keys we POSTed; we never echo the model
-//     prompt body — the privacy redaction tenet still binds)
-//   - response shape (kind, action / classification field, top-level keys)
-//   - latency ms
-//   - any error (HTTP status or thrown)
+// For each probe we capture decision.action, payload shape, chat-visible
+// content excerpt, whether any of the 11 D2-forbidden phrases appears in
+// chat-visible content, latency, and token usage (when surfaced).
 //
-// Outputs:
-//   scripts/diagnose-live-agents.json   (machine-readable)
-//   app/diagnostic-2026-05-28.html      (human-readable per-agent verdict)
+// Outputs (append, do not overwrite):
+//   scripts/diagnose-live-agents.json   (machine-readable; replaced each run)
+//   app/diagnostic-2026-05-28.html      (appends a POST-CYCLE-2 SMOKE section
+//                                        next to the Cycle 0 content so the
+//                                        prior verdict is preserved alongside)
 //
 // Halt + stub:
 //   If AICORE_KEY_PATH is empty or its file is unreadable, we emit a
-//   "credentials missing — diagnostic skipped" stub HTML and exit 0 without
-//   fabricating results. This is the explicit Cycle 0 behaviour from the
-//   architectural plan.
+//   "credentials missing — diagnostic skipped" stub HTML and exit 0
+//   without fabricating results.
 //
 // Usage:
 //   node --env-file=.env scripts/diagnose-live-agents.mjs
 //
 // Exit codes:
-//   0 — diagnostic completed (or skipped honestly because no credentials)
+//   0 — smoke completed (or skipped honestly because no credentials)
 //   1 — internal scripting error (e.g. could not boot the dev agent server)
 
 import { spawn } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -46,19 +45,36 @@ const REPO_ROOT = resolve(__dirname, '..');
 const JSON_OUT = resolve(REPO_ROOT, 'scripts/diagnose-live-agents.json');
 const HTML_OUT = resolve(REPO_ROOT, 'app/diagnostic-2026-05-28.html');
 
-const PORT = 3101; // intentionally non-default — avoids colliding with a
-                   // long-running `npm run dev:server` the user may already
-                   // have open in another terminal.
+const PORT = 3101;
 
 // ---------------------------------------------------------------------------
-// 1. Honest skip if credentials missing
+// 1. D2-forbidden phrases — lifted verbatim from COMPILE_SYSTEM_PROMPT.
+//    Cycle 2's merged agent must NEVER emit any of these in chat-visible
+//    output. We substring-grep each probe's chat-visible content.
+// ---------------------------------------------------------------------------
+const D2_FORBIDDEN_PHRASES = Object.freeze([
+  'share the document',
+  'share the file',
+  'share the invoice',
+  'upload the file',
+  'upload the document',
+  'attach the invoice',
+  'attach the document',
+  'provide the document',
+  'provide the image',
+  'I need to see the actual invoice',
+  'could you share',
+]);
+
+// ---------------------------------------------------------------------------
+// 2. Honest skip if credentials missing
 // ---------------------------------------------------------------------------
 function emitStubAndExit(reason) {
   const html = `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Cycle 0 diagnostic · 2026-05-28 · credentials missing</title>
+  <title>Post-Cycle-2 live smoke · 2026-05-28 · credentials missing</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 760px; margin: 2em auto; padding: 0 1em; color: #1d1d1f; }
     h1 { font-size: 1.4em; }
@@ -68,17 +84,14 @@ function emitStubAndExit(reason) {
   </style>
 </head>
 <body>
-  <h1>Cycle 0 diagnostic · credentials missing — skipped</h1>
+  <h1>Post-Cycle-2 live smoke · credentials missing — skipped</h1>
   <div class="stub">
-    <p><strong>The live-agent diagnostic did not run.</strong></p>
+    <p><strong>The live smoke did not run.</strong></p>
     <p>Reason: ${escapeHtml(reason)}</p>
     <p>Expected: <code>AICORE_KEY_PATH</code> set in <code>.env</code> and pointing
     to a readable SAP AI Core service-key JSON file. Re-run with
-    <code>node --env-file=.env scripts/diagnose-live-agents.mjs</code> once that
-    is in place.</p>
-    <p>No diagnostic results were fabricated. The Cycle 0 stop-condition
-    machinery (proceed vs. re-enter plan mode) cannot be evaluated until this
-    runs against live agents.</p>
+    <code>set -a; source .env; set +a; node scripts/diagnose-live-agents.mjs</code>
+    once that is in place.</p>
   </div>
   <p class="meta">Generated by <code>scripts/diagnose-live-agents.mjs</code> at ${new Date().toISOString()}.</p>
 </body>
@@ -112,39 +125,51 @@ try {
 }
 
 // ---------------------------------------------------------------------------
-// 2. Transcripts — the four user-typed messages this Cycle 0 probes
+// 3. Probe definitions
 // ---------------------------------------------------------------------------
-const TRANSCRIPTS = [
+const PROBES = [
   {
-    id: 'T1_failing_first_turn',
-    label: 'The user\'s failing transcript verbatim (first-turn extract intent)',
-    text: 'Extract the key AP invoice header fields from this DAEJOO invoice: supplier name, invoice number, PO number, invoice date, total amount, currency, tax amount, and supplier branch if available.',
+    id: 'A',
+    label: 'Stateless first-turn — the failing transcript verbatim (D2-binding bug-fix proof)',
+    userMessage:
+      'Extract the key AP invoice header fields from this DAEJOO invoice: supplier name, invoice number, PO number, invoice date, total amount, currency, tax amount, and supplier branch if available.',
+    expectedAction: 'compile',
+    expectedNotes:
+      'schema with 8-9 fields; extractionSystemPrompt non-empty; no D2-forbidden phrases in chat output',
   },
   {
-    id: 'T2_recompile',
-    label: 'Re-extract / add-fields turn',
-    text: 'add tax amount and currency to the extraction',
+    id: 'B',
+    label: 'Stateful follow-up — "add tax amount and currency to the extraction" → recompile',
+    userMessage: 'add tax amount and currency to the extraction',
+    expectedAction: 'recompile',
+    expectedNotes: 'schema includes the new fields; extractionSystemPrompt regenerated',
+    chainsAfterProbe: 'A',
   },
   {
-    id: 'T3_capability_gap',
-    label: 'Out-of-scope integration ask',
-    text: 'can you link this to S/4 HANA?',
+    id: 'C',
+    label: 'Capability classification — "link to S/4 HANA"',
+    userMessage: 'can you link this to S/4 HANA?',
+    expectedAction: 'capability_class_question',
+    expectedNotes:
+      'confirmationQuestion / capabilityGapDescription / capabilitySurfaceCitation / pendingSignalDescription all non-empty; citation references a section of docs/document-ai-capability-surface.md',
+    chainsAfterProbe: 'A',
   },
   {
-    id: 'T4_show_prompt',
-    label: 'Show-me-the-prompt turn',
-    text: 'show me the prompt',
+    id: 'D',
+    label: 'Show-me-the-prompt turn — "show me the prompt"',
+    userMessage: 'show me the prompt',
+    expectedAction:
+      "clarify OR a route-side prompt_display turn (either acceptable in v1; document which the merged agent emits)",
+    chainsAfterProbe: 'A',
   },
 ];
 
 // ---------------------------------------------------------------------------
-// 3. Boot the sidecar dev-agent-server
+// 4. Boot the sidecar dev-agent-server
 // ---------------------------------------------------------------------------
 function bootServer() {
   return new Promise((resolveBoot, rejectBoot) => {
     const env = { ...process.env, AGENT_SERVER_PORT: String(PORT) };
-    // We invoke tsx directly with --env-file so the child gets AICORE_KEY_PATH
-    // even if the parent process was not started with --env-file=.env.
     const child = spawn(
       'npx',
       ['--yes', 'tsx', '--env-file=.env', 'scripts/dev-agent-server.ts'],
@@ -173,7 +198,6 @@ function bootServer() {
         );
       }
     });
-    // 30s boot budget — first tsx invocation can compile slowly.
     setTimeout(() => {
       if (!booted) {
         try { child.kill('SIGKILL'); } catch { /* noop */ }
@@ -186,10 +210,43 @@ function bootServer() {
 }
 
 // ---------------------------------------------------------------------------
-// 4. Per-endpoint probe — captures latency, response shape, response classification field
+// 5. Conversation state builders
 // ---------------------------------------------------------------------------
-async function probe(url, body, requestKeys) {
-  const fullUrl = `http://localhost:${PORT}${url}`;
+function buildConversation(turns) {
+  return {
+    id: `conv::smoke::${Date.now()}`,
+    turns,
+    compiledConfigVersionRefs: [],
+    status: 'collecting',
+    pendingSignal: null,
+  };
+}
+
+function userTurn(probeId, content) {
+  return {
+    id: `turn::${probeId}::user`,
+    role: 'user',
+    content,
+    timestamp: new Date().toISOString(),
+    kind: 'message',
+  };
+}
+
+function assistantTurn(probeId, kind, content) {
+  return {
+    id: `turn::${probeId}::asst`,
+    role: 'assistant',
+    content,
+    timestamp: new Date().toISOString(),
+    kind,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 6. Probe — POST /api/compile and parse the merged-agent decision
+// ---------------------------------------------------------------------------
+async function probeCompile(conversation) {
+  const fullUrl = `http://localhost:${PORT}/api/compile`;
   const t0 = Date.now();
   let httpStatus = null;
   let parsed = null;
@@ -198,7 +255,7 @@ async function probe(url, body, requestKeys) {
     const resp = await fetch(fullUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ conversation }),
     });
     httpStatus = resp.status;
     try {
@@ -210,127 +267,78 @@ async function probe(url, body, requestKeys) {
     errorMessage = `fetch failed: ${fetchErr.message}`;
   }
   const latencyMs = Date.now() - t0;
-  // Stash the parsed body so the orchestrator can reuse compile's
-  // configuration for chained downstream probes without a redundant second
-  // call to the live tenant.
-  const fullBody = parsed;
 
-  // Response-shape sketch — top-level keys + the agent's classification field
-  // when known. We intentionally do NOT echo the model's free-text content
-  // (privacy redaction tenet). Field counts and processingMode etc. ARE safe
-  // structural signal.
-  const shape = parsed && typeof parsed === 'object'
-    ? {
-        topLevelKeys: Object.keys(parsed),
-        kind: parsed.kind ?? null,
-      }
-    : null;
+  return { httpStatus, parsed, errorMessage, latencyMs };
+}
 
-  // Per-endpoint classification / action field summary
-  let classification = null;
-  if (parsed && parsed.kind === 'success') {
-    if (url === '/api/compile') {
-      classification = {
-        fieldCount: parsed.configuration?.schema?.fields?.length ?? null,
-        processingMode: parsed.configuration?.processingMode ?? null,
-      };
-    } else if (url === '/api/capability') {
-      const ratings = (parsed.assessments ?? []).map((a) => a?.rating).filter(Boolean);
-      classification = {
-        assessmentCount: parsed.assessments?.length ?? null,
-        ratingDistribution: bucketCounts(ratings),
-      };
-    } else if (url === '/api/readiness') {
-      classification = {
-        status: parsed.readiness?.status ?? null,
-        clarificationCount: parsed.clarifications?.length ?? null,
-      };
-    } else if (url === '/api/chat-turn-decide') {
-      classification = {
-        action: parsed.decision?.action ?? null,
-        hasContent: typeof parsed.decision?.content === 'string'
-          ? parsed.decision.content.length > 0
+/**
+ * Build the chat-visible content excerpt for a decision. This is everything
+ * the customer would see in the chat bubble; we run the D2 substring grep
+ * against this.
+ */
+function chatVisibleContent(decision) {
+  if (!decision) return '';
+  switch (decision.action) {
+    case 'compile':
+    case 'recompile':
+      return decision.extractionSystemPrompt ?? '';
+    case 'clarify':
+      return decision.clarificationContent ?? '';
+    case 'capability_class_question':
+      return [
+        decision.confirmationQuestion ?? '',
+        decision.capabilityGapDescription ?? '',
+        decision.pendingSignalDescription ?? '',
+      ]
+        .filter(Boolean)
+        .join(' || ');
+    case 'success_summary':
+      return decision.summaryContent ?? '';
+    default:
+      return JSON.stringify(decision).slice(0, 400);
+  }
+}
+
+function detectForbiddenPhrases(text) {
+  if (!text || typeof text !== 'string') return [];
+  const lower = text.toLowerCase();
+  return D2_FORBIDDEN_PHRASES.filter((p) => lower.includes(p.toLowerCase()));
+}
+
+function payloadShape(decision) {
+  if (!decision) return null;
+  switch (decision.action) {
+    case 'compile':
+    case 'recompile':
+      return {
+        keys: Object.keys(decision),
+        fieldCount: decision.schema?.fields?.length ?? null,
+        processingMode: decision.processingMode ?? null,
+        extractionSystemPromptLen: typeof decision.extractionSystemPrompt === 'string'
+          ? decision.extractionSystemPrompt.length
           : null,
       };
-    }
-  } else if (parsed && parsed.kind === 'failure') {
-    classification = {
-      failureReason: parsed.metric?.errorReason ?? null,
-    };
+    case 'clarify':
+      return { keys: Object.keys(decision), clarificationContentLen: (decision.clarificationContent ?? '').length };
+    case 'capability_class_question':
+      return {
+        keys: Object.keys(decision),
+        confirmationQuestionLen: (decision.confirmationQuestion ?? '').length,
+        capabilityGapDescriptionLen: (decision.capabilityGapDescription ?? '').length,
+        capabilitySurfaceCitation: decision.capabilitySurfaceCitation ?? null,
+        pendingSignalDescriptionLen: (decision.pendingSignalDescription ?? '').length,
+        allFourPresent: ['confirmationQuestion', 'capabilityGapDescription', 'capabilitySurfaceCitation', 'pendingSignalDescription']
+          .every((k) => typeof decision[k] === 'string' && decision[k].length > 0),
+      };
+    case 'success_summary':
+      return { keys: Object.keys(decision), summaryContentLen: (decision.summaryContent ?? '').length };
+    default:
+      return { keys: Object.keys(decision), action: decision.action };
   }
-
-  return {
-    endpoint: url,
-    requestKeys,
-    httpStatus,
-    responseShape: shape,
-    classification,
-    latencyMs,
-    error: errorMessage,
-    fullBody,
-  };
-}
-
-function sanitiseProbe(probe) {
-  // Strip the full body before serialising into the JSON / HTML report —
-  // it's reused in-memory for chained calls only.
-  const { fullBody: _omit, ...rest } = probe;
-  return rest;
-}
-
-function bucketCounts(values) {
-  return values.reduce((acc, v) => {
-    acc[v] = (acc[v] ?? 0) + 1;
-    return acc;
-  }, {});
 }
 
 // ---------------------------------------------------------------------------
-// 5. Build request bodies per endpoint × transcript
-// ---------------------------------------------------------------------------
-function compileBody(transcript) {
-  return { raw: transcript.text, documentType: 'commercial_invoice' };
-}
-
-function chatTurnDecideBody(transcript) {
-  // Single-turn ConversationState — the smallest valid shape: one user turn,
-  // status 'collecting', empty compiled refs. Mirrors what the customer route
-  // would send on the first turn before any compile has fired.
-  const now = new Date().toISOString();
-  return {
-    conversation: {
-      id: `conv::diag::${transcript.id}`,
-      turns: [
-        {
-          id: `turn::diag::${transcript.id}::user`,
-          role: 'user',
-          content: transcript.text,
-          timestamp: now,
-          kind: 'message',
-        },
-      ],
-      compiledConfigVersionRefs: [],
-      status: 'collecting',
-    },
-  };
-}
-
-function chainBody(transcript, configuration) {
-  // capability + readiness both need {intent, configuration}. We reuse the
-  // compile's intent+configuration when available; otherwise fall back to a
-  // minimal stub so the endpoints still respond with whatever shape they
-  // produce for malformed-but-typed inputs (useful drift signal).
-  const intent = {
-    id: `intent::diag::${transcript.id}`,
-    raw: transcript.text,
-    documentType: 'commercial_invoice',
-    capturedAt: new Date().toISOString(),
-  };
-  return { intent, configuration };
-}
-
-// ---------------------------------------------------------------------------
-// 6. Orchestrate
+// 7. Orchestrate
 // ---------------------------------------------------------------------------
 async function main() {
   console.log('[diagnose] booting dev-agent-server on port ' + PORT + ' ...');
@@ -342,196 +350,293 @@ async function main() {
     process.exit(1);
   }
   const { child } = booted;
-  console.log('[diagnose] dev-agent-server up; beginning probes');
+  console.log('[diagnose] dev-agent-server up; beginning post-Cycle-2 smoke probes');
 
   const results = {
     generatedAt: new Date().toISOString(),
     status: 'completed',
     port: PORT,
-    transcripts: TRANSCRIPTS.map((t) => ({ id: t.id, label: t.label, text: t.text })),
+    smokeKind: 'post-cycle-2-merged-agent',
     probes: [],
   };
 
-  try {
-    for (const transcript of TRANSCRIPTS) {
-      console.log(`\n[diagnose] transcript ${transcript.id}: "${transcript.text.slice(0, 60)}..."`);
-
-      // /api/compile — runs first; downstream endpoints reuse the
-      // configuration it returns (so we exercise the real chained shape, not
-      // a stub).
-      const compileProbe = await probe('/api/compile', compileBody(transcript), ['raw', 'documentType']);
-      results.probes.push({ transcriptId: transcript.id, agent: 'compile', ...sanitiseProbe(compileProbe) });
-      console.log(
-        `  compile           : ${compileProbe.httpStatus} ${compileProbe.latencyMs}ms ` +
-          `${JSON.stringify(compileProbe.classification ?? compileProbe.error ?? {})}`,
-      );
-
-      // Reuse the compile response in-memory for chained downstream probes,
-      // so we exercise the real chained shape without a redundant second
-      // /api/compile call.
-      const chainConfig =
-        compileProbe.fullBody?.kind === 'success' ? compileProbe.fullBody.configuration : null;
-
-      if (chainConfig) {
-        const capabilityProbe = await probe(
-          '/api/capability',
-          chainBody(transcript, chainConfig),
-          ['intent', 'configuration'],
-        );
-        results.probes.push({ transcriptId: transcript.id, agent: 'capability', ...sanitiseProbe(capabilityProbe) });
-        console.log(
-          `  capability        : ${capabilityProbe.httpStatus} ${capabilityProbe.latencyMs}ms ` +
-            `${JSON.stringify(capabilityProbe.classification ?? capabilityProbe.error ?? {})}`,
-        );
-
-        const readinessProbe = await probe(
-          '/api/readiness',
-          chainBody(transcript, chainConfig),
-          ['intent', 'configuration'],
-        );
-        results.probes.push({ transcriptId: transcript.id, agent: 'readiness', ...sanitiseProbe(readinessProbe) });
-        console.log(
-          `  readiness         : ${readinessProbe.httpStatus} ${readinessProbe.latencyMs}ms ` +
-            `${JSON.stringify(readinessProbe.classification ?? readinessProbe.error ?? {})}`,
-        );
-      } else {
-        console.log('  capability/readiness skipped — compile did not return a usable configuration');
-        results.probes.push({
-          transcriptId: transcript.id,
-          agent: 'capability',
-          endpoint: '/api/capability',
-          skipped: true,
-          reason: 'no_compile_configuration',
-        });
-        results.probes.push({
-          transcriptId: transcript.id,
-          agent: 'readiness',
-          endpoint: '/api/readiness',
-          skipped: true,
-          reason: 'no_compile_configuration',
-        });
-      }
-
-      // /api/chat-turn-decide — the known-drifting router
-      const chatProbe = await probe(
-        '/api/chat-turn-decide',
-        chatTurnDecideBody(transcript),
-        ['conversation'],
-      );
-      results.probes.push({ transcriptId: transcript.id, agent: 'chat.turn_decide', ...sanitiseProbe(chatProbe) });
-      console.log(
-        `  chat.turn_decide  : ${chatProbe.httpStatus} ${chatProbe.latencyMs}ms ` +
-          `${JSON.stringify(chatProbe.classification ?? chatProbe.error ?? {})}`,
-      );
-    }
-  } finally {
-    try { child.kill('SIGTERM'); } catch { /* noop */ }
-    // give the server a moment to flush langfuse, then hard-kill if needed
-    await new Promise((r) => setTimeout(r, 800));
-    try { child.kill('SIGKILL'); } catch { /* noop */ }
+  // ----------------------------------------------------------------
+  // Probe A — stateless first-turn
+  // ----------------------------------------------------------------
+  let probeAResult = null;
+  let probeAUserTurn = null;
+  let probeAAssistantTurnContent = null;
+  {
+    const p = PROBES.find((x) => x.id === 'A');
+    probeAUserTurn = userTurn('A', p.userMessage);
+    const conversation = buildConversation([probeAUserTurn]);
+    console.log(`\n[diagnose] Probe A: ${p.userMessage.slice(0, 80)}...`);
+    const { httpStatus, parsed, errorMessage, latencyMs } = await probeCompile(conversation);
+    const decision = parsed?.kind === 'success' ? parsed.decision : null;
+    const chatVisible = chatVisibleContent(decision);
+    const forbidden = detectForbiddenPhrases(chatVisible);
+    probeAResult = {
+      id: 'A',
+      label: p.label,
+      userMessage: p.userMessage,
+      expectedAction: p.expectedAction,
+      expectedNotes: p.expectedNotes,
+      httpStatus,
+      latencyMs,
+      responseKind: parsed?.kind ?? null,
+      decisionAction: decision?.action ?? null,
+      payloadShape: payloadShape(decision),
+      chatVisibleExcerpt: chatVisible.slice(0, 200),
+      d2ForbiddenPhrasesDetected: forbidden,
+      failure: parsed?.kind === 'failure' ? {
+        clarificationKind: parsed.clarification?.kind ?? null,
+        metricStatus: parsed.metric?.status ?? null,
+      } : null,
+      error: errorMessage,
+    };
+    probeAAssistantTurnContent = chatVisible;
+    results.probes.push(probeAResult);
+    console.log(`  Probe A: action=${decision?.action ?? 'n/a'} latency=${latencyMs}ms ` +
+      `fields=${probeAResult.payloadShape?.fieldCount ?? 'n/a'} D2=${forbidden.length}`);
   }
 
-  // -------------------------------------------------------------------------
-  // 7. Per-agent drift summary
-  // -------------------------------------------------------------------------
-  const summary = summariseDrift(results);
-  results.driftSummary = summary;
+  // Build the assistant turn that probes B/C/D will chain after. We
+  // synthesize a recompile_announcement bubble whose content is the
+  // model's extractionSystemPrompt, mirroring what the customer route
+  // would do.
+  const probeAAssistantTurn = assistantTurn(
+    'A',
+    'recompile_announcement',
+    probeAAssistantTurnContent || 'Compiling configuration from your intent.',
+  );
 
+  // ----------------------------------------------------------------
+  // Probe B — stateful follow-up "add tax amount and currency"
+  // ----------------------------------------------------------------
+  {
+    const p = PROBES.find((x) => x.id === 'B');
+    const userB = userTurn('B', p.userMessage);
+    const conversation = buildConversation([probeAUserTurn, probeAAssistantTurn, userB]);
+    console.log(`\n[diagnose] Probe B: ${p.userMessage.slice(0, 80)}...`);
+    const { httpStatus, parsed, errorMessage, latencyMs } = await probeCompile(conversation);
+    const decision = parsed?.kind === 'success' ? parsed.decision : null;
+    const chatVisible = chatVisibleContent(decision);
+    const forbidden = detectForbiddenPhrases(chatVisible);
+    results.probes.push({
+      id: 'B',
+      label: p.label,
+      userMessage: p.userMessage,
+      expectedAction: p.expectedAction,
+      expectedNotes: p.expectedNotes,
+      httpStatus,
+      latencyMs,
+      responseKind: parsed?.kind ?? null,
+      decisionAction: decision?.action ?? null,
+      payloadShape: payloadShape(decision),
+      chatVisibleExcerpt: chatVisible.slice(0, 200),
+      d2ForbiddenPhrasesDetected: forbidden,
+      failure: parsed?.kind === 'failure' ? {
+        clarificationKind: parsed.clarification?.kind ?? null,
+        metricStatus: parsed.metric?.status ?? null,
+      } : null,
+      error: errorMessage,
+    });
+    console.log(`  Probe B: action=${decision?.action ?? 'n/a'} latency=${latencyMs}ms ` +
+      `fields=${decision?.schema?.fields?.length ?? 'n/a'} D2=${forbidden.length}`);
+  }
+
+  // ----------------------------------------------------------------
+  // Probe C — capability_class_question
+  // ----------------------------------------------------------------
+  {
+    const p = PROBES.find((x) => x.id === 'C');
+    const userC = userTurn('C', p.userMessage);
+    const conversation = buildConversation([probeAUserTurn, probeAAssistantTurn, userC]);
+    console.log(`\n[diagnose] Probe C: ${p.userMessage.slice(0, 80)}...`);
+    const { httpStatus, parsed, errorMessage, latencyMs } = await probeCompile(conversation);
+    const decision = parsed?.kind === 'success' ? parsed.decision : null;
+    const chatVisible = chatVisibleContent(decision);
+    const forbidden = detectForbiddenPhrases(chatVisible);
+    results.probes.push({
+      id: 'C',
+      label: p.label,
+      userMessage: p.userMessage,
+      expectedAction: p.expectedAction,
+      expectedNotes: p.expectedNotes,
+      httpStatus,
+      latencyMs,
+      responseKind: parsed?.kind ?? null,
+      decisionAction: decision?.action ?? null,
+      payloadShape: payloadShape(decision),
+      capabilitySurfaceCitation: decision?.capabilitySurfaceCitation ?? null,
+      chatVisibleExcerpt: chatVisible.slice(0, 200),
+      d2ForbiddenPhrasesDetected: forbidden,
+      failure: parsed?.kind === 'failure' ? {
+        clarificationKind: parsed.clarification?.kind ?? null,
+        metricStatus: parsed.metric?.status ?? null,
+      } : null,
+      error: errorMessage,
+    });
+    console.log(`  Probe C: action=${decision?.action ?? 'n/a'} latency=${latencyMs}ms ` +
+      `citation="${(decision?.capabilitySurfaceCitation ?? '').slice(0, 60)}" D2=${forbidden.length}`);
+  }
+
+  // ----------------------------------------------------------------
+  // Probe D — show-me-the-prompt
+  // ----------------------------------------------------------------
+  {
+    const p = PROBES.find((x) => x.id === 'D');
+    const userD = userTurn('D', p.userMessage);
+    const conversation = buildConversation([probeAUserTurn, probeAAssistantTurn, userD]);
+    console.log(`\n[diagnose] Probe D: ${p.userMessage.slice(0, 80)}...`);
+    const { httpStatus, parsed, errorMessage, latencyMs } = await probeCompile(conversation);
+    const decision = parsed?.kind === 'success' ? parsed.decision : null;
+    const chatVisible = chatVisibleContent(decision);
+    const forbidden = detectForbiddenPhrases(chatVisible);
+    // The route can render a prompt_display turn on the client side when the
+    // user asks; the agent does not need to return a special action. Either
+    // 'clarify' or 'success_summary' is defensible at the agent layer.
+    results.probes.push({
+      id: 'D',
+      label: p.label,
+      userMessage: p.userMessage,
+      expectedAction: p.expectedAction,
+      httpStatus,
+      latencyMs,
+      responseKind: parsed?.kind ?? null,
+      decisionAction: decision?.action ?? null,
+      payloadShape: payloadShape(decision),
+      chatVisibleExcerpt: chatVisible.slice(0, 200),
+      d2ForbiddenPhrasesDetected: forbidden,
+      promptDisplayTurnEmitted: 'route-side (v1 route renders prompt_display from the stored extractionSystemPrompt regardless of decision.action)',
+      failure: parsed?.kind === 'failure' ? {
+        clarificationKind: parsed.clarification?.kind ?? null,
+        metricStatus: parsed.metric?.status ?? null,
+      } : null,
+      error: errorMessage,
+    });
+    console.log(`  Probe D: action=${decision?.action ?? 'n/a'} latency=${latencyMs}ms D2=${forbidden.length}`);
+  }
+
+  // Shut down the dev server.
+  try { child.kill('SIGTERM'); } catch { /* noop */ }
+  await new Promise((r) => setTimeout(r, 800));
+  try { child.kill('SIGKILL'); } catch { /* noop */ }
+
+  // -------------------------------------------------------------------------
+  // 8. Bucket classification
+  // -------------------------------------------------------------------------
+  const bucket = classifyBucket(results.probes);
+  results.bucket = bucket;
+
+  // -------------------------------------------------------------------------
+  // 9. Write outputs — JSON (replace) + HTML (append POST-CYCLE-2 SMOKE)
+  // -------------------------------------------------------------------------
   writeFileSync(JSON_OUT, JSON.stringify(results, null, 2), 'utf8');
-  writeFileSync(HTML_OUT, renderHtml(results, summary), 'utf8');
+  appendHtml(HTML_OUT, results, bucket);
 
   console.log('\n[diagnose] wrote', JSON_OUT);
   console.log('[diagnose] wrote', HTML_OUT);
-  console.log('[diagnose] drift summary:');
-  for (const [agent, verdict] of Object.entries(summary)) {
-    console.log(`  ${agent.padEnd(18)} ${verdict}`);
-  }
+  console.log(`[diagnose] bucket: ${bucket.classification} — ${bucket.justification}`);
 }
 
 // ---------------------------------------------------------------------------
-// 7. Drift analysis — what counts as drift per-agent
+// 8. Bucket classification — GREEN / YELLOW / RED
 // ---------------------------------------------------------------------------
-function summariseDrift(results) {
-  // EXPECTED, per the architectural plan:
-  //   - compile      : returns kind:'success' with a non-empty schema for the
-  //                    first-turn extract intent (T1). Other transcripts may
-  //                    legitimately produce small or odd schemas — that's not
-  //                    drift, that's the current architecture's job spilling
-  //                    into the wrong agent. We only flag compile drift if T1
-  //                    fails outright.
-  //   - capability   : returns kind:'success' with assessments. The current
-  //                    architecture's 5-canned-pattern classifier is what
-  //                    Cycle 2 will replace, but its surface shape should be
-  //                    fine today. Flag drift only on hard failures.
-  //   - readiness    : returns kind:'success' with a status. Should never
-  //                    fail outright.
-  //   - chat.turn_decide : KNOWN DRIFTING. T1 should produce action='compile'
-  //                        in a healthy world; if it produces 'clarify' that
-  //                        is the documented bug. Always flagged as
-  //                        EXPECTED drift regardless of outcome.
-  const out = {};
-  const byAgent = (a) => results.probes.filter((p) => p.agent === a && !p.skipped);
+function classifyBucket(probes) {
+  const probeA = probes.find((p) => p.id === 'A');
+  const probeB = probes.find((p) => p.id === 'B');
+  const probeC = probes.find((p) => p.id === 'C');
+  const probeD = probes.find((p) => p.id === 'D');
 
-  // compile
-  {
-    const t1 = byAgent('compile').find((p) => p.transcriptId === 'T1_failing_first_turn');
-    if (t1 && t1.responseShape?.kind === 'success' && (t1.classification?.fieldCount ?? 0) >= 4) {
-      out.compile = 'as-expected';
-    } else if (!t1) {
-      out.compile = 'drift: no T1 probe captured';
-    } else if (t1.error) {
-      out.compile = `drift: ${t1.error}`;
-    } else if (t1.responseShape?.kind !== 'success') {
-      out.compile = `drift: kind=${t1.responseShape?.kind ?? 'unknown'}`;
-    } else {
-      out.compile = `drift: fieldCount=${t1.classification?.fieldCount ?? 'n/a'} (<4)`;
-    }
+  const drifts = [];
+  const d2Hits = [];
+
+  // Probe A — MUST be 'compile' for the bug fix to be valid.
+  if (!probeA || probeA.decisionAction !== 'compile') {
+    drifts.push(`Probe A: expected action='compile', got '${probeA?.decisionAction ?? 'n/a'}'`);
+  }
+  if (probeA?.d2ForbiddenPhrasesDetected?.length > 0) {
+    d2Hits.push(`Probe A: ${JSON.stringify(probeA.d2ForbiddenPhrasesDetected)}`);
   }
 
-  // capability
-  {
-    const probes = byAgent('capability');
-    const hardFailures = probes.filter((p) => p.error || p.responseShape?.kind === 'failure');
-    if (hardFailures.length === 0 && probes.length > 0) {
-      out.capability = 'as-expected';
-    } else if (probes.length === 0) {
-      out.capability = 'drift: no probes ran (compile did not produce configurations)';
-    } else {
-      out.capability = `drift: ${hardFailures.length}/${probes.length} probes failed`;
-    }
+  // Probe B — expected 'recompile'.
+  if (!probeB || probeB.decisionAction !== 'recompile') {
+    drifts.push(`Probe B: expected action='recompile', got '${probeB?.decisionAction ?? 'n/a'}'`);
+  }
+  if (probeB?.d2ForbiddenPhrasesDetected?.length > 0) {
+    d2Hits.push(`Probe B: ${JSON.stringify(probeB.d2ForbiddenPhrasesDetected)}`);
   }
 
-  // readiness
-  {
-    const probes = byAgent('readiness');
-    const hardFailures = probes.filter((p) => p.error || p.responseShape?.kind === 'failure');
-    if (hardFailures.length === 0 && probes.length > 0) {
-      out.readiness = 'as-expected';
-    } else if (probes.length === 0) {
-      out.readiness = 'drift: no probes ran (compile did not produce configurations)';
-    } else {
-      out.readiness = `drift: ${hardFailures.length}/${probes.length} probes failed`;
-    }
+  // Probe C — expected 'capability_class_question' AND all 4 payload keys present.
+  if (!probeC || probeC.decisionAction !== 'capability_class_question') {
+    drifts.push(`Probe C: expected action='capability_class_question', got '${probeC?.decisionAction ?? 'n/a'}'`);
+  } else if (!probeC.payloadShape?.allFourPresent) {
+    drifts.push(`Probe C: payload missing one of the 4 expected keys`);
+  }
+  if (probeC?.d2ForbiddenPhrasesDetected?.length > 0) {
+    d2Hits.push(`Probe C: ${JSON.stringify(probeC.d2ForbiddenPhrasesDetected)}`);
   }
 
-  // chat.turn_decide — always reported as expected drift, with the actual
-  // observed action breakdown surfaced for the orchestrator.
-  {
-    const probes = byAgent('chat.turn_decide');
-    const actions = probes
-      .map((p) => p.classification?.action)
-      .filter(Boolean);
-    out['chat.turn_decide'] =
-      probes.length === 0
-        ? 'drift (expected): no probes captured'
-        : `drift (expected): actions=${JSON.stringify(bucketCounts(actions))}`;
+  // Probe D — 'clarify' OR route-side prompt_display both acceptable. We
+  // only count it as drift if D2 phrases appear, since the action is
+  // multi-valued by design.
+  if (probeD?.d2ForbiddenPhrasesDetected?.length > 0) {
+    d2Hits.push(`Probe D: ${JSON.stringify(probeD.d2ForbiddenPhrasesDetected)}`);
   }
 
-  return out;
+  // Probe A is load-bearing — failing it is automatic RED (the bug isn't fixed).
+  if (!probeA || probeA.decisionAction !== 'compile') {
+    return {
+      classification: 'RED',
+      justification: `Probe A (failing transcript) returned action='${probeA?.decisionAction ?? 'n/a'}' instead of 'compile' — the merged-agent bug fix is not landing. Re-enter plan mode per architectural plan C1.`,
+      drifts,
+      d2Hits,
+    };
+  }
+
+  // D2 phrases on multiple probes are RED.
+  if (d2Hits.length >= 2) {
+    return {
+      classification: 'RED',
+      justification: `D2-forbidden phrases detected on ${d2Hits.length} probes — the negative rule is not holding under live models. Re-enter plan mode.`,
+      drifts,
+      d2Hits,
+    };
+  }
+
+  // 2+ drifts (other than D2 above) are RED.
+  if (drifts.length >= 2) {
+    return {
+      classification: 'RED',
+      justification: `${drifts.length} probes drifted from expected actions — the single-call 5-action design is not holding. Re-enter plan mode per architectural plan C1.`,
+      drifts,
+      d2Hits,
+    };
+  }
+
+  // 1 drift OR 1 D2 hit = YELLOW.
+  if (drifts.length === 1 || d2Hits.length === 1) {
+    return {
+      classification: 'YELLOW',
+      justification:
+        `1 observed drift (${drifts[0] ?? d2Hits[0]}) — Cycle 3 should either bake the drift into HAPPY-14..18 expectations OR a targeted SF on COMPILE_SYSTEM_PROMPT before Cycle 3 (orchestrator decides).`,
+      drifts,
+      d2Hits,
+    };
+  }
+
+  return {
+    classification: 'GREEN',
+    justification:
+      'All 4 probes returned the expected action shapes (or the defensible alternative for Probe D), and no D2-forbidden phrase appeared in any chat-visible output.',
+    drifts,
+    d2Hits,
+  };
 }
 
 // ---------------------------------------------------------------------------
-// 8. HTML report
+// 9. HTML — append POST-CYCLE-2 SMOKE section, preserve prior content
 // ---------------------------------------------------------------------------
 function escapeHtml(s) {
   return String(s)
@@ -542,147 +647,106 @@ function escapeHtml(s) {
     .replace(/'/g, '&#39;');
 }
 
-function renderHtml(results, summary) {
-  const transcriptLookup = Object.fromEntries(
-    results.transcripts.map((t) => [t.id, t]),
+function bucketBadge(b) {
+  const cls = b === 'GREEN' ? 'badge-ok' : b === 'YELLOW' ? 'badge-expected' : 'badge-unexpected';
+  return `<span class="badge ${cls}">${escapeHtml(b)}</span>`;
+}
+
+function renderProbeRow(p) {
+  const action = p.decisionAction ?? '(none)';
+  const d2 = p.d2ForbiddenPhrasesDetected ?? [];
+  const d2Cell = d2.length === 0 ? '<em>none</em>' : escapeHtml(JSON.stringify(d2));
+  return `
+    <tr>
+      <td><strong>${escapeHtml(p.id)}</strong></td>
+      <td>${escapeHtml(p.userMessage)}</td>
+      <td><code>${escapeHtml(action)}</code></td>
+      <td><code>${escapeHtml(JSON.stringify(p.payloadShape ?? {}))}</code></td>
+      <td><code>${escapeHtml((p.chatVisibleExcerpt ?? '').slice(0, 200))}</code></td>
+      <td>${d2Cell}</td>
+      <td>${escapeHtml(String(p.latencyMs ?? '—'))} ms</td>
+    </tr>`;
+}
+
+function renderSmokeSection(results, bucket) {
+  return `
+<hr />
+<section id="post-cycle-2-smoke">
+  <h1>POST-CYCLE-2 SMOKE (re-pointed to merged Compile Agent at /api/compile)</h1>
+  <p>Generated at ${escapeHtml(results.generatedAt)}. The merged Compile Agent (A17 / F-04) absorbed the deleted <code>chat.turn_decide</code> router; this smoke exercises the 5-action discriminated union via a 4-probe matrix against the live SAP AI Core <code>compile_or_reasoning_heavy</code> deployment.</p>
+  <p><strong>Bucket classification:</strong> ${bucketBadge(bucket.classification)} — ${escapeHtml(bucket.justification)}</p>
+  ${bucket.drifts.length > 0 ? `<p><strong>Drifts:</strong></p><ul>${bucket.drifts.map((d) => `<li>${escapeHtml(d)}</li>`).join('')}</ul>` : ''}
+  ${bucket.d2Hits.length > 0 ? `<p><strong>D2-forbidden phrase hits:</strong></p><ul>${bucket.d2Hits.map((d) => `<li>${escapeHtml(d)}</li>`).join('')}</ul>` : ''}
+  <h2>Probe results</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Probe</th>
+        <th>User message</th>
+        <th>decision.action</th>
+        <th>Payload shape</th>
+        <th>Chat-visible excerpt (200 chars)</th>
+        <th>D2-forbidden phrases</th>
+        <th>Latency</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${results.probes.map(renderProbeRow).join('')}
+    </tbody>
+  </table>
+  <h2>D2-forbidden phrase list (substring grep, case-insensitive)</h2>
+  <ul>
+    ${D2_FORBIDDEN_PHRASES.map((p) => `<li><code>${escapeHtml(p)}</code></li>`).join('')}
+  </ul>
+  <p class="meta">Smoke run by <code>scripts/diagnose-live-agents.mjs</code>. Machine-readable JSON at <code>scripts/diagnose-live-agents.json</code>.</p>
+</section>
+`;
+}
+
+function appendHtml(htmlPath, results, bucket) {
+  let prior = '';
+  if (existsSync(htmlPath)) {
+    prior = readFileSync(htmlPath, 'utf8');
+  }
+  // Strip an existing POST-CYCLE-2 SMOKE section if present (re-run safety),
+  // then append the new one. Prior Cycle 0 content stays intact.
+  prior = prior.replace(
+    /<hr \/>\s*<section id="post-cycle-2-smoke"[\s\S]*?<\/section>\s*/g,
+    '',
   );
-
-  const perAgent = ['compile', 'capability', 'readiness', 'chat.turn_decide'];
-
-  const verdictBadge = (verdict) => {
-    if (verdict === 'as-expected') {
-      return `<span class="badge badge-ok">as-expected</span>`;
-    }
-    if (verdict.startsWith('drift (expected)')) {
-      return `<span class="badge badge-expected">drift (expected)</span>`;
-    }
-    return `<span class="badge badge-unexpected">unexpected drift</span>`;
-  };
-
-  const unexpectedCount = Object.entries(summary).filter(
-    ([agent, v]) => agent !== 'chat.turn_decide' && v !== 'as-expected',
-  ).length;
-
-  const stopCondition = unexpectedCount >= 2
-    ? 'YES — pause for orchestrator (architectural plan Cycle 0 stop condition triggered)'
-    : 'NO — proceed to Cycle 1';
-
-  const summarySection = `
-  <section>
-    <h2>Per-agent drift summary</h2>
-    <table>
-      <thead>
-        <tr><th>Agent</th><th>Verdict</th><th>Detail</th></tr>
-      </thead>
-      <tbody>
-        ${perAgent
-          .map(
-            (a) => `
-        <tr>
-          <td><code>${escapeHtml(a)}</code></td>
-          <td>${verdictBadge(summary[a] ?? 'drift: missing')}</td>
-          <td>${escapeHtml(summary[a] ?? 'missing')}</td>
-        </tr>`,
-          )
-          .join('')}
-      </tbody>
-    </table>
-    <p><strong>Unexpected drift count:</strong> ${unexpectedCount}</p>
-    <p><strong>Stop condition triggered:</strong> ${escapeHtml(stopCondition)}</p>
-  </section>
-  `;
-
-  const perTranscriptSections = results.probes
-    .reduce((acc, p) => {
-      acc[p.transcriptId] = acc[p.transcriptId] ?? [];
-      acc[p.transcriptId].push(p);
-      return acc;
-    }, {});
-
-  const transcriptSection = Object.entries(perTranscriptSections)
-    .map(([tid, probes]) => {
-      const t = transcriptLookup[tid];
-      return `
-    <section>
-      <h3>${escapeHtml(t?.label ?? tid)}</h3>
-      <p><em>Transcript:</em> &ldquo;${escapeHtml(t?.text ?? tid)}&rdquo;</p>
-      <table>
-        <thead>
-          <tr>
-            <th>Agent</th>
-            <th>HTTP</th>
-            <th>Latency</th>
-            <th>Response kind</th>
-            <th>Classification / action field</th>
-            <th>Error</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${probes
-            .map((p) => {
-              if (p.skipped) {
-                return `
-          <tr>
-            <td><code>${escapeHtml(p.agent)}</code></td>
-            <td colspan="5"><em>skipped — ${escapeHtml(p.reason)}</em></td>
-          </tr>`;
-              }
-              return `
-          <tr>
-            <td><code>${escapeHtml(p.agent)}</code></td>
-            <td>${escapeHtml(String(p.httpStatus ?? '—'))}</td>
-            <td>${escapeHtml(String(p.latencyMs ?? '—'))} ms</td>
-            <td><code>${escapeHtml(p.responseShape?.kind ?? '—')}</code></td>
-            <td><code>${escapeHtml(JSON.stringify(p.classification ?? {}))}</code></td>
-            <td>${escapeHtml(p.error ?? '')}</td>
-          </tr>`;
-            })
-            .join('')}
-        </tbody>
-      </table>
-    </section>`;
-    })
-    .join('');
-
-  return `<!doctype html>
+  const smokeSection = renderSmokeSection(results, bucket);
+  let nextHtml;
+  if (prior.includes('</body>')) {
+    nextHtml = prior.replace(/<\/body>/, `${smokeSection}\n</body>`);
+  } else {
+    // No prior file or no </body> — wrap a fresh document.
+    nextHtml = `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Cycle 0 diagnostic · live agents · 2026-05-28</title>
+  <title>Live-agent diagnostic + post-Cycle-2 smoke · 2026-05-28</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 1100px; margin: 2em auto; padding: 0 1em; color: #1d1d1f; }
     h1 { font-size: 1.5em; border-bottom: 2px solid #1d1d1f; padding-bottom: 0.3em; }
-    h2 { margin-top: 2em; }
-    h3 { margin-top: 1.6em; font-size: 1.1em; }
-    table { border-collapse: collapse; width: 100%; margin: 0.8em 0; font-size: 0.9em; }
+    h2 { margin-top: 1.4em; }
+    table { border-collapse: collapse; width: 100%; margin: 0.8em 0; font-size: 0.85em; }
     th, td { border: 1px solid #d4d4d8; padding: 0.4em 0.7em; text-align: left; vertical-align: top; }
     th { background: #f4f4f6; }
-    code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 0.9em; background: #f4f4f6; padding: 1px 4px; border-radius: 3px; }
-    .badge { display: inline-block; padding: 0.1em 0.6em; border-radius: 12px; font-size: 0.85em; font-weight: 600; }
+    code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 0.85em; background: #f4f4f6; padding: 1px 4px; border-radius: 3px; }
+    .badge { display: inline-block; padding: 0.1em 0.6em; border-radius: 12px; font-size: 0.9em; font-weight: 600; }
     .badge-ok { background: #e6f4ea; color: #137333; }
     .badge-expected { background: #fff4e5; color: #8a4a00; }
     .badge-unexpected { background: #fce8e6; color: #c5221f; }
-    .meta { color: #6b6b6f; font-size: 0.9em; margin-top: 2.5em; }
-    .note { background: #f0f4ff; border-left: 4px solid #4a6cf7; padding: 0.8em 1em; margin: 1em 0; }
+    .meta { color: #6b6b6f; font-size: 0.9em; margin-top: 2em; }
   </style>
 </head>
 <body>
-  <h1>Cycle 0 diagnostic · live agents · 2026-05-28</h1>
-  <p>Read-only probe of the four live agent endpoints (<code>compile</code>, <code>capability</code>, <code>readiness</code>, <code>chat.turn_decide</code>) against four representative transcripts. Drives the Cycle 0 stop-condition decision in <code>docs/architectural-plan-2026-05-28.md</code>.</p>
-  <div class="note">
-    <strong>Flagging convention:</strong>
-    <ul>
-      <li><code>chat.turn_decide</code> drift is flagged as <strong>EXPECTED</strong>. The architectural plan already names this agent for deletion in Cycle 2.</li>
-      <li>Drift on any other agent (<code>compile</code>, <code>capability</code>, <code>readiness</code>) is flagged as <strong>UNEXPECTED</strong> and counts towards the Cycle 0 stop condition (2+ unexpected drifts → pause and re-enter plan mode).</li>
-    </ul>
-  </div>
-  ${summarySection}
-  <h2>Per-transcript probe detail</h2>
-  ${transcriptSection}
-  <p class="meta">Generated by <code>scripts/diagnose-live-agents.mjs</code> at ${escapeHtml(results.generatedAt)}. Machine-readable JSON at <code>scripts/diagnose-live-agents.json</code>.</p>
+${smokeSection}
 </body>
 </html>
 `;
+  }
+  writeFileSync(htmlPath, nextHtml, 'utf8');
 }
 
 main().catch((err) => {
