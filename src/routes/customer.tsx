@@ -79,6 +79,7 @@ import {
 } from '@components/customer/agentClient';
 import { simulateDocumentRun } from '@domain/simulateDocumentRun';
 import { _writeProvisionalSignal } from '@domain/writeProvisionalSignal';
+import { _appendApprovedSignalForF09 } from '@domain/submitCorrection';
 import { isPromptDisplayIntent } from '@domain/promptDisplayIntent';
 import { DAEJOO_PDF_URL } from '@data/assets';
 
@@ -443,6 +444,14 @@ export default function CustomerRoute({
         setTurnCounter(counter);
         return;
       }
+
+      // F-31 append site — _writeProvisionalSignal returns the shaped signal;
+      // the route is responsible for the store write (per
+      // src/domain/writeProvisionalSignal.ts module doc: "the function itself
+      // does not touch the store — A6's _appendApprovedSignalForF09 is still
+      // the only writer"). Without this call the confirmation bubble fires
+      // but /internal sees nothing — exactly the Cycle 4 §6 step-7 regression.
+      _appendApprovedSignalForF09(decision.signal);
 
       const confirm = appendAssistantBubble(
         conv,

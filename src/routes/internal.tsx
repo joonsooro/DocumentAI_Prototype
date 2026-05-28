@@ -28,6 +28,7 @@ import {
   EMPTY_INTERNAL_VIEW_MODEL,
   type InternalViewModel,
 } from '@components/internal/viewModel';
+import { getProductSignals } from '@domain/submitCorrection';
 import { ObjectHeader, type ObjectHeaderTab } from '@components/shell/ObjectHeader';
 import { FlywheelDiagram } from '@components/internal/FlywheelDiagram';
 import { HiddenSignalCard } from '@components/internal/HiddenSignalCard';
@@ -60,7 +61,22 @@ export default function InternalRoute({
   // structural guard against /customer.
   const [showAgentIoLog, setShowAgentIoLog] = useState<boolean>(false);
 
-  const freeTextSignals = vm.approvedSignals.filter(
+  // F-31 store-read site — symmetric companion to the customer
+  // route's append site at src/routes/customer.tsx (F-31 append site).
+  // The view-model's approvedSignals carries test-mode seeded fixtures;
+  // production reads from the F-09 escape-hatch store (getProductSignals)
+  // so signals appended via the conversational consent path
+  // (provenance='conversational_notify_team') become visible here. Both
+  // sources merge by id to avoid duplicates when tests seed a signal
+  // that also lives in the store.
+  const storeSignals = getProductSignals();
+  const seededIds = new Set(vm.approvedSignals.map((s) => s.id));
+  const mergedApprovedSignals = [
+    ...vm.approvedSignals,
+    ...storeSignals.filter((s) => !seededIds.has(s.id)),
+  ];
+
+  const freeTextSignals = mergedApprovedSignals.filter(
     (s) => s.signalType === 'unsupported_free_text_business_condition',
   );
 
@@ -92,7 +108,7 @@ export default function InternalRoute({
           <HiddenSignalCard key={signal.id} signal={signal} />
         ))}
         <GovernanceQueuePanel queue={vm.governanceQueue} />
-        <RoadmapSignalsPanel signals={vm.approvedSignals} />
+        <RoadmapSignalsPanel signals={mergedApprovedSignals} />
         <RegressionSignalsPanel signals={vm.regressionSignals} />
         <CapabilityGapAnalyticsPanel gaps={vm.capabilityGaps} />
         <QualityMetricLogPanel />
