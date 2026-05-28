@@ -604,9 +604,175 @@
   </div>
 </section>
 
+<section id="reverify">
+  <div class="sec-head"><div class="sec-num">§ 04</div><h2>Post-S4.5 re-eval — empty SF queue · session close</h2></div>
+  <div class="sec-body">
+    <p class="lede">A second S5 entry was opened after S4.5 OBSERVE-WIRE landed five instrumentation commits (langfuseClient, dev-agent-server boot wiring, aiCoreClient inner-HTTP wrap, qualityMetricLog mirror sink, push-eval-to-langfuse dataset push). The instrumentation touches load-bearing runtime files but is behaviour-neutral by design. S5 re-graded the 57 verdicts in eval-results.html against the rebuilt + instrumented backend to confirm no PASS rows drifted under observability load.</p>
+
+    <div class="fix">
+      <div class="fix-head">
+        <div class="fix-id">SF-∅</div>
+        <div class="fix-layer">Verification gate · no code changes · re-eval pass after S4.5 instrumentation</div>
+        <div class="fix-verdict">No-op</div>
+      </div>
+
+      <div class="fix-row before">
+        <div class="label">Intake</div>
+        <div class="body">
+          <span class="badge">0 actionable</span>
+          eval-results.html at S5 entry: <strong>56 PASS · 0 FAIL · 1 N/A</strong>. Scope per the S5 prompt is FAIL + Gulf-Implementation + Gulf-Eval rows only; Gulf-Specification escalates; §06 PASS-with-risk rows are advisories the spec owner must explicitly bless before S5 acts. <strong>The SF queue is empty by intake.</strong> The legitimate question this session answered was whether the S4.5 instrumentation introduced any drift the prior eval pass could not have seen.
+        </div>
+      </div>
+
+      <div class="fix-row change">
+        <div class="label">Verification gate</div>
+        <div class="body">
+          <pre class="change">npx tsc --noEmit                                  exit 0   (empty output)
+npx eslint src --max-warnings=0                   exit 0   (empty output)
+npm run evals          (mocked)                   19 passed · 6 skipped   (baseline byte-identical)
+npm run evals:live     (live SAP AI Core tenant)  6 passed · 1 skipped    (50.31 s wall · walkthrough 23,753 ms)
+npm test               (full vitest)              328 passed · 6 skipped  (41 files · baseline match incl. S4.5 +4)
+npm run build                                     exit 0   (dist/assets/index-DRNolVZv.js 234.04 kB · gzip 70.04 kB)
+
+EXTENDED bundle audit — 5 forbidden tokens in dist/assets/*.js
+  AICORE_KEY_PATH  →  0
+  clientsecret     →  0
+  callAgent        →  0
+  langfuse         →  0   (NEW in S4.5)
+  LANGFUSE         →  0   (NEW in S4.5)
+
+Langfuse instrumentation still alive on the live path
+  [qualityMetric] mirror — agent / status / model / latencyMs / tokenUsage / loggedAt only
+                          (no prompt, no token, no key, no service-key path)</pre>
+        </div>
+      </div>
+
+      <div class="fix-row after">
+        <div class="label">Verdict-flip count</div>
+        <div class="body">
+          <span class="badge">0</span>
+          No row in §01 / §02 / §03 / §04 / §05 / §06 drifted from PASS to FAIL/Gulf-Implementation/Gulf-Eval. Live walkthrough <em>improved</em> (23,753 ms vs S4.5 baseline 23,929 ms vs S4 baseline 24,325 / 25,606 ms) — instrumentation overhead is below measurement noise. The C-S-01-live-9-field row continues to PASS under live observability load: this session's compile returned the canonical 9 fields through the zod schema cleanly. The C-S-16-calibration N/A and the three §06 risk rows are unchanged.
+        </div>
+      </div>
+
+      <div class="fix-row why">
+        <div class="label">Why no SF</div>
+        <div class="body">
+          The CLAUDE.md §2 tenet is explicit: <em>"One change per Surgical Fix; never bundle a refactor with a feature edit."</em> An empty intake does not justify manufacturing work to look productive. The §06 risk rows are real future-drift flags but the S5 prompt is also explicit: <em>"Do NOT fix them as part of S5 unless the spec owner explicitly tells you to."</em> The spec owner reviewed the empty-queue verdict and chose <strong>document-and-close</strong> rather than <strong>harden-risk-rows</strong>. The running backend is canon; the eval bar is satisfied; further hardening is forward-looking and belongs to S4 OBSERVE or a future spec-amended S5.
+        </div>
+      </div>
+
+      <div class="fix-row tenets">
+        <div class="label">Escalations</div>
+        <div class="body">
+          <strong>C-S-16-calibration · Gulf-Specification · OQ-E4 · still N/A.</strong> Per-field threshold calibration remains gated on observed accuracy distributions across a representative document corpus. Suggested resolution date in eval-results.html is 2026-07-01. <em>Not an S5 fix candidate.</em> This row stays N/A until the spec owner either pins per-field thresholds in spec §6 or formally accepts uniform 0.85 as the v2 baseline.
+        </div>
+      </div>
+
+      <div class="fix-row why">
+        <div class="label">§06 risk rows — not closed, not escalated, just visible</div>
+        <div class="body">
+          Three PASS-with-risk advisories carry future-drift flags the spec owner may choose to harden later. None were touched this session. (a) <strong>C-S-01-live-9-field-risk</strong> — live compile is non-deterministic; SF-02's enumeration scaffold has held twice in a row but a single warm sample is not a guarantee; suggested follow-up is 10 cold runs + harder prompt pin if any drops below 9. (b) <strong>C-K-01-live-p95-risk</strong> — three warm walkthrough samples (24.3 / 25.6 / 23.7 s) all comfortably under EDGE-4's 300_000 ms ceiling, but three samples is not a p95; suggested follow-up is 10 cold runs and per-agent p95 budgets pinned in spec §6. (c) <strong>C-S-16-calibration-risk</strong> — same uniform-0.85 issue surfaced from a structural angle; closes alongside C-S-16-calibration once OQ-E4 telemetry exists.
+        </div>
+      </div>
+
+      <div class="fix-row why">
+        <div class="label">Pre-existing F-18 gap — noted, not closed</div>
+        <div class="body">
+          The S4.5 close RATIONALE in <span class="term">claude-progress.txt</span> documents that <span class="term">recordSuccess</span> is NOT auto-called by <span class="term">callAgent</span> — only failures auto-flow through F-18 via <span class="term">agentFailureSurface.ts</span>. This is a real coverage gap inherited from S3.REBUILD, not a regression introduced by S4.5. <strong>It is NOT a Gulf-Implementation row in eval-results.html</strong> — C-S-23 still PASSes because the in-memory store + console mirror surface IS plumbed end-to-end whenever something writes to it. The S5 prompt is explicit: <em>"Do NOT fix it as an SF unless an eval-results.html row explicitly names it."</em> Closing the gap would require widening the F-18 surface scope, which is a spec-owner decision, not an SF.
+        </div>
+      </div>
+
+      <div class="fix-row why">
+        <div class="label">Why closed</div>
+        <div class="body">
+          Every actionable row from eval-results.html is closed-or-escalated by intake. The verification gate stays green against the rebuilt + S4.5-instrumented backend. The S4.5 Langfuse instrumentation remained intact across the re-eval — live traces still emit, the QualityMetric mirror sink still pipes events, captureContent stays <span class="term">never</span>, no privacy invariants were violated. SF session resolves to <strong>no-op · closed</strong>.
+        </div>
+      </div>
+    </div>
+
+    <div class="next" style="margin-top:32px">
+      <p class="hdr">Handoff state for the next S4 re-eval</p>
+      <ul>
+        <li><b>No flips expected.</b> The 56 PASS · 0 FAIL · 1 N/A distribution holds against the S4.5-instrumented backend. Re-running the S4 grading exercise after this session should reproduce the same verdicts.</li>
+        <li><b>1 escalation visible:</b> C-S-16-calibration · Gulf-Specification · OQ-E4-gated. Awaits S4 OBSERVE telemetry.</li>
+        <li><b>3 §06 risk rows untouched.</b> Spec owner decided not to harden this pass.</li>
+        <li><b>1 pre-existing F-18 coverage gap documented.</b> Not an SF candidate without spec-owner sign-off on the F-18 surface scope.</li>
+        <li><b>0 kill switches tripped.</b> 0 PASS verdicts regressed. 0 new substrate rows. 0 new dependencies. 0 privacy invariants violated.</li>
+        <li><b>S3.REBUILD legacy v1 compatibility shims:</b> none stripped this session (no eval-results.html row depended on a shim). Strip pass remains an S6 task.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="cycle-close-s1s2s3s4-chat-rule">
+  <div class="sec-head"><div class="sec-num">§ 05</div><h2>S1 → S2 → S3 → S4 chat-rule cycle · close · 2026-05-28</h2></div>
+  <div class="sec-body">
+    <p class="lede">A four-stage cycle closed the Specification-Gulf gap surfaced by the live demo: <em>chat.turn_decide</em> drifted to <span class="term">action='clarify'</span> on first-turn field-enumeration intent and emitted "share the file" frames that contradicted D2. The cycle ENUMERATED rather than gestured: S1 spec'd the new rules, S2 echoed into the wiring contract, S3 reflected them in the live agent's SYSTEM_PROMPT with a drift-guarded constant + 5 pure-constant tests, S4 (this row) regraded the binary eval bar.</p>
+
+    <div class="fix">
+      <div class="fix-head">
+        <div class="fix-id">SF-∅ (cycle-close)</div>
+        <div class="fix-layer">S1 → S2 → S3 → S4 chat-rule cycle · no FAIL, no flip · eval bar reaffirmed</div>
+        <div class="fix-verdict">Closed</div>
+      </div>
+
+      <div class="fix-row before">
+        <div class="label">Intake</div>
+        <div class="body">
+          <span class="badge">7 commits</span>
+          <span class="term">767d5d3..538c7da</span> (range): S6 strip (473a698, IntentInputPanel + ClarificationLoopPanel deleted) · S5 SF-1/SF-2/SF-3 (7366b38 · 3441826 · 8e9754a, customer-route fixes) · S1 (3320055, spec.html A14 fifth pattern + A12 negative sub-rule) · S2 (4617aca, contract.html U26 echo + feature-list F-28 trace) · S3 (538c7da, chatTurnDecide.ts SYSTEM_PROMPT + FORBIDDEN_FILE_REQUEST_PHRASES + 5 pure-constant tests).
+        </div>
+      </div>
+
+      <div class="fix-row change">
+        <div class="label">Verification gate</div>
+        <div class="body">
+          <pre class="change">npx tsc --noEmit                                  exit 0   (empty output)
+npx eslint src --max-warnings=0                   exit 0   (empty output)
+npx vitest run src/evals/  (eval subset)          19 passed · 6 skipped   (5 files · 3.55 s)
+npx vitest run             (full suite)           384 passed · 6 skipped  (46 files · 5.62 s)
+
+Eval-bar verdict at HEAD (538c7da): 23 of 23 binary cases PASS · 0 FAIL · 0 N/A
+Delta vs prior S4 (767d5d3): zero verdict flips, zero N/A, zero binding drift</pre>
+        </div>
+      </div>
+
+      <div class="fix-row after">
+        <div class="label">Verdict-flip count</div>
+        <div class="body">
+          <span class="badge">0</span>
+          The S3 SYSTEM_PROMPT enumeration sharpened a rule that was already implicitly enforced at the mocked-harness layer (HAPPY-11 / EDGE-7 / RED-3 bind to wire shape via <em>chatReducer.test.ts</em>, <em>chatTurnDecide.test.ts</em>, <em>customer.chat-wiring.test.tsx</em>, and <em>writeProvisionalSignal.test.ts</em>; none bind to SYSTEM_PROMPT prose). The 5 new S3 pure-constant tests are additive — they assert SYSTEM_PROMPT.includes substrings for the fifth missed-extraction bullet, the DECISION RULES first-turn-enumeration pin, every entry in FORBIDDEN_FILE_REQUEST_PHRASES, NEGATIVE CONTRACT D2/SUB-1/N6/N1 citations, and the wrong-frame-redirect containment proof. <strong>No FAIL row created; no PASS row flipped.</strong>
+        </div>
+      </div>
+
+      <div class="fix-row why">
+        <div class="label">Why closed</div>
+        <div class="body">
+          Every actionable row from eval-results.html is closed-or-escalated by intake. The verification gate stays green against the post-cycle backend. The S1 → S2 → S3 → S4 cycle is the load-bearing instance of CLAUDE.md §2's <em>enumerate-don't-gesture</em> tenet applied to a chat-agent decision rule (rather than to a schema field count, which was SF-02's original target). The cycle resolves to <strong>closed</strong>.
+        </div>
+      </div>
+
+      <div class="fix-row tenets">
+        <div class="label">Tenets surfaced</div>
+        <div class="body">
+          <em>None new.</em> CLAUDE.md §2's enumerate-don't-gesture tenet already covers this class of fix. The cycle is a second instance of that tenet (the first being SF-02's 9-field compile prompt; this one is the 5th missed-extraction pattern + the D2 negative-rule enumeration in chat.turn_decide). The fact that the same tenet fired twice across two different agents in two different cycles is itself the validation — the rule is general, not local to F-04.
+        </div>
+      </div>
+
+      <div class="fix-row why">
+        <div class="label">Deferred (control-tower follow-up)</div>
+        <div class="body">
+          The eval-results.html §07 binding-drift table calls out a <strong>potential S1 follow-up</strong> to add one new binary eval case for the first-turn-field-enumeration recompile trigger and one for the D2-binding never-ask-for-a-file rule. <strong>NOT executed in this S4</strong> per CLAUDE.md §3 (S1 produces evals.md). Control tower decides whether to queue.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <div class="colophon">
   <span>S5 · <b>debug-log.html</b></span>
-  <span>2 fixes landed · 0 FAIL · 1 N/A · <b>OQ-E3 + Specification Gulf closed</b></span>
+  <span>2 fixes landed · 1 no-op pass · 0 FAIL · 1 N/A · <b>queue empty under S4.5 instrumentation</b></span>
 </div>
 
 </div>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Document AI Self-Improvement Flywheel — Eval Results (S4 · chat-wire + D2-strip + F-30)</title>
+<title>Document AI Self-Improvement Flywheel — Eval Results (S4 · post-S1/S2/S3 chat-rule cycle)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=Newsreader:opsz,ital,wght@6..72,0,400;6..72,0,500;6..72,0,600;6..72,1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -110,7 +110,7 @@
 </style>
 </head>
 <body>
-<div class="folio">S4 · Eval · Results · 2026-05-27</div>
+<div class="folio">S4 · Eval · Results · 2026-05-28</div>
 <div class="page">
 
 <header class="masthead">
@@ -120,27 +120,27 @@
   </div>
   <div class="meta">
     <b>Independent reviewer pass</b><br>
-    Run: 2026-05-27 · post-SF#1 · post-SF#2 · post-F-30<br>
+    Run: 2026-05-28 · post-S1/S2/S3 chat-rule cycle (538c7da)<br>
     Eval bar: app/evals.md · 23 binary cases<br>
     Criteria: eval-criteria.html
   </div>
 </header>
 
 <div class="callout">
-  <p class="verdict">Overall verdict · PASS · zero failures · zero N/A</p>
-  <h2 class="headline">23 of 23 binary cases at HEAD: 23 PASS · 0 FAIL · 0 N/A.</h2>
-  <p>Three commits landed since the prior S4 eval pass — <span class="term">bc00348</span> (S5 SF#1 chat-wiring · ChatPanel becomes single primary surface), <span class="term">407d51c</span> (S5 SF#2 D2-strip · permanent demo tag removed), and <span class="term">39a4622</span> (S3 additive · F-30 Agent I/O Log + entry points on /admin + /internal). All three are work intake for this eval pass.</p>
-  <p><strong>Test run.</strong> <span class="term">npx vitest run</span> at HEAD reports <strong>44 test files / 370 passed / 6 skipped / 0 failed</strong> in 4.64 s. Every binary case in evals.md binds to a passing Vitest test or a passing source-grep / DOM probe.</p>
-  <p><strong>Chat-wiring (SF#1) regrade.</strong> Cases that previously bound to the legacy <span class="term">customer-intent-textarea</span> / <span class="term">customer-clarification-loop</span> testids are regraded against the new ChatPanel testids (<span class="term">customer-chat-panel</span>, <span class="term">customer-chat-panel-input</span>, <span class="term">customer-chat-panel-submit</span>, <span class="term">chat-bubble-*</span>). HAPPY-1 + HAPPY-11 + HAPPY-12 + EDGE-6 + EDGE-7 + RED-3 all grade <strong>PASS</strong> against the chat surface. The load-bearing invariants (admin-facing surface, no end-user upload affordance, capability-class → notify_team_question, N9 data-layer enforcement) hold.</p>
-  <p><strong>D2-strip (SF#2) regrade.</strong> evals.md carries no binding to the literal permanent "Demo: DAEJOO invoice only" tag — every D2-touching case binds to behaviour (drop-announcement) or to the structural N6 invariant (UploadZonePanel routes every drop to the canned DAEJOO fixture). No binding drift detected.</p>
-  <p><strong>F-30 (new HAPPY-13).</strong> The Agent I/O Log binary case grades <strong>PASS</strong> against the new shared primitive at <span class="term">src/components/shared/AgentIoLogPanel.tsx</span>. All 7 sub-assertions are addressed by the F-30 test surfaces — mount on /admin, mount on /internal, structural absence on /customer, row-count parity with <span class="term">getMetrics().length</span>, 9-field row shape, <span class="term">AgentFailure.reason</span> on failure rows, and the forbidden-substring guard.</p>
-  <p><strong>Bundle audit clean.</strong> <span class="term">npm run build</span> emits <span class="term">dist/assets/index-CsNoeDwm.js</span> (237,474 bytes). Both grep audits return empty — production bundle clean of the dispatcher, the service-key access path, and the prompt-scaffolding substrings.</p>
+  <p class="verdict">Overall verdict · PASS · zero failures · zero N/A · zero verdict flips since 767d5d3</p>
+  <h2 class="headline">23 of 23 binary cases at HEAD: 23 PASS · 0 FAIL · 0 N/A — no delta vs prior S4 (767d5d3).</h2>
+  <p>Seven commits landed since the prior S4 eval pass at <span class="term">767d5d3</span> (23/23 PASS at the bc00348..39a4622 intake range): <span class="term">473a698</span> (S6 strip · delete legacy IntentInputPanel + ClarificationLoopPanel), <span class="term">7366b38</span> (S5 SF-1 · gate PDF preview on upload), <span class="term">3441826</span> (S5 SF-2 · surface extracted fields after upload), <span class="term">8e9754a</span> (S5 SF-3 · deterministic re-extract trigger), <span class="term">3320055</span> (S1 spec · A14 fifth pattern + A12 D2-binding negative sub-rule), <span class="term">4617aca</span> (S2 contract · echo into F-28 U26 + feature-list trace), <span class="term">538c7da</span> (S3 build · chat.turn_decide SYSTEM_PROMPT reflects the contract; 5 new pure-constant tests). All seven are intake for this S4 pass.</p>
+  <p><strong>Test run.</strong> <span class="term">npx vitest run</span> at HEAD reports <strong>46 test files / 384 passed / 6 skipped / 0 failed</strong> in 5.62 s. <span class="term">npx vitest run src/evals/</span> (eval subset) reports <strong>5 test files / 19 passed / 6 skipped / 0 failed</strong> in 3.55 s. Every binary case in evals.md binds to a passing Vitest test or a passing source-grep / DOM probe.</p>
+  <p><strong>S1/S2/S3 chat-rule cycle regrade.</strong> The cycle sharpened the chat.turn_decide SYSTEM_PROMPT with (a) an A14 fifth missed-extraction pattern ("first-turn field enumeration → action='recompile'") and (b) an A12 negative sub-rule forbidding share/upload/attach/provide-a-file utterances (D2-binding, with N1 capability-lie analogy). All three relevant binary cases hold: <strong>HAPPY-3</strong> (PASS — compile still tagged as live aiCore call; the S3 edit touched chat.turn_decide, not compile, so the source / templateUsed stamps are untouched), <strong>HAPPY-11</strong> (PASS — recompile trigger still drives compiledConfigVersionRefs.length increment per chatReducer.test.ts + chatTurnDecide.test.ts + customer.chat-wiring.test.tsx), and <strong>EDGE-7</strong> (PASS — pure missed-extraction conversations still end without a notify_team_question per isMissedExtractionOnly EDGE-7 helper, unchanged by S3). No binding drift — the 5 new S3 tests are pure-constant assertions on SYSTEM_PROMPT prose (drift-guard for FORBIDDEN_FILE_REQUEST_PHRASES, DECISION RULES first-turn-enumeration pin, NEGATIVE CONTRACT D2/SUB-1/N6/N1 citations) and are additive to the existing wire-shape suite.</p>
+  <p><strong>S5 SF-1/SF-2/SF-3 regrade.</strong> Three SFs landed user-driven customer-route fixes: PDF preview gating, post-upload field surfacing, and the deterministic RE_EXTRACT_PATTERN shortcut (belt-and-braces over the live haiku classifier). None of evals.md's 23 cases bind to literal upload-zone gating prose or the regex shortcut — every D2 / N6 / chat-trigger case binds to behaviour or to the structural CustomerViewModel guard. The route-side regex shortcut and the post-S3 SYSTEM_PROMPT converge on the same re-extract behaviour, so HAPPY-11 stays green from either path.</p>
+  <p><strong>S6 strip regrade.</strong> The legacy IntentInputPanel + ClarificationLoopPanel files were deleted in <span class="term">473a698</span>. Behaviour is preserved by the ChatPanel single-surface posture landed in bc00348; HAPPY-1's literal <span class="term">getByLabelText(/customer intent/i)</span> binding remains a graded adaptation against <span class="term">customer-chat-panel-input</span> testids per the binding-drift table in §07 (no verdict change).</p>
+  <p><strong>Bundle audit not re-run this pass.</strong> The S3 edit did not add new substrate to the browser-bound path — chat.turn_decide is a server-side dev-middleware agent invoked via /api/chat-turn-decide; the browser bundle is structurally separated by the Vite plugin's <span class="term">apply:'serve'</span> guard and the type-only client import. The pre-existing bundle-audit invariants from §05 (zero matches for AICORE_KEY_PATH / clientsecret / callAgent / system: / prompt: / &lt;|) hold by construction and are not re-stated in the totals row this pass.</p>
   <div class="totals">
     <div class="tot pass"><div class="n">23</div><div class="lbl">PASS</div></div>
     <div class="tot fail"><div class="n">0</div><div class="lbl">FAIL</div></div>
     <div class="tot na"><div class="n">0</div><div class="lbl">N/A</div></div>
     <div class="tot"><div class="n">23</div><div class="lbl">Total</div></div>
-    <div class="tot"><div class="n">+1</div><div class="lbl">Δ since prior (HAPPY-13)</div></div>
+    <div class="tot"><div class="n">0</div><div class="lbl">Δ since prior (767d5d3)</div></div>
   </div>
 </div>
 
@@ -163,7 +163,7 @@
           <td class="assertion"><span class="term">screen.getByLabelText(/customer intent/i)</span> exists; no <span class="term">data-testid="end-user-upload"</span> element rendered; intent flow targets <span class="term">role=admin</span>.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Regraded against the new ChatPanel testids per the SF#1 chat-wiring landing. Binding test: <em>src/evals/happy.test.tsx</em> &gt; <em>F-19 HAPPY-1 — operator opens the prototype with no prior context</em> &gt; <em>"Customer Workspace renders the admin-facing ChatPanel input + submit; no end-user upload affordance"</em>. happy.test.tsx:78–80 asserts <span class="term">customer-chat-panel</span>, <span class="term">customer-chat-panel-input</span>, <span class="term">customer-chat-panel-submit</span> all present and queryByTestId('end-user-upload') === null. Vitest log: PASS at /tmp/s4-vitest.log line block "src/evals/happy.test.tsx (6 tests)".</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
         <tr class="r-pass">
@@ -171,7 +171,7 @@
           <td class="assertion"><span class="term">result.schema.fields.length === 9</span>; every field has non-empty <span class="term">instruction</span>, <span class="term">validation</span>, <span class="term">regex</span>, <span class="term">confidenceThreshold</span>; <span class="term">result.processingMode</span> is set.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Binding test: <em>src/evals/happy.test.tsx:88-89</em> &gt; <em>"F-19 HAPPY-2 — DAEJOO compile produces a 9-field configuration"</em> &gt; <em>"compile result has all 9 schema fields with instruction/validation/regex/threshold/processingMode set"</em>. Mocked compile path returns the locked 9-field CompiledConfiguration. PASS in /tmp/s4-vitest.log "src/evals/happy.test.tsx (6 tests) ✓".</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
         <tr class="r-pass">
@@ -179,7 +179,7 @@
           <td class="assertion"><span class="term">result.source === 'aiCore'</span>; <span class="term">result.templateUsed === false</span>; <span class="term">QualityMetric</span> log includes one <span class="term">aiCore.compile</span> entry.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Binding test: <em>src/evals/happy.test.tsx:109-110</em> &gt; <em>"F-19 HAPPY-3 — compile is tagged as a live aiCore call"</em> &gt; <em>"source === 'aiCore', templateUsed === false; QualityMetric log includes one aiCore.compile entry"</em>. compileIntentToConfiguration.ts stamps both fields after the callAgent return (literal types — not model-supplied). PASS in /tmp/s4-vitest.log.</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
         <tr class="r-pass">
@@ -187,7 +187,7 @@
           <td class="assertion">Customer Workspace HTML contains no string <span class="term">Unsupported</span>; no string <span class="term">material disposal</span>; Internal Workspace contains a <span class="term">ProductSignal</span> whose <span class="term">signal_type === 'unsupported_free_text_business_condition'</span>.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Binding test: <em>src/evals/happy.test.tsx:142-143</em> &gt; <em>"F-19 HAPPY-4 — capability assessment respects customer-visible buckets"</em>. Structural guard from <span class="term">CustomerVisibleStatus</span> + <span class="term">CustomerViewModel</span> excludes capability_gap rows. RED-2 second assertion (internal-DOM-contains) covered by the matching binding in red.test.tsx:83. PASS in /tmp/s4-vitest.log.</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
         <tr class="r-pass">
@@ -195,7 +195,7 @@
           <td class="assertion">every reason object has the 5 keys <span class="term">field, evidence, rule, confidence, nextAction</span>; panel HTML does not contain the substrings <span class="term">system:</span> or <span class="term">prompt:</span> or <span class="term">&lt;|</span>.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Binding test: <em>src/evals/happy.test.tsx:190-191</em> &gt; <em>"F-19 HAPPY-5 — readiness panel uses 5-key business-language reasons"</em> &gt; <em>"every reason has the 5 keys; panel HTML does not contain 'system:' / 'prompt:' / '&lt;|'"</em>. Sanitiser in generateOperationalReasons.ts strips the three substrings. PASS in /tmp/s4-vitest.log.</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
         <tr class="r-pass">
@@ -203,7 +203,7 @@
           <td class="assertion">three routes mount; shared <span class="term">useDomainStore()</span> returns the same root object reference in all three; no workspace renders another's data-testid.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Binding test: <em>src/evals/happy.test.tsx:225-226</em> &gt; <em>"F-19 HAPPY-6 — three-workspace separation"</em> &gt; <em>"three routes mount and no workspace renders another's data-testid"</em>. v1 uses per-route view-models per SUB-2 (no global store) so the literal "shared root object" sub-clause is graded as the documented adaptation in S3.CODER F-19 RATIONALE; the load-bearing invariant ("no workspace renders another's data-testid") is asserted and green. PASS in /tmp/s4-vitest.log.</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
         <tr class="r-pass">
@@ -211,7 +211,7 @@
           <td class="assertion"><span class="term">clarifications.length &gt;= 1</span>; the request for <span class="term">payable_amount</span> has the 3 prompts; <span class="term">documentRun.fields.payable_amount</span> is <span class="term">null</span> not a default.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Binding test: <em>src/evals/edge.test.tsx:64-65</em> &gt; <em>"F-19 EDGE-1 — DAEJOO run with missing payable_amount yields a ClarificationRequest"</em>. Three EDGE-1 prompts shaped by F-07 generateClarificationRequests.ts. PASS in /tmp/s4-vitest.log "src/evals/edge.test.tsx (5 tests) ✓".</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
         <tr class="r-pass">
@@ -219,7 +219,7 @@
           <td class="assertion"><span class="term">qualityMetrics</span> includes <span class="term">{agent:'admin.recommend', status:'fail'}</span>; UI shows an error-tagged <span class="term">ClarificationRequest</span>; admin recommendation list does not contain any item with <span class="term">source==='fallback'</span>.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Binding test: <em>src/evals/edge.test.tsx:93-94</em> &gt; <em>"F-19 EDGE-2 — admin.recommend agent failure surfaces correctly"</em>. F-08 runAgentWithFailureSurface emits the dual ClarificationRequest + QualityMetric pair; no canned-fallback path exists (N4). PASS in /tmp/s4-vitest.log.</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
         <tr class="r-pass">
@@ -227,7 +227,7 @@
           <td class="assertion"><span class="term">productSignals</span> length unchanged after the single correction; <span class="term">governanceQueue</span> includes the new <span class="term">CorrectionEvent</span> with the 5 governance fields present (some may be unset, none auto-promoted).</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Binding tests: <em>src/evals/edge.test.tsx:124-125</em> (negative path) AND <em>edge.test.tsx:164-165</em> (positive path EDGE-3-positive). F-16 submitCorrection has zero write paths to productSignals; F-09 min_frequency=3 prevents single-correction promotion structurally. PASS in /tmp/s4-vitest.log.</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
         <tr class="r-pass">
@@ -235,7 +235,7 @@
           <td class="assertion">scripted walkthrough Vitest scenario completes with <span class="term">walkthroughDurationMs &lt; 300_000</span>; the 7 eval families all report a pass count; a stub Amazon fixture loads without modifying <span class="term">src/domain/*</span>.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Binding tests: <em>src/evals/walkthrough.test.tsx</em> (3 tests) — one walkthrough &lt; 300_000 ms, three consecutive runs &lt; 300_000 ms, Amazon stub portability; PLUS <em>src/evals/edge.test.tsx:248-249</em> &gt; <em>"F-19 EDGE-4 — walkthrough is executable across all three routes"</em>. Mocked durations in tens of ms. PASS in /tmp/s4-vitest.log "src/evals/walkthrough.test.tsx (3 tests) 325ms ✓".</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
         <tr class="r-pass">
@@ -243,7 +243,7 @@
           <td class="assertion">for every <span class="term">AdminRecommendation r</span>: <span class="term">r.type !== 'threshold_lower'</span> and <span class="term">r.text</span> does not match <span class="term">/lower(ing)?\s+threshold/i</span>; readiness for the under-confirm field is <span class="term">Needs review</span>, not <span class="term">Ready</span>.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Binding tests: <em>src/evals/red.test.tsx:23-24</em> (recommendation-shape) and <em>red.test.tsx:53</em> (readiness stays Needs review). Four-layer N2 guard (TS union excludes threshold_lower, zod mirrors, F-15 runtime regex, F-12 filterRecommendationsForAdminSurface). PASS in /tmp/s4-vitest.log "src/evals/red.test.tsx (4 tests) 76ms ✓".</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
         <tr class="r-pass">
@@ -251,7 +251,7 @@
           <td class="assertion">full-DOM text snapshot of Customer Workspace does not contain <span class="term">Unsupported</span>, <span class="term">material disposal</span>, or <span class="term">unsupported_free_text_business_condition</span>; same strings DO appear inside Internal Workspace DOM.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Binding tests: <em>src/evals/red.test.tsx:62-63</em> (customer-DOM excludes) and <em>red.test.tsx:83</em> (internal-DOM contains the verbatim fragment). CustomerViewModel has no ProductSignal field — structural containment. PASS in /tmp/s4-vitest.log.</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
       </tbody>
@@ -272,7 +272,7 @@
           <td class="assertion"><span class="term">computeRoadmapScore(signal) === 91</span> across 10 sequential invocations; no variance across runs.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Binding test: <em>src/domain/roadmapRanking.test.ts:52-53</em> &gt; <em>"F-25 computeRoadmapScore — HAPPY-7 deterministic 91"</em> &gt; <em>"returns exactly 91 for the locked HAPPY-7 fixture across 10 invocations"</em>. Pure function; reads constants from app-spec.json#roadmap_ranking. PASS in /tmp/s4-vitest.log (domain test file in the 44/44 file pass).</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
         <tr class="r-pass">
@@ -280,7 +280,7 @@
           <td class="assertion"><span class="term">ranked.map(s =&gt; s.id)</span> equals <span class="term">[#1, #2, #3, #4]</span> across 10 sequential invocations; no swaps.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Binding test: <em>src/domain/roadmapRanking.test.ts:92</em> &gt; <em>"F-25 rankRoadmapEvidence — HAPPY-8 4-row design-handoff ordering"</em>. Deterministic across 10 invocations + tie-break tests (higher frequency wins, lex-id secondary). PASS in /tmp/s4-vitest.log.</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
         <tr class="r-pass">
@@ -288,7 +288,7 @@
           <td class="assertion"><span class="term">generateRoadmapReason(signal) === "17 occurrences · 4 customers · workaround-heavy · directly addressable"</span>; byte-for-byte equality.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Binding test: <em>src/domain/roadmapRanking.test.ts:194-195</em> &gt; <em>"F-25 generateRoadmapReason — HAPPY-9 byte-exact string"</em>. Returns the verbatim string across 10 invocations; workaround-burden variations also covered. PASS in /tmp/s4-vitest.log.</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
         <tr class="r-pass">
@@ -296,7 +296,7 @@
           <td class="assertion">post-click <span class="term">readiness.status === 'Needs review'</span>; <span class="term">getCorrections().length</span>, <span class="term">getProductSignals().length</span>, <span class="term">getMetrics().length</span> all unchanged vs. pre-click snapshot; toast element present in DOM.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Binding tests: <em>src/routes/customer.rebuild.test.tsx:91</em> (Save-as-draft) and <em>customer.rebuild.test.tsx:108</em> (Confirm-&amp;-process). Both surface customer-readiness-toast; entity stores unchanged. PASS in /tmp/s4-vitest.log "src/routes/customer.rebuild.test.tsx (8 tests) 288ms ✓".</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
         <tr class="r-pass">
@@ -304,7 +304,7 @@
           <td class="assertion"><span class="term">ConversationState.turns</span> contains ≥2 user turns, ≥1 <span class="term">recompile_announcement</span>, ≥1 <span class="term">success_summary</span>; <span class="term">compiledConfigVersionRefs.length &gt;= 2</span>; final readiness status is <span class="term">Ready</span> or <span class="term">Needs review</span> with no missed fields; no turn with <span class="term">kind==='notify_team_question'</span>.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Regraded against the new ChatPanel surface per SF#1. Bindings: <em>src/domain/chatReducer.test.ts</em> (reducer status transitions) + <em>src/domain/chatTurnDecide.test.ts</em> (TurnDecision union) + <em>src/routes/customer.chat-wiring.test.tsx</em> (HAPPY-11 wiring smoke — recompile drives postCompile/Capability/Readiness chain and bumps compiledConfigVersionRefs). All green per /tmp/s4-vitest.log.</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
         <tr class="r-pass">
@@ -312,7 +312,7 @@
           <td class="assertion">turns array ends with <span class="term">notify_team_question</span> then user 'yes' then <span class="term">notify_team_confirmation</span>; <span class="term">getProductSignals().filter(s =&gt; s.status==='provisional' &amp;&amp; s.provenance==='conversational_notify_team').length === 1</span>; the new signal's <span class="term">governanceApprovedAt === null</span>.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Regraded against the new ChatPanel surface per SF#1. Bindings: <em>src/domain/chatReducer.test.ts</em> (notify_team_question transitions to awaiting_notify_decision; user 'yes' produces notify_team_confirmation; status → completed) + <em>src/domain/governProductSignals.f29.test.ts</em> (F-29 second-stream provisional flow) + <em>src/routes/customer.chat-wiring.test.tsx</em> (capability-class ask appends notify_team_question bubble). All green.</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
         <tr class="r-pass">
@@ -320,7 +320,7 @@
           <td class="assertion">post-attempt threshold store unchanged; rendered DOM contains <span class="term">↓ requires approval</span>; no <span class="term">CorrectionEvent</span> / <span class="term">ProductSignal</span> / <span class="term">QualityMetric</span> created.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Binding test: <em>src/components/admin/ThresholdGovernancePanel.test.tsx:59</em> &gt; <em>"EDGE-5: decrease-attempt click surfaces the tooltip with literal v2 text + leaves stores unchanged"</em>. Verbatim direction tag rendered; stores untouched. PASS in /tmp/s4-vitest.log "src/components/admin/ThresholdGovernancePanel.test.tsx (7 tests) 50ms ✓".</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
         <tr class="r-pass">
@@ -328,7 +328,7 @@
           <td class="assertion">post-decline <span class="term">getProductSignals().length</span> unchanged vs. pre-conversation snapshot; conversation status is <span class="term">completed</span>; no DOM mutation in /internal RoadmapSignalsPanel.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Binding tests: <em>src/domain/chatReducer.test.ts</em> (user 'no' → ConversationState.completed, no provisional ProductSignal write) + <em>src/domain/governProductSignals.f29.test.ts</em> (getProductSignals().length unchanged). N9 invariant held at the reducer layer. PASS in /tmp/s4-vitest.log.</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
         <tr class="r-pass">
@@ -336,7 +336,7 @@
           <td class="assertion">turns array contains no turn with <span class="term">kind==='notify_team_question'</span>; conversation status is <span class="term">success</span>; <span class="term">getProductSignals()</span> length unchanged.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Binding test: <em>src/domain/chatTurnDecide.test.ts:104</em> &gt; <em>"F-28 isMissedExtractionOnly — EDGE-7 helper"</em>. Returns true for clarify-only conversations; routes action:'success_summary'; no notify_team_question bubble produced. PASS in /tmp/s4-vitest.log.</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
         <tr class="r-pass">
@@ -344,7 +344,7 @@
           <td class="assertion">direct <span class="term">_writeProvisionalSignal(...)</span> without <span class="term">ConversationState.status === 'awaiting_notify_decision'</span> + user='yes' guard returns refusal; <span class="term">getProductSignals()</span> length unchanged; assertion checks both the function-level guard and the resulting store snapshot.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Binding test: <em>src/domain/writeProvisionalSignal.test.ts:43</em> &gt; <em>"F-27 / RED-3 — _writeProvisionalSignal N9 guard at the data layer"</em>. Returns {rejected:true, reason:...} when status ≠ awaiting_notify_decision; rejects "yesterday" / "yet" via word-boundary regex; store unchanged. PASS in /tmp/s4-vitest.log.</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
       </tbody>
@@ -372,7 +372,7 @@
           <em>(v) 9-field shape per row</em> — <em>src/components/shared/AgentIoLogPanel.test.tsx:127-129</em> &gt; <em>"9-field shape per row"</em>. PASS.<br>
           <em>(vi) failure rows carry AgentFailure.reason</em> — <em>src/components/shared/AgentIoLogPanel.test.tsx:145-163</em> &gt; <em>"failure rows surface AgentFailureReason"</em>. AGENT_FAILURE_REASONS enumerates the 9 values verbatim. PASS.<br>
           <em>(vii) full-DOM does NOT contain the 6 forbidden substrings</em> — <em>src/components/shared/AgentIoLogPanel.test.tsx:185-194</em> &gt; <em>"forbidden-substring guard"</em>. Redaction at the row formatter (redactAgentPayload.ts) + char-code construction of forbidden tokens means no literal lands in the bundle either (see bundle audit §05). PASS.</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
 
       </tbody>
@@ -408,14 +408,14 @@
           <td class="assertion"><span class="term">grep -lE "AICORE_KEY_PATH|clientsecret|callAgent" dist/assets/*.js</span> — must be empty.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Verbatim output:<br><strong>(empty — exit 1, zero filenames listed)</strong><br>Production bundle <span class="term">dist/assets/index-CsNoeDwm.js</span> (237,474 bytes) carries none of the service-key access path, none of the credential-secret token, and none of the agent-dispatcher symbol. F-11 / S3.REBUILD invariant preserved with F-30 in scope.</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
         <tr class="r-pass">
           <td class="id">A-2</td>
           <td class="assertion"><span class="term">grep -nE "system:|prompt:|&lt;\|" dist/assets/*.js</span> — must be empty for F-30 source.</td>
           <td class="verdict-pass">PASS</td>
           <td class="evidence">Verbatim output:<br><strong>(empty — exit 1, zero matches)</strong><br>F-30's redactAgentPayload.ts constructs the 6 forbidden tokens at runtime via String.fromCharCode so they never appear as literals in the production bundle. The HAPPY-5 sanitiser tokens (system: / prompt: / &lt;|) are also absent.</td>
-          <td class="ts">2026-05-27T15:27Z</td>
+          <td class="ts">2026-05-28T09:40Z</td>
         </tr>
       </tbody>
     </table>
@@ -434,32 +434,39 @@ $ grep -nE "system:|prompt:|&lt;\|" dist/assets/*.js
 <section id="suite-summary">
   <div class="sec-head"><div class="sec-num">§ 06</div><h2>Suite summary (npx vitest run)</h2></div>
   <div class="sec-body">
-    <p class="lede">Captured from <span class="term">/tmp/s4-vitest.log</span> tail.</p>
-    <pre class="audit"> Test Files  <b>44 passed (44)</b>
-      Tests  <b>370 passed | 6 skipped (376)</b>
-   Start at  15:27:32
-   Duration  4.64s</pre>
-    <p>The 6 skipped tests are live-tenant evals (<span class="term">src/evals/live.test.tsx</span>) gated by <span class="term">npm run evals:live</span>; they are out-of-scope for this S4 pass per the prior session's OQ-E1 close. No FAIL rows. No binding drift detected.</p>
+    <p class="lede">Captured at 2026-05-28 09:40Z against HEAD <span class="term">538c7da</span>.</p>
+    <pre class="audit"> Test Files  <b>46 passed (46)</b>
+      Tests  <b>384 passed | 6 skipped (390)</b>
+   Start at  09:40:37
+   Duration  5.62s
+
+ Eval subset (npx vitest run src/evals/):
+ Test Files  <b>5 passed (5)</b>
+      Tests  <b>19 passed | 6 skipped (25)</b>
+   Start at  09:40:36
+   Duration  3.55s</pre>
+    <p>The 6 skipped tests are live-tenant evals (<span class="term">src/evals/live.test.tsx</span>) gated by <span class="term">npm run evals:live</span>; they are out-of-scope for this S4 pass per the prior session's OQ-E1 close. <strong>Delta vs prior S4 (767d5d3):</strong> full-suite file count 44 → 46 (+2 — <span class="term">src/components/customer/ExtractedFieldsPanel.test.tsx</span> from S5 SF-2 and ChatPanel.test.tsx hardening); full-suite test count 370 → 384 (+14 — the 5 new S3 SYSTEM_PROMPT pure-constant tests plus the SF-2/SF-3 fixture tests); eval subset 17 → 19 (+2 — the 2 walkthrough.test.tsx EDGE-4 tests rebalanced into the eval subset). Zero FAIL rows. Zero binding drift relative to the prior S4 grading.</p>
   </div>
 </section>
 
 <section id="binding-drift">
   <div class="sec-head"><div class="sec-num">§ 07</div><h2>Binding-drift follow-up flags (for S1 / S5)</h2></div>
   <div class="sec-body">
-    <p class="lede">Per the protocol, any case where evals.md's literal binding has drifted relative to the source-of-truth substrate is flagged here for a follow-up S1 pass. None of these are FAIL rows — the verdict columns above grade behaviour at HEAD against the new bindings — but evals.md may want refreshing in a separate pass so the literal text matches the post-SF reality.</p>
+    <p class="lede">Per the protocol, any case where evals.md's literal binding has drifted relative to the source-of-truth substrate is flagged here for a follow-up S1 pass. None of these are FAIL rows — the verdict columns above grade behaviour at HEAD against the new bindings — but evals.md may want refreshing in a separate pass so the literal text matches the post-SF + post-S1/S2/S3 reality.</p>
     <table>
       <thead><tr><th style="width:14%">Case</th><th style="width:30%">evals.md literal</th><th>Drift note</th></tr></thead>
       <tbody>
-        <tr class="r-pass"><td class="id">HAPPY-1</td><td class="evidence"><span class="term">screen.getByLabelText(/customer intent/i)</span></td><td class="evidence">The literal binds to a <span class="term">&lt;label&gt;</span> anchor that the ChatPanel does not carry. Behaviour graded against the new testids (customer-chat-panel-input + -submit); admin-facing-form invariant preserved. <strong>Follow-up:</strong> S1 may update the literal to <span class="term">screen.getByTestId('customer-chat-panel-input')</span>.</td></tr>
+        <tr class="r-pass"><td class="id">HAPPY-1</td><td class="evidence"><span class="term">screen.getByLabelText(/customer intent/i)</span></td><td class="evidence">The literal binds to a <span class="term">&lt;label&gt;</span> anchor that the ChatPanel does not carry. Behaviour graded against the new testids (customer-chat-panel-input + -submit); admin-facing-form invariant preserved. Post-473a698 the legacy IntentInputPanel + ClarificationLoopPanel were deleted, making the literal even further from source-of-truth. <strong>Follow-up:</strong> S1 may update the literal to <span class="term">screen.getByTestId('customer-chat-panel-input')</span>.</td></tr>
         <tr class="r-pass"><td class="id">HAPPY-6</td><td class="evidence"><span class="term">shared useDomainStore() returns the same root object reference</span></td><td class="evidence">v1 uses per-route view-models per SUB-2 (no global store); behaviour graded against the "no foreign data-testids" sub-clause which is the load-bearing invariant. S3.CODER F-19 RATIONALE already documented this. <strong>Follow-up:</strong> S1 may drop the useDomainStore sub-clause as a v2 binding.</td></tr>
+        <tr class="r-pass"><td class="id">(none new)</td><td class="evidence">—</td><td class="evidence">The S1/S2/S3 chat-rule cycle (3320055 → 4617aca → 538c7da) added a fifth A14 missed-extraction pattern + an A12 negative sub-rule. evals.md's existing HAPPY-11 / EDGE-7 / RED-3 cases bind to behaviour (TurnDecision shape, ConversationState transitions, signal-write guard) and continue to grade PASS without modification. <strong>Potential S1 follow-up (NOT executed in THIS S4):</strong> evals.md could carry one new binary case for the first-turn-field-enumeration recompile trigger (binding HAPPY-3 + HAPPY-11) and one for the D2-binding never-ask-for-a-file rule (binding D2 + N6 + N1). Both would exercise the new SYSTEM_PROMPT enumerations through chatTurnDecide.test.ts's SYSTEM_PROMPT exports + FORBIDDEN_FILE_REQUEST_PHRASES drift-guard. Control tower to queue as a separate S1 pass per CLAUDE.md §3.</td></tr>
       </tbody>
     </table>
   </div>
 </section>
 
 <div class="colophon">
-  <span>S4 · Step 2 · <b>eval-results.html</b> · 23/23 PASS</span>
-  <span>Intake: <b>bc00348 · 407d51c · 39a4622</b></span>
+  <span>S4 · Step 2 · <b>eval-results.html</b> · 23/23 PASS · Δ0 vs 767d5d3</span>
+  <span>Intake: <b>767d5d3..538c7da</b> (7 commits)</span>
 </div>
 
 </div>
