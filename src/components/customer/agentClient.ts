@@ -10,22 +10,22 @@
  * Each endpoint returns either { kind: 'success', ...payload } or
  * { kind: 'failure', clarification, metric } — the same discriminated union
  * the server emits. The customer route consumes the union directly.
+ *
+ * Cycle 2 (2026-05-28): postChatTurnDecide DELETED. postCompile now takes
+ * a ConversationState and returns the merged Compile Agent's
+ * CompileAgentDecision (5-action discriminated union per A17).
  */
 
 import type {
   CapabilityAssessment,
   ClarificationRequest,
+  CompileAgentDecision,
   CompiledConfiguration,
   ConversationState,
   CustomerIntent,
   QualityMetric,
   ReadinessDecision,
 } from '@domain/types';
-
-// F-28 type-only import — the actual chatTurnDecide module lives on the
-// server side; the browser sees ONLY its TurnDecision shape, which the
-// TypeScript compiler strips at build time (no runtime import).
-import type { TurnDecision } from '@domain/chatTurnDecide';
 
 type AgentFailureWire = {
   readonly kind: 'failure';
@@ -34,7 +34,7 @@ type AgentFailureWire = {
 };
 
 export type CompileResponse =
-  | { readonly kind: 'success'; readonly intent: CustomerIntent; readonly configuration: CompiledConfiguration }
+  | { readonly kind: 'success'; readonly decision: CompileAgentDecision }
   | AgentFailureWire;
 
 export type CapabilityResponse =
@@ -47,10 +47,6 @@ export type ReadinessResponse =
       readonly readiness: ReadinessDecision;
       readonly clarifications: readonly ClarificationRequest[];
     }
-  | AgentFailureWire;
-
-export type ChatTurnDecideResponse =
-  | { readonly kind: 'success'; readonly decision: TurnDecision }
   | AgentFailureWire;
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {
@@ -70,8 +66,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
 }
 
 export async function postCompile(args: {
-  readonly raw: string;
-  readonly documentType?: string;
+  readonly conversation: ConversationState;
 }): Promise<CompileResponse> {
   return postJson<CompileResponse>('/api/compile', args);
 }
@@ -88,10 +83,4 @@ export async function postReadiness(args: {
   readonly configuration: CompiledConfiguration;
 }): Promise<ReadinessResponse> {
   return postJson<ReadinessResponse>('/api/readiness', args);
-}
-
-export async function postChatTurnDecide(args: {
-  readonly conversation: ConversationState;
-}): Promise<ChatTurnDecideResponse> {
-  return postJson<ChatTurnDecideResponse>('/api/chat-turn-decide', args);
 }

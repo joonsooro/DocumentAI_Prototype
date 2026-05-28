@@ -372,6 +372,33 @@ export async function callAgent<T = string>(params: CallAgentParams<T>): Promise
         max_tokens: params.max_tokens,
         value,
       };
+
+      // Cycle 2 (2026-05-28) — dev-only pre-redaction capture. The
+      // import.meta.env.DEV gate is statically resolvable by Vite's
+      // tree-shaker so the dev branch collapses to nothing in
+      // production. devTraceLog mirrors the redacted F-18 stream with
+      // the full system + user + raw response strings; renders in a
+      // dev-only panel under /admin per Cycle 2.
+      if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
+        try {
+          // Dynamic import keeps the production bundle free of the
+          // devTraceLog module entirely when DEV is statically false.
+          const { recordDevTrace } = await import('./devTraceLog');
+          recordDevTrace({
+            agent: params.agent,
+            model: params.model,
+            systemPrompt: params.system,
+            userPrompt: params.user,
+            rawResponse: text,
+            latencyMs: agentResult.latency_ms,
+            status: 'success',
+            errorMessage: null,
+          });
+        } catch {
+          // Never let a dev-trace failure break the agent path.
+        }
+      }
+
       return {
         result: agentResult,
         meta: {

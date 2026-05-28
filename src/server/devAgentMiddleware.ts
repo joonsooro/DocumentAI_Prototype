@@ -7,9 +7,14 @@
  * holds the agent imports, and exposes three JSON endpoints the browser can
  * POST to:
  *
- *   POST /api/compile     { raw, documentType, capturedAt? }
+ *   POST /api/compile     { conversation }   → { kind: 'success', decision: CompileAgentDecision } | failure
  *   POST /api/capability  { intent, configuration }
  *   POST /api/readiness   { intent, configuration }
+ *
+ * Cycle 2 (2026-05-28) rewrite: /api/compile now carries the merged Compile
+ * Agent's CompileAgentDecision discriminated union (per A17). The prior
+ * /api/chat-turn-decide endpoint has been DELETED — its job is absorbed
+ * into /api/compile's 5-action output.
  *
  * Each handler wraps its agent call in F-08 runAgentWithFailureSurface, so an
  * AgentFailure becomes a structured 200 + { kind:'failure', clarification,
@@ -27,19 +32,19 @@ import type { Connect } from 'vite';
 import type {
   CapabilityAssessment,
   ClarificationRequest,
+  CompileAgentDecision,
   CompiledConfiguration,
   ConversationState,
   CustomerIntent,
   QualityMetric,
   ReadinessDecision,
 } from '@domain/types';
-import { compileIntentToConfiguration } from '@domain/compileIntentToConfiguration';
+import { compileAgent } from '@domain/compileIntentToConfiguration';
 import { assessCapabilities } from '@domain/assessCapabilities';
 import { decideReadiness } from '@domain/decideReadiness';
 import { generateClarificationRequests } from '@domain/generateClarificationRequests';
 import { simulateDocumentRun } from '@domain/simulateDocumentRun';
 import { runAgentWithFailureSurface } from '@domain/agentFailureSurface';
-import { chatTurnDecide, type TurnDecision } from '@domain/chatTurnDecide';
 import { DAEJOO_PDF_URL } from '@data/assets';
 
 // ---------------------------------------------------------------------------
@@ -49,9 +54,7 @@ import { DAEJOO_PDF_URL } from '@data/assets';
 // ---------------------------------------------------------------------------
 
 interface CompileRequest {
-  readonly raw: string;
-  readonly documentType?: string;
-  readonly capturedAt?: string;
+  readonly conversation: ConversationState;
 }
 
 interface ChainRequest {
@@ -67,7 +70,7 @@ type AgentFailureWire = {
 };
 
 export type CompileResponse =
-  | AgentSuccess<{ intent: CustomerIntent; configuration: CompiledConfiguration }>
+  | AgentSuccess<{ decision: CompileAgentDecision }>
   | AgentFailureWire;
 export type CapabilityResponse =
   | AgentSuccess<{ assessments: readonly CapabilityAssessment[] }>
@@ -79,33 +82,19 @@ export type ReadinessResponse =
     }>
   | AgentFailureWire;
 
-interface ChatTurnDecideRequest {
-  readonly conversation: ConversationState;
-}
-export type ChatTurnDecideResponse =
-  | AgentSuccess<{ decision: TurnDecision }>
-  | AgentFailureWire;
-
 // ---------------------------------------------------------------------------
 // Handlers — pure functions over a parsed body. Exported so the test suite
 // can exercise them without standing up a real HTTP server.
 // ---------------------------------------------------------------------------
 
 export async function handleCompile(body: CompileRequest): Promise<CompileResponse> {
-  const intent: CustomerIntent = Object.freeze({
-    id: `intent::${Date.now()}`,
-    raw: body.raw,
-    documentType: body.documentType ?? 'commercial_invoice',
-    capturedAt: body.capturedAt ?? new Date().toISOString(),
-  });
-
   const outcome = await runAgentWithFailureSurface(
     'compile',
-    () => compileIntentToConfiguration(intent),
+    () => compileAgent(body.conversation),
   );
 
   if (outcome.kind === 'success') {
-    return { kind: 'success', intent, configuration: outcome.value };
+    return { kind: 'success', decision: outcome.value };
   }
   return { kind: 'failure', clarification: outcome.clarification, metric: outcome.metric };
 }
@@ -147,19 +136,6 @@ export async function handleReadiness(body: ChainRequest): Promise<ReadinessResp
   return { kind: 'failure', clarification: outcome.clarification, metric: outcome.metric };
 }
 
-export async function handleChatTurnDecide(
-  body: ChatTurnDecideRequest,
-): Promise<ChatTurnDecideResponse> {
-  const outcome = await runAgentWithFailureSurface(
-    'chat.turn_decide',
-    () => chatTurnDecide(body.conversation),
-  );
-  if (outcome.kind === 'success') {
-    return { kind: 'success', decision: outcome.value };
-  }
-  return { kind: 'failure', clarification: outcome.clarification, metric: outcome.metric };
-}
-
 // ---------------------------------------------------------------------------
 // Connect-style middleware — used by vite.config.ts configureServer
 // ---------------------------------------------------------------------------
@@ -168,7 +144,6 @@ const HANDLERS = {
   '/api/compile': handleCompile as (body: unknown) => Promise<unknown>,
   '/api/capability': handleCapability as (body: unknown) => Promise<unknown>,
   '/api/readiness': handleReadiness as (body: unknown) => Promise<unknown>,
-  '/api/chat-turn-decide': handleChatTurnDecide as (body: unknown) => Promise<unknown>,
 } satisfies Record<string, (body: unknown) => Promise<unknown>>;
 
 type Handled = keyof typeof HANDLERS;
@@ -183,10 +158,6 @@ function validate(url: Handled, body: unknown): { ok: true } | { ok: false; erro
   }
   const b = body as Record<string, unknown>;
   if (url === '/api/compile') {
-    if (typeof b.raw !== 'string' || b.raw.trim().length === 0) {
-      return { ok: false, error: 'raw_required' };
-    }
-  } else if (url === '/api/chat-turn-decide') {
     if (typeof b.conversation !== 'object' || b.conversation === null) {
       return { ok: false, error: 'conversation_required' };
     }

@@ -38,6 +38,7 @@ const conversation = (status: ConversationState['status'], turns: readonly ChatT
   turns,
   compiledConfigVersionRefs: [],
   status,
+  pendingSignal: null,
 });
 
 describe('F-27 / RED-3 — _writeProvisionalSignal N9 guard at the data layer', () => {

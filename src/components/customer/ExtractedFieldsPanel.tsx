@@ -35,9 +35,29 @@ interface Props {
 }
 
 const EVIDENCE_TRUNCATE_AT = 80;
-// Tooltip text for the null-value cell. Phrased to explain the gate
-// without leaking the forbidden customer-surface literal (N1).
-const NULL_VALUE_TOOLTIP = 'Below confidence threshold';
+// Cycle 2 (2026-05-28) — HAPPY-16 binding. Distinguish two flavours
+// of null value:
+//   - truly-missing (confidence === 0): the field is not in the
+//     document at all. The customer's intent named it but the
+//     extractor has no evidence to report.
+//   - below-threshold (confidence > 0): the extractor found a
+//     candidate but its confidence is below the configured threshold.
+// Both render '—' for the value cell; the title attribute + the
+// data-missing-kind attribute let HAPPY-16 assert the distinction.
+const TRULY_MISSING_TOOLTIP = 'Not found in this document';
+const BELOW_THRESHOLD_TOOLTIP = 'Below confidence threshold';
+
+type MissingKind = 'truly-missing' | 'below-threshold' | 'present';
+function missingKindOf(value: ExtractedField['value'], confidence: number): MissingKind {
+  if (value !== null) return 'present';
+  if (confidence === 0) return 'truly-missing';
+  return 'below-threshold';
+}
+function tooltipFor(kind: MissingKind): string | undefined {
+  if (kind === 'truly-missing') return TRULY_MISSING_TOOLTIP;
+  if (kind === 'below-threshold') return BELOW_THRESHOLD_TOOLTIP;
+  return undefined;
+}
 
 function formatValue(value: ExtractedField['value']): string {
   if (value === null) return '—';
@@ -90,16 +110,19 @@ export function ExtractedFieldsPanel({ run }: Props) {
         </thead>
         <tbody>
           {run.extractedFields.map((f) => {
-            const isNull = f.value === null;
+            const kind = missingKindOf(f.value, f.confidence);
+            const isNull = kind !== 'present';
             return (
               <tr
                 key={f.name}
                 data-testid={`customer-extracted-row-${f.name}`}
+                data-missing-kind={kind}
               >
                 <td style={tdStyle}>{f.name}</td>
                 <td
                   style={isNull ? tdNullStyle : tdStyle}
-                  title={isNull ? NULL_VALUE_TOOLTIP : undefined}
+                  title={tooltipFor(kind)}
+                  data-missing-kind={kind}
                 >
                   {formatValue(f.value)}
                 </td>

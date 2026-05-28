@@ -3,16 +3,26 @@
  *
  * Renders data-testid='customer-chat-panel' with one <article> bubble
  * per ChatTurn in state.turns. CSS class on each bubble is keyed off
- * turn.kind (one of the 6 ChatTurnKind values) — F-27 acceptance pins
- * this so tests can assert the bubble taxonomy directly.
+ * turn.kind (one of the 7 ChatTurnKind values; Cycle 2 adds
+ * 'prompt_display' per A18 / F-04b) — F-27 acceptance pins this so
+ * tests can assert the bubble taxonomy directly.
  *
  * Submitting a user turn appends to state.turns (via the onSubmit
- * callback the parent supplies) and triggers F-28's per-turn meta-
- * decision (the parent handles the chat.turn_decide call; ChatPanel
- * only owns presentation + input).
+ * callback the parent supplies) and triggers the merged Compile
+ * Agent's per-turn 5-action structured output (the parent handles
+ * the postCompile call; ChatPanel only owns presentation + input).
  *
- * The prior IntentInputPanel + ClarificationLoopPanel split is REPLACED
- * by this single chat surface per A12.
+ * F-31 / D6 consent affordance: when the last assistant turn carries
+ * kind='notify_team_question' AND the conversation status is
+ * 'awaiting_notify_decision', ChatPanel renders inline yes/no buttons
+ * under data-testid='customer-chat-consent-yes' and
+ * data-testid='customer-chat-consent-no'. The parent supplies an
+ * onConsent callback. ChatPanel does NOT invoke the signal write
+ * directly — it surfaces consent and lets the route call
+ * _writeProvisionalSignal, preserving the data-layer guard ownership.
+ *
+ * The prior IntentInputPanel + ClarificationLoopPanel split is
+ * REPLACED by this single chat surface per A12.
  */
 import { CSSProperties, FormEvent, useState } from 'react';
 import type { ChatTurn, ConversationState } from '@domain/types';
@@ -20,12 +30,18 @@ import type { ChatTurn, ConversationState } from '@domain/types';
 export type ChatPanelProps = {
   conversation: ConversationState;
   onSubmitTurn: (userContent: string) => void;
+  /**
+   * F-31 / D6 — invoked when the user clicks yes/no under a
+   * notify_team_question bubble. `yes` is true for yes, false for no.
+   * Optional so test harnesses + non-consent flows can omit it.
+   */
+  onConsent?: (yes: boolean) => void;
   disabled?: boolean;
   placeholder?: string;
 };
 
 export function ChatPanel(props: ChatPanelProps) {
-  const { conversation, onSubmitTurn, disabled, placeholder } = props;
+  const { conversation, onSubmitTurn, onConsent, disabled, placeholder } = props;
   const [draft, setDraft] = useState('');
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -35,6 +51,18 @@ export function ChatPanel(props: ChatPanelProps) {
     onSubmitTurn(trimmed);
     setDraft('');
   };
+
+  // F-31 / D6 — show consent affordance when the last assistant turn
+  // is a notify_team_question AND the conversation is awaiting the
+  // user's decision. The condition pair preserves N9's UX layer
+  // guarantee (the data layer still enforces RED-3 independently).
+  const lastAssistantTurn = [...conversation.turns]
+    .reverse()
+    .find((t) => t.role === 'assistant');
+  const showConsent =
+    conversation.status === 'awaiting_notify_decision' &&
+    lastAssistantTurn?.kind === 'notify_team_question' &&
+    typeof onConsent === 'function';
 
   return (
     <section data-testid="customer-chat-panel" style={panelStyle}>
@@ -53,6 +81,28 @@ export function ChatPanel(props: ChatPanelProps) {
         {conversation.turns.map((turn) => (
           <ChatBubble key={turn.id} turn={turn} />
         ))}
+        {showConsent && onConsent && (
+          <div data-testid="customer-chat-consent" style={consentRowStyle}>
+            <button
+              type="button"
+              data-testid="customer-chat-consent-yes"
+              onClick={() => onConsent(true)}
+              disabled={disabled}
+              style={consentYesStyle}
+            >
+              Yes, notify the team
+            </button>
+            <button
+              type="button"
+              data-testid="customer-chat-consent-no"
+              onClick={() => onConsent(false)}
+              disabled={disabled}
+              style={consentNoStyle}
+            >
+              No
+            </button>
+          </div>
+        )}
       </div>
       <form onSubmit={onSubmit} style={composerStyle}>
         <textarea
@@ -79,6 +129,7 @@ export function ChatPanel(props: ChatPanelProps) {
 
 function ChatBubble({ turn }: { turn: ChatTurn }) {
   const isUser = turn.role === 'user';
+  const isPromptDisplay = turn.kind === 'prompt_display';
   return (
     <article
       data-testid={`chat-bubble-${turn.id}`}
@@ -88,12 +139,20 @@ function ChatBubble({ turn }: { turn: ChatTurn }) {
       style={{
         ...bubbleStyle,
         ...(isUser ? bubbleUserStyle : bubbleAssistantStyle),
+        ...(isPromptDisplay ? bubblePromptDisplayStyle : {}),
       }}
     >
       <span style={bubbleMetaStyle}>
         {turn.role} · {turn.kind}
       </span>
-      <p style={bubbleContentStyle}>{turn.content}</p>
+      <p
+        style={{
+          ...bubbleContentStyle,
+          ...(isPromptDisplay ? bubblePromptDisplayContentStyle : {}),
+        }}
+      >
+        {turn.content}
+      </p>
     </article>
   );
 }
@@ -168,6 +227,19 @@ const bubbleAssistantStyle: CSSProperties = {
   alignSelf: 'flex-start',
 };
 
+const bubblePromptDisplayStyle: CSSProperties = {
+  // A18 / F-04b — monospace rendering for the generated extraction
+  // prompt. Keeps the visual cue that this content is a prompt body.
+  maxWidth: '95%',
+  background: 'var(--panel-2)',
+};
+
+const bubblePromptDisplayContentStyle: CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: '11.5px',
+  lineHeight: 1.5,
+};
+
 const bubbleMetaStyle: CSSProperties = {
   display: 'block',
   fontFamily: 'var(--font-mono)',
@@ -181,6 +253,35 @@ const bubbleMetaStyle: CSSProperties = {
 const bubbleContentStyle: CSSProperties = {
   margin: 0,
   whiteSpace: 'pre-wrap',
+};
+
+const consentRowStyle: CSSProperties = {
+  display: 'flex',
+  gap: '8px',
+  alignSelf: 'flex-start',
+  marginTop: '4px',
+};
+
+const consentYesStyle: CSSProperties = {
+  padding: '6px 12px',
+  borderRadius: 'var(--radius-button)',
+  border: '1px solid var(--brand)',
+  background: 'var(--brand)',
+  color: '#FFFFFF',
+  cursor: 'pointer',
+  fontFamily: 'var(--font-sans)',
+  fontSize: 'var(--body-size)',
+};
+
+const consentNoStyle: CSSProperties = {
+  padding: '6px 12px',
+  borderRadius: 'var(--radius-button)',
+  border: '1px solid var(--line)',
+  background: 'var(--panel)',
+  color: 'var(--ink-1)',
+  cursor: 'pointer',
+  fontFamily: 'var(--font-sans)',
+  fontSize: 'var(--body-size)',
 };
 
 const composerStyle: CSSProperties = {

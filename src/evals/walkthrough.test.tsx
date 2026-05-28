@@ -117,6 +117,8 @@ describe('F-20 supplier portability — EDGE-4 sub-clause', () => {
       source: 'aiCore',
       templateUsed: false,
       compiledAt: '2026-05-25T00:00:00Z',
+      extractionSystemPrompt:
+        'You are an extraction agent. Extract order_number and ship_date from the document.',
     };
 
     const { getByTestId, container } = render(

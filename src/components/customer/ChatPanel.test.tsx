@@ -13,6 +13,7 @@ const conv = (turns: readonly ChatTurn[], status: ConversationState['status'] = 
   turns,
   compiledConfigVersionRefs: [],
   status,
+  pendingSignal: null,
 });
 
 const turn = (id: string, role: ChatTurn['role'], kind: ChatTurn['kind'], content: string): ChatTurn => ({

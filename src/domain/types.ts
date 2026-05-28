@@ -49,6 +49,10 @@ export interface CompiledConfiguration {
   readonly source: 'aiCore' | 'mock';
   readonly templateUsed: false; // HAPPY-3 / A1: must never be a template lookup
   readonly compiledAt: string;
+  // A18 / F-04b — live-generated extraction system prompt produced by the
+  // merged Compile Agent's compile/recompile branches; customer-requestable
+  // via the 'prompt_display' ChatTurnKind. Re-generated on every recompile.
+  readonly extractionSystemPrompt: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -329,10 +333,10 @@ export interface CapabilityGap {
 
 // ---------------------------------------------------------------------------
 // 15. ChatTurn — F-27 / S1.AMEND § 8. A single turn in the Customer
-//     Workspace chat thread. The 6-kind union pins exactly which bubble
-//     types F-27 ChatPanel renders + which the F-28 chat.turn_decide
-//     agent can produce; new kinds require both a contract amendment
-//     and a UI update.
+//     Workspace chat thread. The 7-kind union pins exactly which bubble
+//     types F-27 ChatPanel renders + which the merged Compile Agent
+//     (F-04 / A17) can produce; new kinds require both a contract
+//     amendment and a UI update.
 // ---------------------------------------------------------------------------
 export type ChatTurnKind =
   | 'message'
@@ -340,7 +344,15 @@ export type ChatTurnKind =
   | 'recompile_announcement'
   | 'notify_team_question'
   | 'notify_team_confirmation'
-  | 'success_summary';
+  | 'success_summary'
+  // A18 / F-04b — Cycle 2 (2026-05-28): customer-visible monospace bubble
+  // that renders the live-generated extractionSystemPrompt on demand
+  // (e.g. when the user asks "show me the prompt"). This is the
+  // legitimate-containment exception to N3's no-raw-prompt-text rule;
+  // the displayed string is intent-derived output, distinct from the
+  // A17/A1/A5/A7 agent SYSTEM prompts which stay forbidden on every
+  // customer surface.
+  | 'prompt_display';
 
 export interface ChatTurnRefs {
   readonly fields?: readonly string[];
@@ -370,9 +382,81 @@ export type ConversationStatus =
   | 'awaiting_notify_decision'
   | 'completed';
 
+// D6 / F-31 — Cycle 2 (2026-05-28): when the merged Compile Agent returns
+// action='capability_class_question', the customer route stores the
+// pending-signal seed on ConversationState so the chat's yes/no consent
+// affordance has the description + citation it needs to render. On user
+// 'yes', the route hands this seed to _writeProvisionalSignal; on 'no'
+// the route clears it and the conversation transitions to 'completed'.
+// The seed shape mirrors what _writeProvisionalSignal needs to build a
+// ProductSignal — the route fills in id/signalType/etc. from the seed
+// description at the call site.
+export interface PendingSignalSeed {
+  readonly description: string;
+  readonly capabilitySurfaceCitation: string;
+}
+
 export interface ConversationState {
   readonly id: string;
   readonly turns: readonly ChatTurn[];
   readonly compiledConfigVersionRefs: readonly CompiledConfiguration['id'][];
   readonly status: ConversationStatus;
+  readonly pendingSignal: PendingSignalSeed | null;
 }
+
+// ---------------------------------------------------------------------------
+// 17. CompileAgentDecision — A17 / F-04 / Cycle 2 (2026-05-28). The single
+//     structured output of the merged Compile Agent per user turn. The agent
+//     reads the accumulated ConversationState + latest user message and
+//     returns ONE of these 5 discriminated-union variants in a single live
+//     AI Core call (compile_or_reasoning_heavy deployment). The customer
+//     route branches on `decision.action` and renders the corresponding
+//     chat bubble + side-effects.
+//
+//     - compile / recompile: produce a {schema, processingMode,
+//       extractionSystemPrompt} payload. The route wraps this into a
+//       CompiledConfiguration, runs simulateDocumentRun, and refreshes
+//       capability + readiness panels. extractionSystemPrompt is the
+//       A18 customer-requestable string.
+//     - clarify: produce a missed-extraction follow-up question.
+//     - capability_class_question: produce the notify-team confirmation
+//       question (free-form prose grounded in the curated capability
+//       surface — A2 amendment / A5) WITH an explicit citation back to
+//       a section of docs/document-ai-capability-surface.md AND a
+//       pendingSignalDescription that the route stores on
+//       ConversationState.pendingSignal.
+//     - success_summary: produce a wrap-up message; conversation enters
+//       'completed' (after consent for capability_class_question paths).
+//
+//     The merged agent's system prompt enumerates these 5 actions AND
+//     the forbidden file-request phrases verbatim per the
+//     enumerate-don't-gesture tenet (CLAUDE.md §2).
+// ---------------------------------------------------------------------------
+export type CompileAgentDecision =
+  | {
+      readonly action: 'compile';
+      readonly schema: CompiledConfiguration['schema'];
+      readonly processingMode: ProcessingMode;
+      readonly extractionSystemPrompt: string;
+    }
+  | {
+      readonly action: 'recompile';
+      readonly schema: CompiledConfiguration['schema'];
+      readonly processingMode: ProcessingMode;
+      readonly extractionSystemPrompt: string;
+    }
+  | {
+      readonly action: 'clarify';
+      readonly clarificationContent: string;
+    }
+  | {
+      readonly action: 'capability_class_question';
+      readonly confirmationQuestion: string;
+      readonly capabilityGapDescription: string;
+      readonly capabilitySurfaceCitation: string;
+      readonly pendingSignalDescription: string;
+    }
+  | {
+      readonly action: 'success_summary';
+      readonly summaryContent: string;
+    };

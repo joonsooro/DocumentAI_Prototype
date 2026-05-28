@@ -35,9 +35,9 @@ export type WriteProvisionalSignalDecision =
 
 /**
  * Minimum information needed to materialise a provisional signal.
- * F-28 builds this seed from the user's capability-class turn + the
- * assistant's chat.turn_decide classification; F-27 / F-29 then call
- * this guard before appending.
+ * The customer route (F-31 / D6) builds this seed from the merged
+ * Compile Agent's capability_class_question payload; F-27 / F-29
+ * then call this guard before appending.
  */
 export type ProvisionalSignalSeed = {
   readonly id: string;

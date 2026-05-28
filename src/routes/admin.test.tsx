@@ -28,6 +28,7 @@ import { _resetQualityMetricLogForTests } from '@runtime/qualityMetricLog';
 const CONFIG: CompiledConfiguration = {
   id: 'cfg::test::1',
   intentId: 'intent::test::1',
+  extractionSystemPrompt: 'test extraction system prompt',
   schema: {
     fields: [
       { name: 'supplier', dataType: 'string', required: true, instruction: 'extract supplier', validation: null, regex: null, confidenceThreshold: 0.85 },

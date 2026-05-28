@@ -33,7 +33,11 @@ export const DAEJOO_NINE_FIELDS = [
 ];
 
 export function makeNineFieldWire() {
+  // Cycle 2 (2026-05-28) — merged Compile Agent response shape per A17.
+  // The wire now carries an `action` discriminant + the A18
+  // extractionSystemPrompt for compile/recompile branches.
   return {
+    action: 'compile',
     schema: {
       fields: DAEJOO_NINE_FIELDS.map((name) => ({
         name,
@@ -46,6 +50,8 @@ export function makeNineFieldWire() {
       })),
     },
     processingMode: 'review_required',
+    extractionSystemPrompt:
+      'You are an extraction agent. Extract the 9 commercial-invoice fields above from the document.',
   };
 }
 
@@ -74,6 +80,8 @@ export const DAEJOO_COMPILED_CONFIG: CompiledConfiguration = {
   source: 'aiCore',
   templateUsed: false,
   compiledAt: '2026-05-25T00:00:00Z',
+  extractionSystemPrompt:
+    'You are an extraction agent. Extract the schema fields from the DAEJOO commercial invoice document. Follow IDP best practices: scan each field instruction, locate the matching value in the document, and emit value + confidence.',
 };
 
 // A DAEJOO ProductSignal carrying the disposal phrase (RED-2 / HAPPY-4).

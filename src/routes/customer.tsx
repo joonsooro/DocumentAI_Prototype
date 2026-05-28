@@ -1,5 +1,5 @@
 /**
- * F-11 — Customer Workspace route (S5 SF · chat-wiring fix).
+ * F-11 — Customer Workspace route (Cycle 2 · merged Compile Agent rewire).
  *
  * Composes the chat-first surface on top of the existing
  * CustomerViewModel structural guard:
@@ -14,29 +14,34 @@
  *     data-testid='customer-clarification-loop' on /customer.
  *   - CompiledConfigPanel / CapabilityStatusPanel / ReadinessPanel
  *     remain as auxiliary status displays that update in-place when
- *     F-28 chat.turn_decide returns action:'recompile'.
+ *     the merged Compile Agent (F-04 / A17) returns action='compile'
+ *     or 'recompile'.
  *   - D3 Readiness footer: Save as draft + Confirm & process,
  *     both non-destructive (HAPPY-10).
  *
- * Live-wire: every chat submit calls postChatTurnDecide via
- * src/components/customer/agentClient.ts. On action:'recompile' the
- * route invokes postCompile + postCapability + postReadiness (no
- * reimplementation — F-11 acceptance forbids that). On action:
- * 'capability_class_question' the conversation transitions to
- * 'awaiting_notify_decision' and the notify-team question bubble is
- * appended (N9 governance still enforced at the signal-write layer
- * in src/domain/writeProvisionalSignal.ts).
+ * Cycle 2 (2026-05-28) rewire: every chat submit calls postCompile
+ * with the accumulated ConversationState. The response carries a
+ * CompileAgentDecision (5-action discriminated union per A17). The
+ * route branches on decision.action:
+ *   - compile / recompile → build CompiledConfiguration from payload
+ *     (carrying A18 extractionSystemPrompt), run simulateDocumentRun,
+ *     postCapability + postReadiness for auxiliary panels.
+ *   - clarify → append clarification_question bubble.
+ *   - capability_class_question → store pendingSignal on
+ *     ConversationState, append notify_team_question bubble; chat
+ *     surfaces an inline yes/no consent affordance (F-31 / D6).
+ *   - success_summary → append success_summary bubble.
  *
- * S5 SF-3 (2026-05-27): a deterministic RE_EXTRACT_PATTERN shortcut
- * fires BEFORE postChatTurnDecide whenever the user message matches
- * the anchored re-extract verbs AND a configuration already exists.
- * It runs capability + readiness against the current configuration
- * (no recompile) and refreshes the F-03 DocumentRun via
- * simulateDocumentRun. The closed A12 / A14 TurnDecision union is
- * NOT widened; chatTurnDecide.ts and the wire contract are unchanged.
- * Also: an upload that lands after a configuration exists triggers
- * the same runExtractionChain so the demo never sits idle on a
- * second drop.
+ * The deleted F-28 router agent and its regex shortcut +
+ * runExtractionChain helper are gone — the merged agent handles all
+ * paths in a single call per turn.
+ *
+ * ProductSignal consent: on user 'yes' click the route appends a
+ * 'yes' ChatTurn and invokes _writeProvisionalSignal (NOT
+ * governProductSignals; that is F-09's cluster-promotion layer). The
+ * data-layer guard in _writeProvisionalSignal rejects writes without
+ * the awaiting_notify_decision status AND last-user-turn YES_RE pair
+ * per N9 / RED-3.
  */
 import { useState } from 'react';
 import {
@@ -54,24 +59,31 @@ import { ExtractedFieldsPanel } from '@components/customer/ExtractedFieldsPanel'
 import { ChatPanel } from '@components/customer/ChatPanel';
 import {
   applyChatTurn,
+  clearPendingSignal,
   createConversation,
   recordCompiledConfig,
+  setPendingSignal,
 } from '@domain/chatReducer';
-import type { ChatTurn, ConversationState, DocumentRun } from '@domain/types';
-import type { TurnDecision } from '@domain/chatTurnDecide';
+import type {
+  ChatTurn,
+  CompileAgentDecision,
+  CompiledConfiguration,
+  ConversationState,
+  CustomerIntent,
+  DocumentRun,
+} from '@domain/types';
 import {
   postCompile,
   postCapability,
   postReadiness,
-  postChatTurnDecide,
 } from '@components/customer/agentClient';
 import { simulateDocumentRun } from '@domain/simulateDocumentRun';
+import { _writeProvisionalSignal } from '@domain/writeProvisionalSignal';
 import { DAEJOO_PDF_URL } from '@data/assets';
 
-type LoadingStage = 'idle' | 'turn_decide' | 'compile' | 'capability' | 'readiness';
+type LoadingStage = 'idle' | 'compile' | 'capability' | 'readiness';
 
 const STAGE_LABEL: Record<Exclude<LoadingStage, 'idle'>, string> = {
-  turn_decide: 'Thinking…',
   compile: 'Compiling configuration…',
   capability: 'Assessing capabilities…',
   readiness: 'Deciding readiness…',
@@ -84,20 +96,43 @@ const OBJECT_HEADER_TABS: readonly ObjectHeaderTab[] = Object.freeze([
   { id: 'attachments', label: 'Attachments', disabled: true, disabledTooltip: 'Available in v2' },
 ]);
 
-/**
- * S5 SF-3 (2026-05-27): deterministic re-extract trigger pattern.
- * Anchored verbs only, so a legitimate clarification that happens
- * to mention "extract" inside a longer phrase still routes through
- * the normal chat.turn_decide path. The literal "extract from
- * default compile" phrase the customer used is covered by the
- * "extract from default compile" alternative.
- */
-const RE_EXTRACT_PATTERN =
-  /\b(?:re[-\s]?extract|re[-\s]?run\s+extraction|run\s+extraction|extract\s+(?:fields?|from\s+default\s+compile|now))\b/i;
-
 interface CustomerRouteProps {
   /** Optional seed for tests + eval harness. Defaults to an empty model. */
   readonly initialViewModel?: CustomerViewModel;
+}
+
+/**
+ * Synthesize a CustomerIntent from the latest user turn. The merged
+ * Compile Agent reads the full ConversationState, but the downstream
+ * capability + readiness agents still take a CustomerIntent — so the
+ * route fabricates one from the conversation's latest user message.
+ */
+function synthesizeIntent(conversation: ConversationState): CustomerIntent {
+  const lastUserTurn = [...conversation.turns].reverse().find((t) => t.role === 'user');
+  const raw = lastUserTurn?.content ?? '';
+  return Object.freeze({
+    id: `intent::${conversation.id}::${conversation.turns.length}`,
+    raw,
+    documentType: 'commercial_invoice',
+    capturedAt: new Date().toISOString(),
+  });
+}
+
+function buildCompiledConfiguration(
+  intent: CustomerIntent,
+  decision: Extract<CompileAgentDecision, { action: 'compile' | 'recompile' }>,
+  versionIdx: number,
+): CompiledConfiguration {
+  return Object.freeze({
+    id: `cfg::${intent.id}::v${versionIdx}`,
+    intentId: intent.id,
+    schema: decision.schema,
+    processingMode: decision.processingMode,
+    source: 'aiCore' as const,
+    templateUsed: false as const,
+    compiledAt: new Date().toISOString(),
+    extractionSystemPrompt: decision.extractionSystemPrompt,
+  });
 }
 
 export default function CustomerRoute({
@@ -116,9 +151,9 @@ export default function CustomerRoute({
   // DAEJOO preview). Fixes the regression where the preview was always
   // visible regardless of upload, contradicting D2's honest-UI posture.
   const [uploadedFile, setUploadedFile] = useState<{ name: string } | null>(null);
-  // S5 SF-2: captures the F-03 DocumentRun emitted by UploadZonePanel
-  // and feeds it to ExtractedFieldsPanel. The run is the EXISTING mock
-  // extractor output (N6 preserved — no live OCR, fixture-backed).
+  // S5 SF-2: captures the F-03 DocumentRun and feeds it to
+  // ExtractedFieldsPanel. The run is the EXISTING mock extractor
+  // output (N6 preserved — no live OCR, fixture-backed).
   const [extractedRun, setExtractedRun] = useState<DocumentRun | null>(null);
 
   function nextTurnId(): { id: string; counter: number } {
@@ -143,84 +178,10 @@ export default function CustomerRoute({
     return { state: applyChatTurn(prev, turn), counter: nextCounter };
   }
 
-  /**
-   * S5 SF-3: re-extract without recompile. Used by the deterministic
-   * RE_EXTRACT_PATTERN shortcut in handleChatSubmit AND by the upload
-   * onUpload callback when a configuration already exists. Mirrors
-   * the capability + readiness halves of runCompileChain, with one
-   * addition: refresh the F-03 DocumentRun via simulateDocumentRun
-   * FIRST so the ExtractedFieldsPanel updates immediately.
-   */
-  async function runExtractionChain(
-    intent: NonNullable<CustomerViewModel['intent']>,
-    configuration: NonNullable<CustomerViewModel['configuration']>,
+  async function runCapabilityAndReadiness(
+    intent: CustomerIntent,
+    configuration: CompiledConfiguration,
   ): Promise<void> {
-    try {
-      setExtractedRun(simulateDocumentRun(DAEJOO_PDF_URL, configuration));
-
-      setStage('capability');
-      const capResp = await postCapability({ intent, configuration });
-      if (capResp.kind === 'success') {
-        const assessments = projectCapabilitiesForCustomerSurface(capResp.assessments);
-        setVm((prev) => ({ ...prev, assessments }));
-      } else {
-        setVm((prev) => ({
-          ...prev,
-          clarifications: [...prev.clarifications, capResp.clarification],
-        }));
-      }
-
-      setStage('readiness');
-      const readyResp = await postReadiness({ intent, configuration });
-      if (readyResp.kind === 'success') {
-        setVm((prev) => ({
-          ...prev,
-          readiness: readyResp.readiness,
-          clarifications: [...prev.clarifications, ...readyResp.clarifications],
-        }));
-      } else {
-        setVm((prev) => ({
-          ...prev,
-          clarifications: [...prev.clarifications, readyResp.clarification],
-        }));
-      }
-    } catch (err) {
-      setRequestError((err as Error).message);
-    } finally {
-      setStage('idle');
-    }
-  }
-
-  async function runCompileChain(
-    raw: string,
-    convAtRecompile: ConversationState,
-    counterAtRecompile: number,
-  ): Promise<{ conv: ConversationState; counter: number }> {
-    let conv = convAtRecompile;
-    let counter = counterAtRecompile;
-
-    setStage('compile');
-    const compileResp = await postCompile({ raw, documentType: 'commercial_invoice' });
-    if (compileResp.kind === 'failure') {
-      setVm((prev) => ({
-        ...prev,
-        clarifications: [...prev.clarifications, compileResp.clarification],
-      }));
-      const failBubble = appendAssistantBubble(
-        conv,
-        counter,
-        'message',
-        `The compile agent reported a failure: ${compileResp.clarification.operatorFacingError ?? 'see clarification queue'}.`,
-      );
-      conv = failBubble.state;
-      counter = failBubble.counter;
-      return { conv, counter };
-    }
-
-    const { intent, configuration } = compileResp;
-    setVm((prev) => ({ ...prev, intent, configuration }));
-    conv = recordCompiledConfig(conv, configuration.id);
-
     setStage('capability');
     const capResp = await postCapability({ intent, configuration });
     if (capResp.kind === 'success') {
@@ -247,22 +208,6 @@ export default function CustomerRoute({
         clarifications: [...prev.clarifications, readyResp.clarification],
       }));
     }
-    return { conv, counter };
-  }
-
-  function decisionBubble(
-    decision: TurnDecision,
-  ): { kind: ChatTurn['kind']; content: string } {
-    switch (decision.action) {
-      case 'clarify':
-        return { kind: 'clarification_question', content: decision.clarificationContent };
-      case 'recompile':
-        return { kind: 'recompile_announcement', content: decision.recompileSummary };
-      case 'capability_class_question':
-        return { kind: 'notify_team_question', content: decision.questionContent };
-      case 'success_summary':
-        return { kind: 'success_summary', content: decision.summaryContent };
-    }
   }
 
   async function handleChatSubmit(content: string): Promise<void> {
@@ -281,47 +226,20 @@ export default function CustomerRoute({
     setConversation(conv);
     setTurnCounter(counter);
 
-    // S5 SF-3: deterministic re-extract shortcut. When the user's
-    // message matches RE_EXTRACT_PATTERN AND a configuration already
-    // exists, bypass the live haiku-class chat.turn_decide classifier
-    // (which drifts to success_summary / clarify on repeated extract
-    // requests) and run capability + readiness directly. The bubble
-    // kind reused is 'recompile_announcement' — one of the existing
-    // 6 ChatTurnKind values; no new kind is introduced, the closed
-    // A12 / A14 sets stay closed.
-    if (
-      RE_EXTRACT_PATTERN.test(content) &&
-      vm.configuration &&
-      vm.intent
-    ) {
-      const announced = appendAssistantBubble(
-        conv,
-        counter,
-        'recompile_announcement',
-        'Re-running extraction against the current compiled configuration.',
-      );
-      conv = announced.state;
-      counter = announced.counter;
-      setConversation(conv);
-      setTurnCounter(counter);
-      await runExtractionChain(vm.intent, vm.configuration);
-      return;
-    }
-
     try {
-      setStage('turn_decide');
-      const decideResp = await postChatTurnDecide({ conversation: conv });
+      setStage('compile');
+      const compileResp = await postCompile({ conversation: conv });
 
-      if (decideResp.kind === 'failure') {
+      if (compileResp.kind === 'failure') {
         setVm((prev) => ({
           ...prev,
-          clarifications: [...prev.clarifications, decideResp.clarification],
+          clarifications: [...prev.clarifications, compileResp.clarification],
         }));
         const fail = appendAssistantBubble(
           conv,
           counter,
           'message',
-          `The chat agent reported a failure: ${decideResp.clarification.operatorFacingError ?? 'see clarification queue'}.`,
+          `The compile agent reported a failure: ${compileResp.clarification.operatorFacingError ?? 'see clarification queue'}.`,
         );
         conv = fail.state;
         counter = fail.counter;
@@ -330,20 +248,79 @@ export default function CustomerRoute({
         return;
       }
 
-      const decision = decideResp.decision;
-      const bubble = decisionBubble(decision);
-      const announced = appendAssistantBubble(conv, counter, bubble.kind, bubble.content);
-      conv = announced.state;
-      counter = announced.counter;
-      setConversation(conv);
-      setTurnCounter(counter);
+      const decision = compileResp.decision;
+      switch (decision.action) {
+        case 'compile':
+        case 'recompile': {
+          const intent = synthesizeIntent(conv);
+          const versionIdx = conv.compiledConfigVersionRefs.length + 1;
+          const configuration = buildCompiledConfiguration(intent, decision, versionIdx);
+          setVm((prev) => ({ ...prev, intent, configuration }));
+          setExtractedRun(simulateDocumentRun(DAEJOO_PDF_URL, configuration));
 
-      if (decision.action === 'recompile') {
-        const recompiled = await runCompileChain(content, conv, counter);
-        conv = recompiled.conv;
-        counter = recompiled.counter;
-        setConversation(conv);
-        setTurnCounter(counter);
+          const announce = appendAssistantBubble(
+            conv,
+            counter,
+            'recompile_announcement',
+            decision.action === 'compile'
+              ? 'Compiling configuration from your intent.'
+              : 'Updating configuration with the new fields.',
+          );
+          conv = recordCompiledConfig(announce.state, configuration.id);
+          counter = announce.counter;
+          setConversation(conv);
+          setTurnCounter(counter);
+
+          await runCapabilityAndReadiness(intent, configuration);
+          break;
+        }
+        case 'clarify': {
+          const announce = appendAssistantBubble(
+            conv,
+            counter,
+            'clarification_question',
+            decision.clarificationContent,
+          );
+          conv = announce.state;
+          counter = announce.counter;
+          setConversation(conv);
+          setTurnCounter(counter);
+          break;
+        }
+        case 'capability_class_question': {
+          conv = setPendingSignal(conv, {
+            description: decision.pendingSignalDescription,
+            capabilitySurfaceCitation: decision.capabilitySurfaceCitation,
+          });
+          // Compose the bubble content: confirmation question + gap
+          // description + citation. Free-form prose grounded in the
+          // curated capability surface per A2 amendment / A17.
+          const bubbleContent = `${decision.capabilityGapDescription}\n\nBased on the Document AI capability surface (${decision.capabilitySurfaceCitation}), this is not part of the product's current scope. ${decision.confirmationQuestion}`;
+          const announce = appendAssistantBubble(
+            conv,
+            counter,
+            'notify_team_question',
+            bubbleContent,
+          );
+          conv = announce.state;
+          counter = announce.counter;
+          setConversation(conv);
+          setTurnCounter(counter);
+          break;
+        }
+        case 'success_summary': {
+          const announce = appendAssistantBubble(
+            conv,
+            counter,
+            'success_summary',
+            decision.summaryContent,
+          );
+          conv = announce.state;
+          counter = announce.counter;
+          setConversation(conv);
+          setTurnCounter(counter);
+          break;
+        }
       }
     } catch (err) {
       setRequestError((err as Error).message);
@@ -354,6 +331,77 @@ export default function CustomerRoute({
 
   function handleChatSubmitSync(content: string): void {
     void handleChatSubmit(content);
+  }
+
+  /**
+   * D6 / F-31 consent handler. The ChatPanel renders yes/no buttons
+   * under the notify_team_question bubble; on click, this handler
+   * appends a user 'yes' or 'no' ChatTurn and either invokes
+   * _writeProvisionalSignal (yes) or clears the pendingSignal (no).
+   */
+  function handleConsent(yes: boolean): void {
+    const pending = conversation.pendingSignal;
+    if (!pending) return;
+
+    const { id: userTurnId, counter: counterAfterUser } = nextTurnId();
+    const userTurn: ChatTurn = {
+      id: userTurnId,
+      role: 'user',
+      content: yes ? 'yes' : 'no',
+      timestamp: new Date().toISOString(),
+      kind: 'message',
+    };
+    let conv = applyChatTurn(conversation, userTurn);
+    let counter = counterAfterUser;
+
+    if (yes) {
+      // N9 / RED-3 — _writeProvisionalSignal guards at the data layer:
+      // status === 'awaiting_notify_decision' AND last user turn matches
+      // /^\s*yes\b/i. Both invariants hold here by construction.
+      const decision = _writeProvisionalSignal(conv, {
+        id: `sig::${conv.id}::${counter}`,
+        signalType: 'unsupported_free_text_business_condition',
+        category: 'commercial_invoice / out-of-scope capability',
+        intentFragment: pending.description,
+        suggestedProductArea: pending.capabilitySurfaceCitation,
+        documentType: 'commercial_invoice',
+      });
+
+      if (decision.rejected) {
+        const fail = appendAssistantBubble(
+          conv,
+          counter,
+          'message',
+          `Signal write rejected: ${decision.reason}`,
+        );
+        conv = fail.state;
+        counter = fail.counter;
+        setConversation(conv);
+        setTurnCounter(counter);
+        return;
+      }
+
+      const confirm = appendAssistantBubble(
+        conv,
+        counter,
+        'notify_team_confirmation',
+        'Thank you. The SAP product team has been notified about this issue.',
+      );
+      conv = clearPendingSignal(confirm.state);
+      counter = confirm.counter;
+    } else {
+      const confirm = appendAssistantBubble(
+        conv,
+        counter,
+        'notify_team_confirmation',
+        'No problem. The SAP product team will not be notified about this issue.',
+      );
+      conv = clearPendingSignal(confirm.state);
+      counter = confirm.counter;
+    }
+
+    setConversation(conv);
+    setTurnCounter(counter);
   }
 
   function handleFooterAction(label: string) {
@@ -379,13 +427,12 @@ export default function CustomerRoute({
             configuration={vm.configuration}
             onUpload={(f) => {
               setUploadedFile(f);
-              // S5 SF-3: if a configuration already exists when an
-              // upload lands, re-run capability + readiness so the
-              // demo never sits idle on a second drop. When there is
-              // no configuration yet, only the PdfViewerPanel + the
-              // upload-announcement update (SF-1 contract).
+              // If a configuration already exists, re-run capability +
+              // readiness so the demo never sits idle on a second drop.
+              // When there is no configuration yet, only the
+              // PdfViewerPanel + upload-announcement update (SF-1).
               if (vm.configuration && vm.intent) {
-                void runExtractionChain(vm.intent, vm.configuration);
+                void runCapabilityAndReadiness(vm.intent, vm.configuration);
               }
             }}
             onDocumentRun={(run) => setExtractedRun(run)}
@@ -397,6 +444,7 @@ export default function CustomerRoute({
           <ChatPanel
             conversation={conversation}
             onSubmitTurn={handleChatSubmitSync}
+            onConsent={handleConsent}
             disabled={loading}
           />
           {loading ? (

@@ -34,6 +34,7 @@ const makeConfiguration = (): CompiledConfiguration => ({
   },
   processingMode: 'auto_confirm',
   compiledAt: '2026-05-26T00:00:00Z',
+  extractionSystemPrompt: 'You are an extraction agent. Extract supplier from the document.',
 });
 
 describe('F-23 UploadZonePanel', () => {

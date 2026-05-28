@@ -69,6 +69,7 @@ function configOf(fields: SchemaField[]): CompiledConfiguration {
     source: 'aiCore',
     templateUsed: false,
     compiledAt: '2026-05-25T00:00:00Z',
+    extractionSystemPrompt: 'test extraction system prompt',
   };
 }
 

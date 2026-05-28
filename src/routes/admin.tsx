@@ -29,6 +29,7 @@ import { AdminKpiStrip } from '@components/admin/AdminKpiStrip';
 import { PromptVersionPanel } from '@components/admin/PromptVersionPanel';
 import { ThresholdInspectorPanel } from '@components/admin/ThresholdInspectorPanel';
 import { ThresholdGovernancePanel } from '@components/admin/ThresholdGovernancePanel';
+import { DevTracePanel } from '@components/admin/DevTracePanel';
 import { AutoConfirmCriteriaPanel } from '@components/admin/AutoConfirmCriteriaPanel';
 import { SchemaQualityPanel } from '@components/admin/SchemaQualityPanel';
 import { CorrectionTrendPanel } from '@components/admin/CorrectionTrendPanel';
@@ -133,6 +134,13 @@ export default function AdminRoute({ initialViewModel = EMPTY_ADMIN_VIEW_MODEL }
         <AutoConfirmCriteriaPanel criteria={vm.autoConfirmCriteria} />
         <SchemaQualityPanel fields={vm.schemaQuality} />
         <CorrectionTrendPanel corrections={vm.correctionTrend} />
+        {/*
+          Cycle 2 (2026-05-28) — dev-only pre-redaction agent trace.
+          The import.meta.env.DEV gate is statically resolvable by
+          Vite's tree-shaker so the DevTracePanel disappears from
+          production bundles entirely.
+        */}
+        {typeof import.meta !== 'undefined' && import.meta.env?.DEV ? <DevTracePanel /> : null}
       </div>
     </div>
   );

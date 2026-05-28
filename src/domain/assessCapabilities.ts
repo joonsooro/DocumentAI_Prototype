@@ -37,6 +37,23 @@ import type {
 } from '@domain/types';
 import { callAgent } from '@runtime/aiCoreClient';
 import appSpec from '../../app/app-spec.json' with { type: 'json' };
+// A2 amendment / F-05 — Cycle 2 (2026-05-28). Curated SAP Document AI
+// capability surface (~6K tokens, 6 sections) imported as a static
+// string at build time via Vite's ?raw query suffix. No retrieval, no
+// chunking, no graph store in v1. Revisit conditions for swapping to
+// RAG / graph-RAG (Cognee) are tracked in OQ-8.
+import capabilitySurface from '../../docs/document-ai-capability-surface.md?raw';
+
+// Fail-fast sanity check at module load time. If the curated artifact
+// is missing, truncated, or the ?raw import silently produced an empty
+// string, throw rather than ship empty grounding context.
+if (typeof capabilitySurface !== 'string' || capabilitySurface.length < 5000) {
+  throw new Error(
+    `assessCapabilities: curated capability surface failed length sanity check ` +
+      `(expected >5000 chars, got ${typeof capabilitySurface === 'string' ? capabilitySurface.length : 'non-string'}). ` +
+      `Check docs/document-ai-capability-surface.md and Vite ?raw import.`,
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Wire schema — what AI Core is asked to return
@@ -70,24 +87,31 @@ type WireRow = z.infer<typeof WireRowZ>;
 // Prompt — short, schema-constrained, negative-contract explicit
 // ---------------------------------------------------------------------------
 
-const ASSESS_SYSTEM_PROMPT = `You are the Document AI Capability Assessment Agent.
+const ASSESS_SYSTEM_PROMPT = `You are the Document AI Grounded Capability Assessment Agent.
 
-Job: read the customer's free-text intent plus the compiled configuration and produce one row per requirement fragment indicating whether the system can deliver it.
+Job: read the customer's free-text intent plus the compiled configuration and produce one row per requirement fragment indicating whether the system can deliver it. You have access to the curated SAP Document AI capability surface (below) as static grounding context — use it to classify capability-class requests and to cite the relevant section when a fragment falls outside the product's scope.
 
 Output rules (binding):
 1. Output ONLY a JSON object. No prose before or after. No markdown fences.
 2. The object MUST have exactly one top-level key: "rows".
 3. Each row MUST have keys: "intentFragment", "status", "workaroundDescription", "fieldRefs".
 4. "status" MUST be one of EXACTLY these three values:
-   - "Supported" — the configuration covers this fragment directly.
+   - "Supported" — the configuration covers this fragment directly per the curated capability surface.
    - "Supported with workaround" — the configuration covers it via a workaround (describe in workaroundDescription).
-   - "capability_gap" — the configuration cannot cover it AND a workaround is not possible. This row will be hidden from the customer and routed internally.
+   - "capability_gap" — the configuration cannot cover it AND a workaround is not possible per the curated surface. This row will be hidden from the customer and routed internally.
 5. NEVER emit "Unsupported" (or "unsupported", "UNSUPPORTED", "not supported", etc.) as the status. If the fragment is not coverable, use "capability_gap".
 6. "workaroundDescription" is a non-empty string when status === "Supported with workaround", otherwise null.
 7. "fieldRefs" is an array of SchemaField.name strings the fragment maps to (may be empty for capability_gap rows).
 8. NEVER include capability commentary, customer-facing recommendations to lower thresholds, or roadmap signals.
 
-Decompose the intent into atomic fragments — one row per logically-distinct requirement. If the intent contains an obvious "exclude X" clause and a clean workaround exists (e.g. a per-field filter or an extraction rule), use "Supported with workaround" rather than "capability_gap".`;
+Decompose the intent into atomic fragments — one row per logically-distinct requirement. If the intent contains an obvious "exclude X" clause and a clean workaround exists (e.g. a per-field filter or an extraction rule), use "Supported with workaround" rather than "capability_gap". When a fragment names a capability-class pattern that is out-of-scope per the curated surface (integration beyond documented · cross-document · predictive · bulk · unsupported document type), use "capability_gap" and rely on downstream A17 capability_class_question handling for citation.
+
+CURATED SAP DOCUMENT AI CAPABILITY SURFACE (A2 amendment · static grounding context · docs/document-ai-capability-surface.md):
+---
+${capabilitySurface}
+---
+
+End of curated capability surface. Use it as the authoritative reference for what Document AI can and cannot do.`;
 
 function buildUserPrompt(
   intent: CustomerIntent,

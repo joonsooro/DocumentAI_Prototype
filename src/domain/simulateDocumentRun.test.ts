@@ -20,6 +20,7 @@ const daejooConfig: CompiledConfiguration = {
   source: 'aiCore',
   templateUsed: false,
   compiledAt: '2026-05-25T00:00:00Z',
+  extractionSystemPrompt: 'test extraction system prompt',
   schema: {
     fields: [
       { name: 'supplier',                  dataType: 'string', required: true,  instruction: 'Manufacturer / Shipper / Exporter name',  validation: null, regex: null, confidenceThreshold: 0.85 },

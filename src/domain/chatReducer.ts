@@ -21,6 +21,7 @@ import type {
   CompiledConfiguration,
   ConversationState,
   ConversationStatus,
+  PendingSignalSeed,
 } from '@domain/types';
 
 export function applyChatTurn(state: ConversationState, turn: ChatTurn): ConversationState {
@@ -31,6 +32,7 @@ export function applyChatTurn(state: ConversationState, turn: ChatTurn): Convers
     turns: Object.freeze(nextTurns),
     compiledConfigVersionRefs: state.compiledConfigVersionRefs,
     status: nextStatus,
+    pendingSignal: state.pendingSignal,
   });
 }
 
@@ -49,6 +51,7 @@ export function recordCompiledConfig(
     turns: state.turns,
     compiledConfigVersionRefs: Object.freeze([...state.compiledConfigVersionRefs, configId]),
     status: state.status,
+    pendingSignal: state.pendingSignal,
   });
 }
 
@@ -58,6 +61,34 @@ export function createConversation(id: string): ConversationState {
     turns: Object.freeze([] as readonly ChatTurn[]),
     compiledConfigVersionRefs: Object.freeze([] as readonly CompiledConfiguration['id'][]),
     status: 'collecting' as ConversationStatus,
+    pendingSignal: null,
+  });
+}
+
+// D6 / F-31 — Cycle 2 (2026-05-28). Companion pure reducers for the
+// PendingSignalSeed lifecycle. The customer route uses these to set/clear
+// the seed on capability_class_question / consent-no transitions without
+// touching the turns or status fields directly.
+export function setPendingSignal(
+  state: ConversationState,
+  seed: PendingSignalSeed,
+): ConversationState {
+  return Object.freeze({
+    id: state.id,
+    turns: state.turns,
+    compiledConfigVersionRefs: state.compiledConfigVersionRefs,
+    status: state.status,
+    pendingSignal: seed,
+  });
+}
+
+export function clearPendingSignal(state: ConversationState): ConversationState {
+  return Object.freeze({
+    id: state.id,
+    turns: state.turns,
+    compiledConfigVersionRefs: state.compiledConfigVersionRefs,
+    status: state.status,
+    pendingSignal: null,
   });
 }
 
@@ -74,6 +105,9 @@ function deriveStatus(current: ConversationStatus, turn: ChatTurn): Conversation
       return 'completed';
     case 'message':
     case 'clarification_question':
+    case 'prompt_display':
+      // prompt_display (A18 / F-04b) is a display-only kind — rendering the
+      // generated extractionSystemPrompt does not transition the chat status.
       return current;
   }
 }

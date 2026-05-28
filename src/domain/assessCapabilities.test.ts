@@ -51,6 +51,7 @@ const DAEJOO_CONFIG: CompiledConfiguration = {
   source: 'aiCore',
   templateUsed: false,
   compiledAt: '2026-05-25T00:00:00Z',
+  extractionSystemPrompt: 'You are an extraction agent. Extract the 5 schema fields from the DAEJOO commercial invoice.',
 };
 
 function wireResponseDaejoo() {

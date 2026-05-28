@@ -1,18 +1,20 @@
 // @vitest-environment jsdom
 /**
- * F-11 — Chat-wiring integration tests (S5 SF · chat-wiring fix).
+ * F-11 — Chat-wiring integration tests (Cycle 2 · merged Compile Agent).
  *
- * Covers acceptance items #2 + #3 of the SF:
- *   #2 — Submitting a chat turn calls postChatTurnDecide, appends both
- *        the user turn and the assistant turn, and on action:'recompile'
- *        invokes the existing compile/capability/readiness pipeline with
- *        compiledConfigVersionRefs.length incrementing by 1.
- *   #3 — A non-extraction capability ask produces an assistant turn
- *        that asks the ProductSignal governance question (F-28 +
- *        capability_class_question action).
+ * Covers the F-11 acceptance items under the new architecture:
+ *   #1 — Submitting a chat turn calls /api/compile once with the
+ *        accumulated ConversationState; the response carries a
+ *        CompileAgentDecision. The route branches on decision.action.
+ *   #2 — action='recompile' (or 'compile') drives postCapability +
+ *        postReadiness; compiledConfigVersionRefs.length increments
+ *        by 1; an assistant 'recompile_announcement' bubble lands.
+ *   #3 — action='capability_class_question' stores pendingSignal on
+ *        ConversationState, appends a 'notify_team_question' bubble,
+ *        and transitions to 'awaiting_notify_decision'.
  *
- * Drives the route through the ChatPanel's onSubmit handler and stubs
- * /api/* fetch responses so the test is hermetic (no live SAP AI Core).
+ * The deleted /api/chat-turn-decide is no longer mocked anywhere.
+ * The merged agent absorbed its role per A17 (Cycle 2 2026-05-28).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -40,23 +42,16 @@ function makeFetchMock(responsesByUrl: Record<string, unknown[]>): FetchMock {
   });
 }
 
-const compileSuccess = {
-  kind: 'success',
-  intent: {
-    id: 'intent::test::1',
-    raw: 'extract supplier + payment terms',
-    documentType: 'commercial_invoice',
-    capturedAt: '2026-05-27T00:00:00Z',
+const NINE_FIELD_COMPILE_DECISION = {
+  action: 'compile' as const,
+  schema: {
+    fields: [
+      { name: 'supplier', dataType: 'string', required: true, instruction: 'extract supplier', validation: null, regex: null, confidenceThreshold: 0.85 },
+      { name: 'invoice_number', dataType: 'string', required: true, instruction: 'extract invoice_number', validation: null, regex: null, confidenceThreshold: 0.85 },
+    ],
   },
-  configuration: {
-    id: 'cfg::test::v1',
-    intentId: 'intent::test::1',
-    schema: { fields: [] },
-    processingMode: 'review_required',
-    source: 'aiCore',
-    templateUsed: false,
-    compiledAt: '2026-05-27T00:00:00Z',
-  },
+  processingMode: 'review_required',
+  extractionSystemPrompt: 'You are an extraction agent. Extract supplier and invoice_number.',
 };
 
 const capabilitySuccess = {
@@ -93,16 +88,13 @@ const readinessSuccess = {
   clarifications: [],
 };
 
-describe('F-11 chat-wiring · acceptance #2 (recompile bumps compiledConfigVersionRefs)', () => {
+describe('F-11 chat-wiring · Cycle 2 acceptance #2 (compile decision drives capability + readiness)', () => {
   beforeEach(() => cleanup());
   afterEach(() => vi.unstubAllGlobals());
 
-  it('a chat-turn-decide action:recompile drives postCompile + postCapability + postReadiness and bumps compiledConfigVersionRefs.length by 1', async () => {
+  it("a /api/compile decision action='compile' drives postCapability + postReadiness and appends a recompile_announcement bubble", async () => {
     const fetchMock = makeFetchMock({
-      '/api/chat-turn-decide': [
-        { kind: 'success', decision: { action: 'recompile', recompileSummary: 'updating' } },
-      ],
-      '/api/compile': [compileSuccess],
+      '/api/compile': [{ kind: 'success', decision: NINE_FIELD_COMPILE_DECISION }],
       '/api/capability': [capabilitySuccess],
       '/api/readiness': [readinessSuccess],
     });
@@ -113,23 +105,23 @@ describe('F-11 chat-wiring · acceptance #2 (recompile bumps compiledConfigVersi
     const textarea = screen.getByTestId('customer-chat-panel-input') as HTMLTextAreaElement;
     const submit = screen.getByTestId('customer-chat-panel-submit') as HTMLButtonElement;
     await act(async () => {
-      fireEvent.change(textarea, { target: { value: 'extract supplier + payment terms' } });
+      fireEvent.change(textarea, { target: { value: 'Extract supplier name and invoice number from this invoice' } });
       fireEvent.click(submit);
     });
 
-    // postChatTurnDecide must fire, then the recompile chain.
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/chat-turn-decide',
-        expect.objectContaining({ method: 'POST' }),
-      );
-    });
+    // /api/compile fires first.
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/compile',
         expect.objectContaining({ method: 'POST' }),
       );
     });
+    // The deleted /api/chat-turn-decide must NEVER be called.
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/chat-turn-decide',
+      expect.anything(),
+    );
+    // Capability + readiness fire on the compile branch.
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/capability',
@@ -143,33 +135,33 @@ describe('F-11 chat-wiring · acceptance #2 (recompile bumps compiledConfigVersi
       );
     });
 
-    // After the recompile, the user turn + the assistant recompile bubble
-    // are both appended to the conversation thread. compiledConfigVersionRefs
-    // length is reflected in the conversation state, exercised here through
-    // the recompile_announcement bubble.
+    // User turn + assistant recompile_announcement bubble both land.
     await waitFor(() => {
       const bubbles = document.querySelectorAll('[data-testid^="chat-bubble-"]');
       expect(bubbles.length).toBeGreaterThanOrEqual(2);
       const kinds = Array.from(bubbles).map((b) => b.getAttribute('data-turn-kind'));
-      expect(kinds).toContain('message'); // user turn
-      expect(kinds).toContain('recompile_announcement'); // assistant turn
+      expect(kinds).toContain('message');
+      expect(kinds).toContain('recompile_announcement');
     });
   });
 });
 
-describe('F-11 chat-wiring · acceptance #3 (capability-class ask surfaces ProductSignal governance question)', () => {
+describe('F-11 chat-wiring · Cycle 2 acceptance #3 (capability_class_question surfaces consent affordance)', () => {
   beforeEach(() => cleanup());
   afterEach(() => vi.unstubAllGlobals());
 
-  it('a non-extraction capability ask returns capability_class_question and appends the notify_team_question bubble', async () => {
+  it("a /api/compile decision action='capability_class_question' appends a notify_team_question bubble and renders consent buttons", async () => {
     const fetchMock = makeFetchMock({
-      '/api/chat-turn-decide': [
+      '/api/compile': [
         {
           kind: 'success',
           decision: {
             action: 'capability_class_question',
-            classification: 'integration_request',
-            questionContent: 'Should I notify the product team about this integration request?',
+            confirmationQuestion: 'Do you want to notify the SAP product team about S/4 HANA integration?',
+            capabilityGapDescription:
+              'Document AI extracts but does not write to S/4 HANA directly; integration requires middleware.',
+            capabilitySurfaceCitation: 'Integration Surface, p. 198',
+            pendingSignalDescription: 'integrate extracted invoice data with SAP S/4 HANA',
           },
         },
       ],
@@ -182,31 +174,30 @@ describe('F-11 chat-wiring · acceptance #3 (capability-class ask surfaces Produ
     const submit = screen.getByTestId('customer-chat-panel-submit') as HTMLButtonElement;
     await act(async () => {
       fireEvent.change(textarea, {
-        target: {
-          value:
-            'add the extracted value to the relevant S/4 HANA table + use RPT 1.5 to infer missing fields',
-        },
+        target: { value: 'can you link this to S/4 HANA?' },
       });
       fireEvent.click(submit);
     });
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/chat-turn-decide',
+        '/api/compile',
         expect.objectContaining({ method: 'POST' }),
       );
     });
+    // notify_team_question bubble lands.
     await waitFor(() => {
       const bubbles = document.querySelectorAll('[data-testid^="chat-bubble-"]');
       const kinds = Array.from(bubbles).map((b) => b.getAttribute('data-turn-kind'));
       expect(kinds).toContain('notify_team_question');
     });
-    // Conversation state must have transitioned to awaiting_notify_decision
-    // (driven by chatReducer's deriveStatus when a notify_team_question
-    // assistant bubble is appended).
+    // Conversation status transitioned to awaiting_notify_decision.
     await waitFor(() => {
       const status = screen.getByTestId('customer-chat-panel-status');
       expect(status.textContent).toBe('awaiting_notify_decision');
     });
+    // F-31 / D6 consent affordance is present.
+    expect(screen.getByTestId('customer-chat-consent-yes')).toBeTruthy();
+    expect(screen.getByTestId('customer-chat-consent-no')).toBeTruthy();
   });
 });

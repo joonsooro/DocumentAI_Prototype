@@ -73,13 +73,33 @@ const STUB_CONFIG: CompiledConfiguration = Object.freeze({
   source: 'aiCore' as const,
   templateUsed: false as const,
   compiledAt: '2026-05-25T00:00:00Z',
+  extractionSystemPrompt: 'test extraction system prompt',
 });
 
-describe('S3.5 F-11-live middleware — handleCompile shape', () => {
+describe('S3.5 F-11-live middleware — handleCompile shape (Cycle 2: merged agent)', () => {
+  // Cycle 2 (2026-05-28) — handleCompile now takes { conversation }
+  // (ConversationState) and returns { kind: 'success', decision } where
+  // decision is the CompileAgentDecision discriminated union. The merged
+  // agent absorbed the deleted /api/chat-turn-decide endpoint per A17.
+  const STUB_CONVERSATION = Object.freeze({
+    id: 'conv::stub',
+    turns: Object.freeze([
+      Object.freeze({
+        id: 't::1',
+        role: 'user' as const,
+        kind: 'message' as const,
+        content: 'extract supplier, PO, payable amount',
+        timestamp: '2026-05-25T00:00:00Z',
+      }),
+    ]),
+    compiledConfigVersionRefs: Object.freeze([] as readonly string[]),
+    status: 'collecting' as const,
+    pendingSignal: null,
+  });
+
   it('returns kind:"failure" with clarification + metric when AI Core unreachable', async () => {
     const result: CompileResponse = await handleCompile({
-      raw: 'extract supplier, PO, payable amount',
-      documentType: 'commercial_invoice',
+      conversation: STUB_CONVERSATION,
     });
     expect(result.kind).toBe('failure');
     if (result.kind === 'failure') {
@@ -94,10 +114,12 @@ describe('S3.5 F-11-live middleware — handleCompile shape', () => {
     }
   });
 
-  it('handleCompile defaults documentType to commercial_invoice and surfaces failures on both default + override paths', async () => {
-    const r1: CompileResponse = await handleCompile({ raw: 'x' });
+  it('handleCompile accepts a ConversationState body and surfaces failures via the F-08 wrapper', async () => {
+    const r1: CompileResponse = await handleCompile({ conversation: STUB_CONVERSATION });
     expect(r1.kind).toBe('failure');
-    const r2: CompileResponse = await handleCompile({ raw: 'x', documentType: 'po_form' });
+    const r2: CompileResponse = await handleCompile({
+      conversation: { ...STUB_CONVERSATION, id: 'conv::stub::2' },
+    });
     expect(r2.kind).toBe('failure');
   });
 });
