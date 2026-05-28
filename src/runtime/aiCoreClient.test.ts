@@ -15,6 +15,12 @@ import {
   AgentFailure,
   _resetClientForTests,
 } from '@runtime/aiCoreClient';
+import * as qualityMetricLogModule from '@runtime/qualityMetricLog';
+import {
+  _resetQualityMetricLogForTests,
+  getMetrics,
+  countMetrics,
+} from '@runtime/qualityMetricLog';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -38,13 +44,18 @@ beforeEach(() => {
   writeFileSync(keyPath, JSON.stringify(FAKE_KEY));
   process.env.AICORE_KEY_PATH = keyPath;
   _resetClientForTests();
+  _resetQualityMetricLogForTests();
   vi.restoreAllMocks();
+  // SF #2a — silence the F-18 mirror console output in tests.
+  vi.spyOn(console, 'info').mockImplementation(() => undefined);
+  vi.spyOn(console, 'error').mockImplementation(() => undefined);
 });
 
 afterEach(() => {
   rmSync(tmpDir, { recursive: true, force: true });
   process.env.AICORE_KEY_PATH = origEnv;
   _resetClientForTests();
+  _resetQualityMetricLogForTests();
 });
 
 // Helper: assemble a mocked fetch sequence (token call then invoke call).
@@ -259,5 +270,77 @@ describe('aiCoreClient — failure paths', () => {
       // expected
     }
     expect(returned).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SF #2a — F-18 success-path wiring (recordSuccess at the callAgent boundary)
+// ---------------------------------------------------------------------------
+
+describe('aiCoreClient — F-18 success-path wiring', () => {
+  it('appends exactly one success QualityMetric per successful callAgent', async () => {
+    mockFetchSequence(TOKEN_RESPONSE, SUCCESS_INVOKE);
+    const r = await callAgent({
+      agent: 'compile',
+      model: 'd-deploy-haiku',
+      max_tokens: 1024,
+      system: 's',
+      user: 'u',
+    });
+    expect(r.value).toBe('hello world');
+    expect(getMetrics().length).toBe(1);
+    expect(countMetrics({ agent: 'compile', status: 'success' })).toBe(1);
+    const m = getMetrics()[0];
+    expect(m.status).toBe('success');
+    expect(m.agent).toBe('compile');
+    expect(m.latencyMs).toBeGreaterThanOrEqual(0);
+    expect(m.tokenUsage).toEqual({ input: 10, output: 5 });
+    expect(m.model).toBe('d-deploy-haiku');
+    expect(m.maxTokens).toBe(1024);
+    expect(m.error).toBeNull();
+  });
+
+  it('agent name on the row mirrors params.agent (capability and operationalReasons flow through)', async () => {
+    // Queue both invocations in one fetch sequence. After the first call the
+    // OAuth token is cached in callAgent, so the second invocation only
+    // needs the invoke response — not a second token.
+    mockFetchSequence(TOKEN_RESPONSE, SUCCESS_INVOKE, SUCCESS_INVOKE);
+    await callAgent({ agent: 'capability', model: 'd-x', max_tokens: 100, system: 's', user: 'u' });
+    await callAgent({ agent: 'operationalReasons', model: 'd-y', max_tokens: 100, system: 's', user: 'u' });
+    expect(countMetrics({ agent: 'capability', status: 'success' })).toBe(1);
+    expect(countMetrics({ agent: 'operationalReasons', status: 'success' })).toBe(1);
+    expect(countMetrics({ agent: 'readiness' })).toBe(0);
+    expect(getMetrics().length).toBe(2);
+  });
+
+  it('a failed callAgent does NOT append a success row (failure path is owned by F-08)', async () => {
+    // Mock 401 on the XSUAA token call so callAgent throws AgentFailure(oauth_failed).
+    mockFetchSequence({ ok: false, status: 401, statusText: 'Unauthorized' });
+    await expect(
+      callAgent({ agent: 'compile', model: 'd-1', max_tokens: 100, system: 's', user: 'u' }),
+    ).rejects.toMatchObject({ name: 'AgentFailure', reason: 'oauth_failed' });
+    // callAgent must not write a success row when it threw. F-08 (separate
+    // wrapper) is responsible for the failure row in production; the
+    // wrapper itself does not double-record on the success path.
+    expect(countMetrics({ status: 'success' })).toBe(0);
+    expect(getMetrics().length).toBe(0);
+  });
+
+  it('a throwing recordSuccess does NOT break the agent return (observability is fire-and-forget)', async () => {
+    mockFetchSequence(TOKEN_RESPONSE, SUCCESS_INVOKE);
+    vi.spyOn(qualityMetricLogModule, 'recordSuccess').mockImplementation(() => {
+      throw new Error('store down');
+    });
+    const r = await callAgent({
+      agent: 'compile',
+      model: 'd-deploy-haiku',
+      max_tokens: 1024,
+      system: 's',
+      user: 'u',
+    });
+    // The agent result must come back intact even though recordSuccess threw.
+    expect(r.value).toBe('hello world');
+    expect(r.agent).toBe('compile');
+    expect(r.source).toBe('aiCore');
   });
 });

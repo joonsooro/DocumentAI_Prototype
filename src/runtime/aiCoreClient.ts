@@ -27,6 +27,7 @@
 
 import { readFileSync } from 'node:fs';
 import { instrumentCallAgent } from '@runtime/langfuseClient';
+import { recordSuccess } from '@runtime/qualityMetricLog';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -409,6 +410,17 @@ export async function callAgent<T = string>(params: CallAgentParams<T>): Promise
       };
     },
   );
+
+  // SF #2a — wire F-18 success-path observability at the canonical
+  // callAgent boundary. Mirror the failure path (agentFailureSurface.ts:121
+  // → recordFailure) so every callAgent invocation appends exactly ONE
+  // QualityMetric row. Fire-and-forget: never block the agent return on an
+  // observability throw — matches the dev-trace + Langfuse mirror posture.
+  try {
+    recordSuccess(result, { nowIso: new Date().toISOString() });
+  } catch {
+    // observability must never break the agent path
+  }
 
   return result;
 }
