@@ -104,6 +104,14 @@ export function ChatPanel(props: ChatPanelProps) {
           </div>
         )}
       </div>
+      {conversation.turns.length === 0 && (
+        <p
+          data-testid="customer-empty-state-hint"
+          style={emptyStateHintStyle}
+        >
+          Try: Extract supplier name, invoice number, PO number, invoice date, and total amount from this invoice.
+        </p>
+      )}
       <form onSubmit={onSubmit} style={composerStyle}>
         <textarea
           data-testid="customer-chat-panel-input"
@@ -142,18 +150,87 @@ function ChatBubble({ turn }: { turn: ChatTurn }) {
         ...(isPromptDisplay ? bubblePromptDisplayStyle : {}),
       }}
     >
-      <span style={bubbleMetaStyle}>
-        {turn.role} · {turn.kind}
-      </span>
-      <p
-        style={{
-          ...bubbleContentStyle,
-          ...(isPromptDisplay ? bubblePromptDisplayContentStyle : {}),
-        }}
-      >
-        {turn.content}
-      </p>
+      {isPromptDisplay ? (
+        <PromptDisplayBubbleBody turn={turn} />
+      ) : (
+        <>
+          <span style={bubbleMetaStyle}>
+            {turn.role} · {turn.kind}
+          </span>
+          <p style={bubbleContentStyle}>{turn.content}</p>
+        </>
+      )}
     </article>
+  );
+}
+
+// Cycle 4 polish — `prompt_display` bubble body. Adds a header label
+// ("Generated Extraction Prompt"), a small copy-to-clipboard control,
+// and collapsibility via <details> when the prompt exceeds the inline
+// threshold (long live A18 prompts run ~1900-2500 chars; rendering as
+// a wall of text was demo-illegible). Short prompts render inline as
+// before. The bubble's textContent still contains the full prompt
+// body (the <details> is in-DOM; only the visible affordance is
+// gated) so any test asserting on bubble textContent continues to
+// pass — verified by grep against src/.
+const PROMPT_INLINE_THRESHOLD_CHARS = 500;
+const PROMPT_INLINE_THRESHOLD_LINES = 10;
+
+function PromptDisplayBubbleBody({ turn }: { turn: ChatTurn }) {
+  const text = turn.content;
+  const newlineCount = (text.match(/\n/g) ?? []).length;
+  const longPrompt =
+    text.length > PROMPT_INLINE_THRESHOLD_CHARS ||
+    newlineCount > PROMPT_INLINE_THRESHOLD_LINES;
+
+  const onCopy = () => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      // Silent failure on rejection (e.g. insecure context) per Cycle
+      // 4 brief — clipboard is a nice-to-have, not load-bearing.
+      navigator.clipboard.writeText(text).catch(() => {
+        // intentionally swallowed
+      });
+    }
+  };
+
+  return (
+    <>
+      <header style={promptDisplayHeaderStyle}>
+        <span style={promptDisplayLabelStyle}>Generated Extraction Prompt</span>
+        <button
+          type="button"
+          data-testid={`prompt-display-copy-${turn.id}`}
+          onClick={onCopy}
+          style={promptDisplayCopyButtonStyle}
+          aria-label="Copy prompt to clipboard"
+          title="Copy prompt to clipboard"
+        >
+          Copy
+        </button>
+      </header>
+      {longPrompt ? (
+        <details style={promptDisplayDetailsStyle}>
+          <summary style={promptDisplaySummaryStyle}>Show full prompt</summary>
+          <p
+            style={{
+              ...bubbleContentStyle,
+              ...bubblePromptDisplayContentStyle,
+            }}
+          >
+            {text}
+          </p>
+        </details>
+      ) : (
+        <p
+          style={{
+            ...bubbleContentStyle,
+            ...bubblePromptDisplayContentStyle,
+          }}
+        >
+          {text}
+        </p>
+      )}
+    </>
   );
 }
 
@@ -230,14 +307,57 @@ const bubbleAssistantStyle: CSSProperties = {
 const bubblePromptDisplayStyle: CSSProperties = {
   // A18 / F-04b — monospace rendering for the generated extraction
   // prompt. Keeps the visual cue that this content is a prompt body.
+  // Cycle 4 polish: brand-tinted border + wider max so the bubble is
+  // unmistakable next to assistant/user message bubbles.
   maxWidth: '95%',
   background: 'var(--panel-2)',
+  border: '1px solid var(--brand-50)',
 };
 
 const bubblePromptDisplayContentStyle: CSSProperties = {
   fontFamily: 'var(--font-mono)',
   fontSize: '11.5px',
   lineHeight: 1.5,
+};
+
+const promptDisplayHeaderStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '8px',
+  marginBottom: '6px',
+};
+
+const promptDisplayLabelStyle: CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: '10px',
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: 'var(--brand-700)',
+  fontWeight: 600,
+};
+
+const promptDisplayCopyButtonStyle: CSSProperties = {
+  padding: '2px 8px',
+  borderRadius: 'var(--radius-button)',
+  border: '1px solid var(--line)',
+  background: 'var(--panel)',
+  color: 'var(--ink-2)',
+  cursor: 'pointer',
+  fontFamily: 'var(--font-sans)',
+  fontSize: '11px',
+};
+
+const promptDisplayDetailsStyle: CSSProperties = {
+  margin: 0,
+};
+
+const promptDisplaySummaryStyle: CSSProperties = {
+  cursor: 'pointer',
+  color: 'var(--brand-700)',
+  fontFamily: 'var(--font-sans)',
+  fontSize: '12px',
+  marginBottom: '4px',
 };
 
 const bubbleMetaStyle: CSSProperties = {
@@ -282,6 +402,27 @@ const consentNoStyle: CSSProperties = {
   cursor: 'pointer',
   fontFamily: 'var(--font-sans)',
   fontSize: 'var(--body-size)',
+};
+
+// Cycle 4 polish — empty-state hint. A non-bubble affordance rendered
+// as a sibling of the composer (outside the chat thread) when the
+// conversation has no turns. The existing `customer-chat-panel-empty`
+// placeholder lives inside the thread and is asserted by tests
+// (ChatPanel.test.tsx and customer.rebuild.test.tsx); the hint is a
+// separate, additional affordance with its own testid. Both vanish on
+// the first user submit because both gate on `turns.length === 0`.
+// The example deliberately picks compile-shaped triggers, NOT
+// prompt-display triggers (per src/domain/promptDisplayIntent.ts) —
+// suggesting "show me the prompt" before any prompt exists would
+// create a circular UX.
+const emptyStateHintStyle: CSSProperties = {
+  margin: 0,
+  padding: '6px var(--card-padding) 0',
+  color: 'var(--ink-3)',
+  fontFamily: 'var(--font-sans)',
+  fontSize: '12px',
+  fontStyle: 'italic',
+  background: 'var(--panel-2)',
 };
 
 const composerStyle: CSSProperties = {

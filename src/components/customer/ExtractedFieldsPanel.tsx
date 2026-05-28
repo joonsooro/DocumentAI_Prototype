@@ -111,7 +111,7 @@ export function ExtractedFieldsPanel({ run }: Props) {
         <tbody>
           {run.extractedFields.map((f) => {
             const kind = missingKindOf(f.value, f.confidence);
-            const isNull = kind !== 'present';
+            const valueCellStyle = valueCellStyleFor(kind);
             return (
               <tr
                 key={f.name}
@@ -120,7 +120,7 @@ export function ExtractedFieldsPanel({ run }: Props) {
               >
                 <td style={tdStyle}>{f.name}</td>
                 <td
-                  style={isNull ? tdNullStyle : tdStyle}
+                  style={valueCellStyle}
                   title={tooltipFor(kind)}
                   data-missing-kind={kind}
                 >
@@ -167,6 +167,29 @@ const thStyle: CSSProperties = {
 const tdStyle: CSSProperties = {
   padding: '8px 10px', borderBottom: '1px solid #eee', color: '#32363a', verticalAlign: 'top',
 };
-const tdNullStyle: CSSProperties = {
-  ...tdStyle, color: '#a0a3a6', fontStyle: 'italic',
+// Cycle 4 polish — distinct visual treatment for the two null flavours
+// keyed off MissingKind so demo viewers can read the distinction at a
+// glance, not only via the tooltip. Truly-missing is cool muted grey
+// (signal: the document simply doesn't carry this field). Below-threshold
+// is warm amber + tinted background (signal: a candidate was found but
+// rejected by the confidence gate — actionable for the admin who may
+// want to lower the threshold). Row testids + data-missing-kind are
+// preserved per the CLAUDE.md "bind evals to testids" tenet — only the
+// inline style is keyed off kind.
+const tdTrulyMissingStyle: CSSProperties = {
+  ...tdStyle,
+  color: 'var(--ink-4)',
+  fontStyle: 'italic',
 };
+const tdBelowThresholdStyle: CSSProperties = {
+  ...tdStyle,
+  color: 'var(--warn)',
+  background: 'var(--warn-bg)',
+  fontStyle: 'italic',
+};
+
+function valueCellStyleFor(kind: MissingKind): CSSProperties {
+  if (kind === 'truly-missing') return tdTrulyMissingStyle;
+  if (kind === 'below-threshold') return tdBelowThresholdStyle;
+  return tdStyle;
+}
