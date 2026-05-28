@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Cycle 0 diagnostic · live agents · 2026-05-28</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 1100px; margin: 2em auto; padding: 0 1em; color: #1d1d1f; }
+    h1 { font-size: 1.5em; border-bottom: 2px solid #1d1d1f; padding-bottom: 0.3em; }
+    h2 { margin-top: 2em; }
+    h3 { margin-top: 1.6em; font-size: 1.1em; }
+    table { border-collapse: collapse; width: 100%; margin: 0.8em 0; font-size: 0.9em; }
+    th, td { border: 1px solid #d4d4d8; padding: 0.4em 0.7em; text-align: left; vertical-align: top; }
+    th { background: #f4f4f6; }
+    code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 0.9em; background: #f4f4f6; padding: 1px 4px; border-radius: 3px; }
+    .badge { display: inline-block; padding: 0.1em 0.6em; border-radius: 12px; font-size: 0.85em; font-weight: 600; }
+    .badge-ok { background: #e6f4ea; color: #137333; }
+    .badge-expected { background: #fff4e5; color: #8a4a00; }
+    .badge-unexpected { background: #fce8e6; color: #c5221f; }
+    .meta { color: #6b6b6f; font-size: 0.9em; margin-top: 2.5em; }
+    .note { background: #f0f4ff; border-left: 4px solid #4a6cf7; padding: 0.8em 1em; margin: 1em 0; }
+  </style>
+</head>
+<body>
+  <h1>Cycle 0 diagnostic · live agents · 2026-05-28</h1>
+  <p>Read-only probe of the four live agent endpoints (<code>compile</code>, <code>capability</code>, <code>readiness</code>, <code>chat.turn_decide</code>) against four representative transcripts. Drives the Cycle 0 stop-condition decision in <code>docs/architectural-plan-2026-05-28.md</code>.</p>
+  <div class="note">
+    <strong>Flagging convention:</strong>
+    <ul>
+      <li><code>chat.turn_decide</code> drift is flagged as <strong>EXPECTED</strong>. The architectural plan already names this agent for deletion in Cycle 2.</li>
+      <li>Drift on any other agent (<code>compile</code>, <code>capability</code>, <code>readiness</code>) is flagged as <strong>UNEXPECTED</strong> and counts towards the Cycle 0 stop condition (2+ unexpected drifts → pause and re-enter plan mode).</li>
+    </ul>
+  </div>
+  
+  <section>
+    <h2>Per-agent drift summary</h2>
+    <table>
+      <thead>
+        <tr><th>Agent</th><th>Verdict</th><th>Detail</th></tr>
+      </thead>
+      <tbody>
+        
+        <tr>
+          <td><code>compile</code></td>
+          <td><span class="badge badge-ok">as-expected</span></td>
+          <td>as-expected</td>
+        </tr>
+        <tr>
+          <td><code>capability</code></td>
+          <td><span class="badge badge-ok">as-expected</span></td>
+          <td>as-expected</td>
+        </tr>
+        <tr>
+          <td><code>readiness</code></td>
+          <td><span class="badge badge-ok">as-expected</span></td>
+          <td>as-expected</td>
+        </tr>
+        <tr>
+          <td><code>chat.turn_decide</code></td>
+          <td><span class="badge badge-expected">drift (expected)</span></td>
+          <td>drift (expected): actions={&quot;recompile&quot;:2,&quot;capability_class_question&quot;:1,&quot;clarify&quot;:1}</td>
+        </tr>
+      </tbody>
+    </table>
+    <p><strong>Unexpected drift count:</strong> 0</p>
+    <p><strong>Stop condition triggered:</strong> NO — proceed to Cycle 1</p>
+  </section>
+  
+  <h2>Per-transcript probe detail</h2>
+  
+    <section>
+      <h3>The user&#39;s failing transcript verbatim (first-turn extract intent)</h3>
+      <p><em>Transcript:</em> &ldquo;Extract the key AP invoice header fields from this DAEJOO invoice: supplier name, invoice number, PO number, invoice date, total amount, currency, tax amount, and supplier branch if available.&rdquo;</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Agent</th>
+            <th>HTTP</th>
+            <th>Latency</th>
+            <th>Response kind</th>
+            <th>Classification / action field</th>
+            <th>Error</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+          <tr>
+            <td><code>compile</code></td>
+            <td>200</td>
+            <td>7523 ms</td>
+            <td><code>success</code></td>
+            <td><code>{&quot;fieldCount&quot;:8,&quot;processingMode&quot;:&quot;auto_confirm&quot;}</code></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><code>capability</code></td>
+            <td>200</td>
+            <td>5339 ms</td>
+            <td><code>success</code></td>
+            <td><code>{&quot;assessmentCount&quot;:8,&quot;ratingDistribution&quot;:{}}</code></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><code>readiness</code></td>
+            <td>200</td>
+            <td>8593 ms</td>
+            <td><code>success</code></td>
+            <td><code>{&quot;status&quot;:&quot;Blocked&quot;,&quot;clarificationCount&quot;:3}</code></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><code>chat.turn_decide</code></td>
+            <td>200</td>
+            <td>2088 ms</td>
+            <td><code>success</code></td>
+            <td><code>{&quot;action&quot;:&quot;recompile&quot;,&quot;hasContent&quot;:null}</code></td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+    <section>
+      <h3>Re-extract / add-fields turn</h3>
+      <p><em>Transcript:</em> &ldquo;add tax amount and currency to the extraction&rdquo;</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Agent</th>
+            <th>HTTP</th>
+            <th>Latency</th>
+            <th>Response kind</th>
+            <th>Classification / action field</th>
+            <th>Error</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+          <tr>
+            <td><code>compile</code></td>
+            <td>200</td>
+            <td>5420 ms</td>
+            <td><code>success</code></td>
+            <td><code>{&quot;fieldCount&quot;:5,&quot;processingMode&quot;:&quot;auto_confirm&quot;}</code></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><code>capability</code></td>
+            <td>200</td>
+            <td>2658 ms</td>
+            <td><code>success</code></td>
+            <td><code>{&quot;assessmentCount&quot;:2,&quot;ratingDistribution&quot;:{}}</code></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><code>readiness</code></td>
+            <td>200</td>
+            <td>5553 ms</td>
+            <td><code>success</code></td>
+            <td><code>{&quot;status&quot;:&quot;Blocked&quot;,&quot;clarificationCount&quot;:2}</code></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><code>chat.turn_decide</code></td>
+            <td>200</td>
+            <td>1453 ms</td>
+            <td><code>success</code></td>
+            <td><code>{&quot;action&quot;:&quot;recompile&quot;,&quot;hasContent&quot;:null}</code></td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+    <section>
+      <h3>Out-of-scope integration ask</h3>
+      <p><em>Transcript:</em> &ldquo;can you link this to S/4 HANA?&rdquo;</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Agent</th>
+            <th>HTTP</th>
+            <th>Latency</th>
+            <th>Response kind</th>
+            <th>Classification / action field</th>
+            <th>Error</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+          <tr>
+            <td><code>compile</code></td>
+            <td>200</td>
+            <td>4381 ms</td>
+            <td><code>success</code></td>
+            <td><code>{&quot;fieldCount&quot;:3,&quot;processingMode&quot;:&quot;auto_confirm&quot;}</code></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><code>capability</code></td>
+            <td>200</td>
+            <td>2790 ms</td>
+            <td><code>success</code></td>
+            <td><code>{&quot;assessmentCount&quot;:1,&quot;ratingDistribution&quot;:{}}</code></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><code>readiness</code></td>
+            <td>200</td>
+            <td>4826 ms</td>
+            <td><code>success</code></td>
+            <td><code>{&quot;status&quot;:&quot;Ready&quot;,&quot;clarificationCount&quot;:0}</code></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><code>chat.turn_decide</code></td>
+            <td>200</td>
+            <td>1802 ms</td>
+            <td><code>success</code></td>
+            <td><code>{&quot;action&quot;:&quot;capability_class_question&quot;,&quot;hasContent&quot;:null}</code></td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+    <section>
+      <h3>Show-me-the-prompt turn</h3>
+      <p><em>Transcript:</em> &ldquo;show me the prompt&rdquo;</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Agent</th>
+            <th>HTTP</th>
+            <th>Latency</th>
+            <th>Response kind</th>
+            <th>Classification / action field</th>
+            <th>Error</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+          <tr>
+            <td><code>compile</code></td>
+            <td>200</td>
+            <td>4948 ms</td>
+            <td><code>success</code></td>
+            <td><code>{&quot;fieldCount&quot;:3,&quot;processingMode&quot;:&quot;auto_confirm&quot;}</code></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><code>capability</code></td>
+            <td>200</td>
+            <td>2175 ms</td>
+            <td><code>success</code></td>
+            <td><code>{&quot;assessmentCount&quot;:1,&quot;ratingDistribution&quot;:{}}</code></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><code>readiness</code></td>
+            <td>200</td>
+            <td>5240 ms</td>
+            <td><code>success</code></td>
+            <td><code>{&quot;status&quot;:&quot;Ready&quot;,&quot;clarificationCount&quot;:0}</code></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><code>chat.turn_decide</code></td>
+            <td>200</td>
+            <td>2583 ms</td>
+            <td><code>success</code></td>
+            <td><code>{&quot;action&quot;:&quot;clarify&quot;,&quot;hasContent&quot;:null}</code></td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  <p class="meta">Generated by <code>scripts/diagnose-live-agents.mjs</code> at 2026-05-28T13:01:47.239Z. Machine-readable JSON at <code>scripts/diagnose-live-agents.json</code>.</p>
+</body>
+</html>
