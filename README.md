@@ -1,205 +1,107 @@
-# Workshop #2 — Student Kit
+# Document AI Customer-Configuration Prototype
 
-**The Product Builder Certification: From Vibe Coding to Spec Engineering**
+A spec-engineered prototype of an **AI-assisted configuration layer** that sits in front of SAP Document AI. The product premise: enterprise admins should be able to describe what they want to extract from a document in plain English, and the system should turn that description into a Document AI-ready extraction configuration — schema, prompt, thresholds, and a readiness verdict — without anyone editing JSON by hand.
 
-May 23, 2026 ·  Saturday · 4 hours live · 6 sessions
-
----
-
-## Start here
-
-1. Complete the install steps in [`pre-course-setup.md`](pre-course-setup.md) **before May 23**. Takes 20–30 minutes.
-2. Show up on May 23. Bring your laptop. We build everything live.
+This repository is a **single-laptop demo**, not a production deployment. The visible v1 surface uses one document type (commercial invoice) and one sample document (DAEJOO) so the workflow itself can be exercised end-to-end without enterprise plumbing.
 
 ---
 
-## The arc
+## The problem
+
+Document AI gives enterprise teams a powerful extraction engine — header fields, line items, confidence scoring, template + generative paths — but configuring it for a specific document type still requires direct manipulation of schemas, prompt fragments, confidence thresholds, and processing modes. That workflow is precise but unforgiving: a small mismatch between what the admin meant and what the schema actually says shows up as silently missing fields, mislabelled values, or over-confident extractions on edge cases. The admin's intent never quite makes it into the configuration without a roundtrip through someone who reads the docs.
+
+The prototype's bet: the gap between "what the admin wants" and "a Document AI configuration that does that" is a translation problem, and translation is what LLMs are actually good at — provided the surface around the translation tells the truth about the product's boundaries.
+
+---
+
+## What the prototype does
+
+1. **An admin types an extraction intent in plain English** in a chat surface at `/customer`. Example: *"Extract supplier name, invoice number, PO number, invoice date, total amount, and tax amount from this invoice. Skip lines marked 'no commercial value'."*
+2. **A live AI Core agent compiles that intent** into a Document AI-shaped configuration — extraction schema, system prompt for the extractor, confidence thresholds, processing mode. The configuration is visible to the admin as an auxiliary panel that updates in place.
+3. **The extraction runs against the sample document.** In v1 this is a deterministic projection of the AI-generated schema through a hand-curated fixture (`src/data/daejoo-extraction.fixture.json`); the OCR + raw-extraction step is mocked so the demo runs offline. The admin sees extracted values with per-field confidence, and a "Not found in this document" marker for fields the document doesn't carry.
+4. **A readiness verdict** assembles in plain business language — what's confident, what's borderline, what to do next.
+5. **The admin can iterate by typing** — *"also extract the buyer reference"*, *"raise the threshold on payment_terms"*, *"show me the prompt you generated"*. Each turn re-compiles the configuration and re-runs the extraction.
+6. **When the admin asks for something Document AI does not do** — *"link this to S/4 HANA"*, *"compare this invoice to last month's"*, *"flag suspicious invoices"* — the chat does not say "unsupported." It confirms the request back in product-grounded language, cites the relevant section of the Document AI capability surface, and asks the admin whether to notify the SAP product team. On *yes*, a `ProductSignal` lands in an internal flywheel screen so the product team can see what customers actually want.
+
+Three personas, three screens:
+
+- **`/customer`** — the admin chat workflow above. 90% of the prototype's surface area.
+- **`/admin`** — internal SAP view: agent traces, threshold governance, recommendations derived from extraction corrections.
+- **`/internal`** — internal SAP view: the ProductSignal flywheel. Capability gaps surfaced through the customer chat appear here as structured signals, ranked by frequency, customer count, and addressability.
+
+---
+
+## Why this matters
+
+This prototype is an experiment in three claims that go beyond "Document AI gets a friendly UI":
+
+**1. The translation between intent and configuration is the product, not the chat.** The visible chat is just where the admin types. The load-bearing work is producing a structurally valid Document AI configuration that an extractor can actually execute — schema field list, per-field instructions, regex patterns, confidence thresholds, processing mode. Get that translation right and the rest of Document AI keeps working as it always has.
+
+**2. Capability boundaries are part of the configuration surface.** A configurator that pretends the product can do anything the user asks for fails as soon as the user asks for something the product doesn't do. The prototype's "I can't do X — want me to notify the team?" pathway is treated as a first-class outcome: it gives the customer an honest answer and gives the product team a quantified signal about where the boundary actually pinches. Capability grounding ships as a curated 6,000-token document derived from the 628-page Document AI product manual (`docs/document-ai-capability-surface.md`), not as RAG — the curation is intentional and version-controlled.
+
+**3. Live AI in the loop is verified by live tests.** Every customer-facing decision (compile, capability classification, readiness reasoning) is a real call to a live model. The eval bar (`app/evals.md` → `src/evals/`) treats this as the falsifier: drift in any of those agents shows up as a regression in CI, not as a demo failure during a sales call.
+
+---
+
+## Architecture (one paragraph)
+
+React 18 + TypeScript strict mode + Vite for the front end. UI5 Web Components React for the SAP Fiori look-and-feel, adapted to a custom visual identity. A Node-side Vite middleware (`src/server/devAgentMiddleware.ts`) exposes JSON endpoints the browser POSTs to; the browser never imports the AI Core client directly. Live agent calls go to SAP AI Core. Extraction itself is mocked against `src/data/daejoo-extraction.fixture.json` — that's a v1 invariant called N6. The project follows a six-stage spec engineering workflow (S1 spec → S2 contract → S3 build → S4 eval → S5 debug → S6 strip); the canonical artifacts live in `app/`. See `app/CLAUDE.md` for the tenets every change is checked against.
+
+---
+
+## Repository map
 
 ```
-S1  Working Backwards    →  spec.html + tight-thesis.json + CLAUDE.md + evals.md
-S2  Contract             →  contract.html (incl. Screens, Substrate, Dependencies)
-S3  Build                →  src/app.py + feature-list.json + app-spec.json
-S4  Evaluate             →  eval-results.html (independent judge per pick)
-S5  Debug                →  debug-log.html (one Surgical Fix per FAIL)
-S6  Strip & Clinic       →  recall-notice.html + strip-page.html
+app/                          canonical spec-engineering artifacts
+  spec.html                   single source of truth (S1)
+  contract.html               wiring diagram (S2)
+  evals.md                    binary eval cases bound 1:1 to spec rules
+  CLAUDE.md                   durable tenets — read before changing anything in app/
+  claude-progress.txt         append-only RATIONALE trace
+  eval-results.html           latest eval-bar verdict (S4)
+  app-spec.json               concrete build manifest
+docs/                         orientation + active plans
+  handoff-2026-05-28.md       dev-lead onboarding
+  architectural-plan-2026-05-28.md  the re-derivation plan in flight
+  document-ai-capability-surface.md curated grounding for the capability agent
+reference/                    source material (Document AI help PDF)
+src/
+  routes/                     /customer · /admin · /internal
+  domain/                     live AI Core agents + deterministic domain logic
+  components/                 per-route panels
+  evals/                      eval-bar tests (the formal pass/fail surface)
+  server/                     dev-only Vite middleware exposing /api/*
+  runtime/                    AI Core client + supporting infrastructure
+  data/                       deterministic fixtures (DAEJOO)
+scripts/                      one-off diagnostics and ops scripts
 ```
-
-Across all six, one trace — **claude-progress.txt** — accumulates the rationale for every decision. The next session reads it.
 
 ---
 
-## What each session teaches
+## Running it
 
-### S1 — Working Backwards · *prompt chaining*
+```bash
+npm install
+cp .env.example .env          # fill in AICORE_KEY_PATH and Langfuse keys
+npm run dev                   # opens /customer at http://localhost:5173
+```
 
-[Session blueprint →](modules/s1-working-backwards/s1-working-backwards.md)
+Test surfaces:
 
-Five sequential LLM calls with four halt conditions between them: customer promise + negative contract → FAQ assertions → behaviour contract → spec.html + tight-thesis.json → CLAUDE.md. Each halt stops the chain when the upstream is too soft for the downstream to use. You walk out with a spec the next session can read verbatim, the CLAUDE.md that primes every future session, and 12 eval cases the app will be measured against.
+```bash
+npx vitest run                # full eval bar + unit tests
+npm run build                 # production bundle
+```
 
-### S2 — Contract · *structured artifact + per-screen interview*
-
-[Session blueprint →](modules/s2-contract/s2-contract.md)
-
-The contract extracts verifiable + needs-eval + kill criteria from the spec, then runs a per-screen interview to author the Screens section one question at a time. The new §6 Dependencies / credentials / skills step surfaces every external API, credential, and Claude skill the build will need — before the build hits a wall. You walk out with a contract.html the build harness can read verbatim, and no missing API keys at build time.
-
-### S3 — Build · *three single-responsibility agents on one harness*
-
-[Session blueprint →](modules/s3-build/s3-build.md)
-
-Decomposer → Initializer → Coder. The Decomposer translates contract acceptance rows into discrete buildable features. The Initializer translates the contract into cross-cutting config (substrate, dependencies, skills to invoke). The Coder builds one feature at a time and writes a RATIONALE entry to the trace per feature. UI surfaces invoke the `frontend-design` skill (or the design system you named in the contract). You walk out with a running app and a trace that names which feature owns which decision.
-
-### S4 — Evaluate · *independent judge (cross-session split)*
-
-[Session blueprint →](modules/s4-evaluate/s4-evaluate.md)
-
-A fresh inference call — separate from the build harness — applies the contract's verifiable + needs-eval criteria to the app's outputs. Binary PASS / FAIL per (criterion × pick). Every FAIL gets tagged with one of the Three Gulfs (Comprehension / Specification / Generalization). You walk out with eval-results.html — the FAIL rows are the work for S5.
-
-### S5 — Debug · *Surgical Fix — one change at the named layer*
-
-[Session blueprint →](modules/s5-debug/s5-debug.md)
-
-For each FAIL row: name the layer (spec / contract / screen / substrate / prompt / data), make one targeted change, re-run the eval, log the before/after. One change per entry. If the layer is ambiguous, `deep-dive` surfaces it. You walk out with debug-log.html — one entry per fix — and a prototype that passes the eval bar.
-
-### S6 — Strip & Clinic · *Model Recall + Strip discipline*
-
-[Session blueprint →](modules/s6-strip-clinic/s6-strip-clinic.md)
-
-A new model launch fires a Model Recall on your harness. For each piece of scaffolding (pre-baked lookups, sentiment passes, cross-validation, UI scaffolding, prompt kludges), the trace tells you whether the new model still needs it. Strip when the traces say so, keep when they say otherwise. You walk out with a stripped harness and the discipline to do this every time a new model ships.
+Live evals (require `AICORE_KEY_PATH` pointing at a readable SAP AI Core service key) are in `src/evals/live.test.tsx`; they `describe.skipIf` automatically when credentials are absent.
 
 ---
 
-## How the workshop runs
+## Non-goals (v1)
 
-The run-of-show lives in [`modules/session-flow.md`](modules/session-flow.md). For each session:
+- **Live OCR / live raw extraction.** Mocked in v1 against a single fixture; this is intentional, not a missing piece.
+- **Multi-document.** DAEJOO is the only sample.
+- **Multi-tenant runtime, persistence, authentication.** The `/admin` surface is a theatrical governance view, not a live workbench.
+- **Direct ERP write-back, Cognee-based graph RAG, embedding retrieval.** Deferred to v2 with documented revisit conditions.
 
-1. **Paste the BUILD prompt.** Claude reads the session blueprint and produces the matching skill / agent / command into `.claude/`.
-2. **Paste the INPUT.** The freshly built skill runs on real material — your spec, your contract, your eval FAILs.
-3. **The artifact lands in `app/`.** The next session reads it from there.
-
-Every artifact appears in front of you. Nothing is shown that hasn't been built live.
-
----
-
-## What your kit looks like at the end of the day
-
-```
-ws2-student-kit/
-├── README.md
-├── DISCLAIMER.md
-├── requirements.txt                  (Python deps for the daily refresh script)
-├── .env                              (your FMP_API_KEY + ANTHROPIC_API_KEY + LANGFUSE_* keys)
-├── modules/                          (read-only reference — blueprints + session docs)
-│   ├── session-flow.md               (the run-of-show — paste these prompts)
-│   ├── primary-sources.md            (background reading)
-│   ├── bar-raiser-blueprint.md       (ad-hoc, when a session needs a harder critique)
-│   ├── deep-dive-blueprint.md        (ad-hoc, when a layer is ambiguous)
-│   ├── s1-working-backwards/
-│   ├── s2-contract/
-│   ├── s3-build/
-│   ├── s4-evaluate/
-│   ├── s5-debug/
-│   └── s6-strip-clinic/
-├── .claude/                          (everything you built live)
-│   ├── skills/
-│   │   ├── working-backwards/        (S1)
-│   │   └── langfuse/                 (S4 OBSERVE — pulled from github.com/langfuse/skills)
-│   ├── commands/
-│   │   ├── spec.md                   (S1)
-│   │   └── deep-dive.md              (ad-hoc, when invoked)
-│   └── agents/                       (any sub-agents the build wired in)
-└── app/                              (the project S3 built + every artifact the workshop produced)
-    ├── pre-course-setup.md           (install steps you ran before May 23)
-    ├── package.json                  (S3 — Node/Next.js build manifest)
-    ├── tsconfig.json                 (S3)
-    ├── next.config.mjs               (S3)
-    ├── tailwind.config.ts            (S3)
-    ├── postcss.config.mjs            (S3)
-    ├── instrumentation.ts            (S4 — Langfuse OTel wiring)
-    ├── layout.tsx, page.tsx, globals.css   (S3 — Next.js shell)
-    ├── api/, lib/, components/       (S3 — source the Coder produced)
-    ├── scripts/                      (S3 — data-refresh job + helpers)
-    ├── data/                         (snapshot.db + trace.jsonl — gitignored)
-    ├── CLAUDE.md                     (S1, updated every session)
-    ├── claude-progress.txt           (the running trace — every session appends)
-    ├── spec.html                     (S1)
-    ├── tight-thesis.json             (S1)
-    ├── evals.md                      (S1)
-    ├── ambiguity-audit.html          (S1)
-    ├── contract.html                 (S2)
-    ├── feature-list.json             (S3)
-    ├── app-spec.json                 (S3)
-    ├── eval-criteria.html            (S4 — Step 1, criteria derived from spec)
-    ├── eval-results.html             (S4 — Step 2, independent judge per pick)
-    ├── debug-log.html                (S5)
-    ├── recall-notice.html            (S6)
-    └── strip-page.html               (S6)
-```
-
-Monday morning you open `/spec` on your own problem.
-
----
-
-## Worked example — S4 on the stock-shortlist demo
-
-A concrete trace of how S4 runs end-to-end. The procedure is the same on any spec; the picks below are what the demo produced on 2026-05-23.
-
-```
-spec.html ─┐
-CLAUDE.md  │   (1) read intent             (2) derive criteria
-contract   │ ───────────────────────►  eval-criteria.html
-evals.md  ─┘                                    │
-                                                ▼
-snapshot.db  ──(3) reproduce picks──►  N tickers (criterion × pick judged)
-                                                │
-                                                ▼
-                                       eval-results.html
-                                                │
-                                                ├──(4) OBSERVE──►  Langfuse dashboard
-                                                │                  (re-run after every S5 fix)
-                                                ▼
-                                   claude-progress.txt
-                                   CLAUDE.md §4 updated
-```
-
-**Step 1 — Define criteria.** Walk every Behaviour Contract rule and FAQ assertion in `spec.html` and sort each into one of three buckets:
-- *Self-check* (machine-verifiable): "every cell has a non-null source" → SC-1..SC-10.
-- *Judge-required* (needs spec-intent reading): "picks look like stocks to a beginner" → JR-1..JR-5, each tagged with the Gulf its FAIL would belong to (Comprehension / Specification / Generalization).
-- *Eval-level kill* (numeric + time-bounded): if the spec has no row of the shape "3 of 5 picks underperform SPY by >15% over 12 months", push back — do not invent one.
-
-Output: `app/eval-criteria.html` with the three sections + a substrate-substitution table.
-
-**Step 2 — Reproduce the picks independently.** The eval must not depend on the running app being healthy. Read `app/data/snapshot.db` directly, replicate the ranker logic (`app/lib/ranker.ts`: z-score, threshold pre-filters, equal-weight composite), print the top N.
-Example:
-
-| Rank | Ticker | Company | Composite |
-|---|---|---|---|
-| 1 | CII | BlackRock Enhanced Large Cap Core Fund, Inc. | 0.596 |
-| 2 | BCV | Bancroft Fund Ltd. | 0.496 |
-| 3 | BOE | BlackRock Enhanced Global Dividend Trust | 0.352 |
-| 4 | BDJ | BlackRock Enhanced Equity Dividend Trust | 0.267 |
-| 5 | BGY | BlackRock Enhanced International Dividend Trust | 0.263 |
-
-Pool size after threshold pre-filters: 13 out of 3,000 universe rows.
-
-**Step 3 — Apply each criterion to each pick.** Per-pick verdicts go in a `criterion × pick` table — 11 per-pick criteria × 5 picks = 55 rows. Each FAIL carries the Gulf and a one-sentence reason. Call-level checks (banned-words scan, empty-factor 400 behaviour, pool-size adequacy) sit in a separate 4-row table.
-
-Result on this run:
-
-| Bucket | Verdict |
-|---|---|
-| Self-check (SC-1..SC-10) | 40 / 40 PASS — provenance, freshness, exchange allowlist, no padding, source literal all upheld |
-| JR-1 operating-company equity | **5 / 5 FAIL** — every pick is a closed-end fund · Gulf: Comprehension |
-| JR-2 label↔metric coherence | **5 / 5 FAIL** — "profitable" on a fund means realised gains, not operating profit · Gulf: Specification |
-| JR-3 generalization | **5 / 5 FAIL** — pool of 13 collapses the top-N onto a fund corner; different factors flip the answer wholesale · Gulf: Generalization |
-| JR-4 no-advice framing | 5 / 5 PASS |
-| JR-5 pool-size adequacy | **1 / 1 FAIL** — snapshot shipped at 59% coverage; the U2 80% kill switch did not gate · Gulf: Specification |
-
-**Step 4 — OBSERVE.** Push every (criterion × pick) verdict into Langfuse as one observation per row with a pass/fail score and the FAIL reason as metadata. The S4 run becomes a timestamped dashboard the workshop can re-run after each S5 fix — the same dashboard shows the drift, side by side. Langfuse credentials live in `.env`; the prompt is in `modules/session-flow.md` under **OBSERVE**.
-
-**Step 5 — Headline + close out.** Dominant Gulf: Comprehension at the F-U1 universe layer. The SEC EDGAR loader pulled closed-end funds, BDCs, and royalty trusts into the universe; spec §4 Non-Goals excluded ETFs but did not enumerate the broader pooled-vehicle bucket. Three RATIONALE lines appended to `app/claude-progress.txt`; `app/CLAUDE.md §4` updated with the three failure modes. S5 reads from there.
-
-**What the example teaches.** Self-checks find shape problems (missing fields, stale dates, bad counts). Judge rows find *intent* problems (the math is right but the answer isn't what the spec asked for). Both are needed — passing every self-check while failing every judge row is what a build that drifted from intent looks like.
-
----
-
-*Educational. Not investment advice. The stock picker demo is a worked example for teaching spec engineering — not a recommendation to buy or hold any security.*
+Document AI itself does these things at the service level; this prototype is about the configuration surface that sits in front of it.
