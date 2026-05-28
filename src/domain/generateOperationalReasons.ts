@@ -154,7 +154,7 @@ export async function generateOperationalReasons(
     opts.max_tokens ?? appSpecTyped.agent_client_contract.default_max_tokens.free_text_generation;
 
   const result = await callAgent<z.infer<typeof WireResponseZ>>({
-    agent: 'readiness',
+    agent: 'operationalReasons',
     model,
     max_tokens,
     system: REASONING_SYSTEM_PROMPT,

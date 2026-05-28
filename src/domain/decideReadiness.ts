@@ -104,7 +104,7 @@ export async function decideReadiness(
 
   const outcome: RunAgentOutcome<readonly OperationalReason[]> =
     await runAgentWithFailureSurface(
-      'readiness',
+      'operationalReasons',
       () => generateOperationalReasons(run, config, { model: opts.reasoningModel }),
       { nowIso, documentRunId: run.id },
     );

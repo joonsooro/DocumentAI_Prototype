@@ -340,6 +340,6 @@ describe('F-10 decideReadiness — agent failure routing (N4 / EDGE-2)', () => {
     expect(typeof r.confidence).toBe('number');
     expect(r.nextAction).toBeTruthy();
     // F-08 wrote a fail QualityMetric via the F-18 store.
-    expect(countMetrics({ agent: 'readiness', status: 'fail' })).toBe(1);
+    expect(countMetrics({ agent: 'operationalReasons', status: 'fail' })).toBe(1);
   });
 });

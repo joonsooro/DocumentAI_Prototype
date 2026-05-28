@@ -217,7 +217,7 @@ export interface AdminRecommendation {
 // ---------------------------------------------------------------------------
 export interface PromptVersion {
   readonly id: string;
-  readonly agent: string; // e.g. 'compile', 'capability', 'readiness'
+  readonly agent: string; // e.g. 'compile', 'capability', 'readiness', 'operationalReasons'
   readonly version: string; // semver-like
   readonly supplier: string | null; // null => default
   readonly promptText: string;
