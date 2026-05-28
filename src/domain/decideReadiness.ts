@@ -44,6 +44,7 @@ import {
   runAgentWithFailureSurface,
   type RunAgentOutcome,
 } from '@domain/agentFailureSurface';
+import { recordCustom } from '@runtime/qualityMetricLog';
 
 // ---------------------------------------------------------------------------
 // Status policy — pure, deterministic, no AI Core involved
@@ -100,6 +101,7 @@ export async function decideReadiness(
   opts: DecideReadinessOptions = {},
 ): Promise<ReadinessDecision> {
   const nowIso = opts.nowIso ?? new Date().toISOString();
+  const startedAt = Date.now();
   const status = decideStatus(run, config);
 
   const outcome: RunAgentOutcome<readonly OperationalReason[]> =
@@ -130,6 +132,31 @@ export async function decideReadiness(
     // Force-downgrade to Blocked if reasoning failed — we cannot recommend
     // posting a document we have no business-language explanation for (N4).
     effectiveStatus = 'Blocked';
+  }
+
+  // SF: wire composite-level QualityMetric so the Agent I/O Dashboard can
+  // count readiness verdicts distinct from the inner operationalReasons row.
+  // tokenUsage/model are null — the inner row carries the real spend; the
+  // composite is observability of the wrap, not a duplicate of the inner
+  // call. Fire-and-forget per aiCoreClient.ts:414-422 pattern.
+  try {
+    recordCustom(
+      {
+        agent: 'readiness',
+        status: outcome.kind === 'success' ? 'success' : 'fail',
+        latencyMs: Date.now() - startedAt,
+        tokenUsage: null,
+        model: null,
+        maxTokens: null,
+        error:
+          outcome.kind === 'failure'
+            ? `${outcome.failure.agent} failed: ${outcome.failure.reason} — ${outcome.failure.message}`
+            : null,
+      },
+      { nowIso },
+    );
+  } catch {
+    // observability must never break the agent path
   }
 
   return Object.freeze({

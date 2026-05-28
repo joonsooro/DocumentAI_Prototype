@@ -21,9 +21,11 @@ import {
   _FORBIDDEN_SUBSTRINGS_FOR_TESTS,
 } from '@domain/generateOperationalReasons';
 import { _resetClientForTests } from '@runtime/aiCoreClient';
+import * as qualityMetricLog from '@runtime/qualityMetricLog';
 import {
   _resetQualityMetricLogForTests,
   countMetrics,
+  getMetrics,
 } from '@runtime/qualityMetricLog';
 import type {
   CompiledConfiguration,
@@ -341,5 +343,95 @@ describe('F-10 decideReadiness — agent failure routing (N4 / EDGE-2)', () => {
     expect(r.nextAction).toBeTruthy();
     // F-08 wrote a fail QualityMetric via the F-18 store.
     expect(countMetrics({ agent: 'operationalReasons', status: 'fail' })).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SF #2c — readiness composite QualityMetric emission
+//
+// Each decideReadiness invocation now appends TWO rows to the F-18 store:
+//   1. agent='operationalReasons' — from SF #2a (success via aiCoreClient
+//      recordSuccess; failure via F-08 recordFailure).
+//   2. agent='readiness'          — from this SF's recordCustom at the
+//      composite wrap point. Distinct from the inner row.
+// ---------------------------------------------------------------------------
+
+describe('F-10 decideReadiness — composite QualityMetric emission (SF #2c)', () => {
+  it('emits a readiness composite QualityMetric on success', async () => {
+    const cfg = configOf([field('supplier'), field('po_number')]);
+    const run = runOf([
+      extracted('supplier', 'ACME', 0.99),
+      extracted('po_number', 'PO-1', 0.95),
+    ]);
+    mockFetchSequence(TOKEN, invokeOk(validReasonsWire(['supplier', 'po_number'])));
+    await decideReadiness(run, cfg, { nowIso: '2026-05-25T00:00:00Z' });
+
+    // Exactly one composite row, status='success'.
+    expect(countMetrics({ agent: 'readiness', status: 'success' })).toBe(1);
+    const compositeRow = getMetrics().find((m) => m.agent === 'readiness');
+    expect(compositeRow).toBeDefined();
+    // tokenUsage/model/maxTokens are null on the composite — the inner
+    // operationalReasons row carries the real spend (no double-counting).
+    expect(compositeRow!.latencyMs).toBeGreaterThanOrEqual(0);
+    expect(compositeRow!.tokenUsage).toBeNull();
+    expect(compositeRow!.model).toBeNull();
+    expect(compositeRow!.maxTokens).toBeNull();
+    expect(compositeRow!.error).toBeNull();
+  });
+
+  it('emits both operationalReasons and readiness rows with distinct ids after success', async () => {
+    const cfg = configOf([field('supplier')]);
+    const run = runOf([extracted('supplier', 'ACME', 0.99)]);
+    mockFetchSequence(TOKEN, invokeOk(validReasonsWire(['supplier'])));
+    await decideReadiness(run, cfg, { nowIso: '2026-05-25T00:00:00Z' });
+
+    const metrics = getMetrics();
+    expect(metrics.length).toBe(2);
+    const opsRow = metrics.find((m) => m.agent === 'operationalReasons');
+    const compositeRow = metrics.find((m) => m.agent === 'readiness');
+    expect(opsRow).toBeDefined();
+    expect(compositeRow).toBeDefined();
+    expect(opsRow!.id).not.toBe(compositeRow!.id);
+  });
+
+  it('emits a readiness composite QualityMetric with status=fail on inner-call failure', async () => {
+    const cfg = configOf([field('supplier')]);
+    const run = runOf([extracted('supplier', 'ACME', 0.99)]);
+    // Force a malformed_json failure on the reasoning call.
+    mockFetchSequence(TOKEN, {
+      jsonBody: { content: [{ type: 'text', text: 'I am sorry I cannot do that' }] },
+    });
+    await decideReadiness(run, cfg, { nowIso: '2026-05-25T00:00:00Z' });
+
+    // Inner row (from F-08 recordFailure) AND composite row (from this SF)
+    // both present with status='fail'.
+    expect(countMetrics({ agent: 'operationalReasons', status: 'fail' })).toBe(1);
+    expect(countMetrics({ agent: 'readiness', status: 'fail' })).toBe(1);
+
+    // Composite row's error string mirrors agentFailureSurface.ts:116 —
+    // includes the inner agent name and the failure reason.
+    const compositeRow = getMetrics().find((m) => m.agent === 'readiness');
+    expect(compositeRow).toBeDefined();
+    expect(compositeRow!.error).toContain('operationalReasons');
+    expect(compositeRow!.error).toContain('malformed_json');
+  });
+
+  it('does not break decideReadiness return when recordCustom throws', async () => {
+    const cfg = configOf([field('supplier')]);
+    const run = runOf([extracted('supplier', 'ACME', 0.99)]);
+    mockFetchSequence(TOKEN, invokeOk(validReasonsWire(['supplier'])));
+
+    // Make recordCustom throw — observability MUST NOT break the agent path.
+    const spy = vi
+      .spyOn(qualityMetricLog, 'recordCustom')
+      .mockImplementation(() => {
+        throw new Error('observability explosion');
+      });
+
+    const decision = await decideReadiness(run, cfg, { nowIso: '2026-05-25T00:00:00Z' });
+    expect(decision.status).toBe('Ready');
+    expect(decision.reasons.length).toBe(1);
+
+    spy.mockRestore();
   });
 });
