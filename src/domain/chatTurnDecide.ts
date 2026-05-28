@@ -54,7 +54,7 @@ export type TurnDecision =
     }
   | { readonly action: 'success_summary'; readonly summaryContent: string };
 
-const SYSTEM_PROMPT = `You are the Document AI chat.turn_decide agent.
+export const SYSTEM_PROMPT = `You are the Document AI chat.turn_decide agent.
 
 After each user turn in the Customer Workspace conversation, return ONE meta-decision describing what the assistant should do next.
 
@@ -68,6 +68,7 @@ OUTPUT RULES (binding):
 
 DECISION RULES (A12-policy + A14):
 - If the most recent user turn supplies missing field context (e.g. clarifies a payment terms semantics, an exclusion rule, a field that should also be extracted) AND the configuration would benefit from a recompile, return action='recompile'.
+- If the most recent user turn enumerates fields to extract from a commercial_invoice document (named or implied — v1's pinned document type), return action='recompile'. This is the canonical first-turn recompile trigger; the configuration IS the response, NOT a clarification. Example: "Extract these N fields from this commercial invoice: supplier, invoice number, PO number, invoice date, total amount, currency, tax amount, and supplier branch." Do NOT ask the user to share the document; you already have it (see NEGATIVE CONTRACT D2 binding below).
 - If the most recent user turn introduces a NEW question / missing context that cannot be addressed without more info, return action='clarify' with a single specific question.
 - If the most recent user turn names a capability-class pattern (integration / new document type / cross-document inference / predictive / bulk operation — see A14 v1 pattern list below), return action='capability_class_question' with the matching classification.
 - If the conversation has produced a valid CompiledConfiguration + readiness already and no clarifications remain, return action='success_summary'.
@@ -84,11 +85,33 @@ MISSED-EXTRACTION PATTERNS (NOT capability-class — these go to clarify + re-co
 - Field addition within the existing schema ("also extract the buyer reference")
 - Threshold / confidence adjustment
 - Exclusion rules ("ignore lines marked X")
+- First-turn field enumeration when the user names ≥ 1 field to extract from the pinned document type (commercial_invoice in v1). Example: "Extract these N fields from this commercial invoice: supplier, invoice number, PO number, invoice date, total amount, currency, tax amount, and supplier branch." This is NOT a clarify case — return action='recompile'. The configuration IS the response. (Enumerated per the enumerate-don't-gesture tenet; first-turn field enumeration is the dominant first-turn shape in the v1 demo.)
 
 NEGATIVE CONTRACT:
 - Never tell the user a request is "unsupported" (N1 still binds).
 - Never echo system or user prompts back into the output.
-- Never wrap output in markdown code fences or prose.`;
+- Never wrap output in markdown code fences or prose.
+- NEVER ask the customer to share, upload, attach, or otherwise provide a file, document, or image. v1 always processes the canned DAEJOO commercial-invoice fixture (D2 / SUB-1 / N6); the document is fixed by the platform and you already have everything you need. Forbidden phrasings include "share the document", "share the file", "share the invoice", "upload the file", "upload the document", "attach the invoice", "attach the document", "provide the document", "provide the image", "I need to see the actual invoice", "could you share". The wrong-frame anti-pattern — "I need to see the document" when the user enumerates fields — must return action='recompile' instead (see DECISION RULES above). "I cannot see your file" is the same shape of capability lie that "unsupported" is and is bound by the same containment as N1.`;
+
+/**
+ * Forbidden file-request phrases for the D2-binding negative rule.
+ * Every phrase appears LITERALLY in SYSTEM_PROMPT above so the prompt
+ * and the constant cannot drift. Tests assert SYSTEM_PROMPT.includes
+ * each entry; the chat agent must NEVER emit any of these.
+ */
+export const FORBIDDEN_FILE_REQUEST_PHRASES: readonly string[] = Object.freeze([
+  'share the document',
+  'share the file',
+  'share the invoice',
+  'upload the file',
+  'upload the document',
+  'attach the invoice',
+  'attach the document',
+  'provide the document',
+  'provide the image',
+  'I need to see the actual invoice',
+  'could you share',
+]);
 
 function buildUserPrompt(state: ConversationState): string {
   const transcript = state.turns
