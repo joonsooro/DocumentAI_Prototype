@@ -56,6 +56,10 @@ import type {
 } from '@domain/types';
 import { callAgent } from '@runtime/aiCoreClient';
 import appSpec from '../../app/app-spec.json' with { type: 'json' };
+import {
+  PROMPT_DISPLAY_TRIGGER_PHRASES,
+  TERMINAL_SATISFACTION_TRIGGER_PHRASES,
+} from '@domain/promptDisplayIntent';
 
 // ---------------------------------------------------------------------------
 // Wire schema (what AI Core is asked to return)
@@ -71,16 +75,41 @@ const ProcessingModeZ: z.ZodType<ProcessingMode> = z.enum([
   'blocked',
 ]);
 
-const SchemaFieldZ = z.object({
-  name: z.string().min(1),
-  dataType: z.enum(['string', 'number', 'date', 'boolean', 'enum']),
-  required: z.boolean(),
-  instruction: z.string().min(1),
-  validation: z.string().nullable(),
-  regex: z.string().nullable(),
-  confidenceThreshold: z.number().min(0).max(1),
-  enumValues: z.array(z.string()).optional(),
-}) satisfies z.ZodType<SchemaField>;
+const SchemaFieldZ = z
+  .object({
+    name: z.string().min(1),
+    dataType: z.enum(['string', 'number', 'date', 'boolean', 'enum']),
+    required: z.boolean(),
+    instruction: z.string().min(1),
+    validation: z.string().nullable(),
+    regex: z.string().nullable(),
+    confidenceThreshold: z.number().min(0).max(1),
+    // Cycle 3 SF (HAPPY-17 non-terminal): accept null for enumValues as
+    // semantically equivalent to absent. SchemaField in @domain/types
+    // declares enumValues?: readonly string[] (optional, not nullable), so
+    // we transform null → undefined to keep the validated value
+    // type-conformant. Observed live-load behavior: the model
+    // (compile_or_reasoning_heavy) returns enumValues=null for non-enum
+    // fields on the recompile branch under the SF-extended system prompt
+    // — both null and omission encode the same "no enum constraint"
+    // semantics, so accepting null prevents an avoidable
+    // schema_validation_failed AgentFailure without changing the contract.
+    enumValues: z
+      .array(z.string())
+      .nullable()
+      .optional()
+      .transform((v) => (v === null ? undefined : v)),
+  })
+  .transform((field) => {
+    // After enumValues null → undefined coercion, drop the key entirely
+    // when undefined so the resulting object matches SchemaField's
+    // optional shape (key absent rather than key=undefined).
+    if (field.enumValues === undefined) {
+      const { enumValues: _drop, ...rest } = field;
+      return rest as SchemaField;
+    }
+    return field satisfies SchemaField;
+  });
 
 const CompileOrRecompilePayloadZ = z.object({
   schema: z.object({ fields: z.array(SchemaFieldZ).min(1) }),
@@ -119,6 +148,14 @@ const CompileAgentDecisionZ = z.discriminatedUnion('action', [
 // System prompt — enumerates the 5 actions AND the forbidden phrases.
 // ---------------------------------------------------------------------------
 
+const PROMPT_DISPLAY_PHRASE_BLOCK = PROMPT_DISPLAY_TRIGGER_PHRASES.map(
+  (p) => `  • "${p}"`,
+).join('\n');
+
+const TERMINAL_SATISFACTION_PHRASE_BLOCK = TERMINAL_SATISFACTION_TRIGGER_PHRASES.map(
+  (p) => `  • "${p}"`,
+).join('\n');
+
 const COMPILE_SYSTEM_PROMPT = `You are the Document AI Merged Compile Agent.
 
 Your only job: read the ConversationState (accumulated chat turns) + latest user message and produce ONE JSON object describing what the assistant should do next, in a single discriminated-union response.
@@ -131,9 +168,19 @@ OUTPUT SHAPE (binding):
 DECISION RULES (the 5 actions, enumerated):
 1. action="compile": the user's first turn enumerates one or more fields to extract from the pinned commercial_invoice document. Return a {schema, processingMode, extractionSystemPrompt} payload. The schema MUST include the fields the user named PLUS any conventional commercial-invoice fields implied by the document type. The configuration IS the response — do NOT ask the user to share a file. NEVER ask the user to clarify before producing the first compile.
 2. action="recompile": a later turn modifies the configuration (adds/removes a field, refines an instruction, changes processing mode). Return a fresh {schema, processingMode, extractionSystemPrompt} payload with the updated configuration. Re-generate extractionSystemPrompt to match the new schema.
-3. action="clarify": the user's turn introduces missed-extraction context (field clarification, exclusion rules, threshold adjustment) that genuinely needs more info before the configuration can be updated. Return {clarificationContent} with a single specific question.
+3. action="clarify": the user's turn introduces missed-extraction context (field clarification, exclusion rules, threshold adjustment) that genuinely needs more info before the configuration can be updated, OR the user makes an informational one-off request that should keep the conversation open (e.g. asking to see the generated extraction prompt — see PROMPT-DISPLAY ROUTING below). Return {clarificationContent} with a single specific acknowledgement or question; keep clarificationContent SHORT (one or two sentences) and non-terminal — the conversation must stay open.
 4. action="capability_class_question": the user's turn names a capability-class pattern (integration / new document type / cross-document inference / predictive / bulk operation) that Document AI cannot do. Return {confirmationQuestion, capabilityGapDescription, capabilitySurfaceCitation, pendingSignalDescription} — free-form prose grounded in the curated SAP Document AI capability surface, with an explicit citation back to the relevant section of docs/document-ai-capability-surface.md (e.g. "Service Plans, p. 10-22"). The confirmationQuestion MUST surface the notify-team consent ask (e.g. "Do you want to notify the SAP product team to look into this particular issue?").
-5. action="success_summary": the conversation has produced a valid configuration + readiness and no further turns are needed. Return {summaryContent} with a wrap-up message.
+5. action="success_summary": the conversation has produced a valid configuration + readiness AND the user has explicitly signalled terminal satisfaction or wrap-up. ONLY fire on these terminal-satisfaction trigger phrases (and obvious paraphrases of the same intent):
+${TERMINAL_SATISFACTION_PHRASE_BLOCK}
+   Return {summaryContent} with a wrap-up message. DO NOT use success_summary as a default landing pad for any turn that follows a successful compile/recompile — the conversation STAYS OPEN until the user explicitly signals wrap-up.
+
+PROMPT-DISPLAY ROUTING (binding — added by Cycle 3 SF for HAPPY-17 non-terminal):
+When the latest user turn is an informational one-off request to SEE the generated extraction prompt, the conversation MUST stay open. Enumerated forbidden triggers for success_summary — on ANY of these phrases (case-insensitive substring match, including obvious paraphrases of the same intent), success_summary is FORBIDDEN:
+${PROMPT_DISPLAY_PHRASE_BLOCK}
+For these turns choose EITHER:
+  - action="clarify" with a short non-terminal confirmationContent like "Here is the extraction prompt I generated for the current schema. Let me know if you'd like to refine anything else." The customer route renders the actual prompt body from the stored A18 extractionSystemPrompt as a separate prompt_display bubble; your job is just to keep the conversation open.
+  - action="compile" (or "recompile" if a configuration already exists) with the SAME schema + processingMode and a freshly regenerated extractionSystemPrompt. Both keep the conversation open.
+Either branch is acceptable; success_summary is NOT acceptable for these turns under any circumstance.
 
 PAYLOAD SHAPES (binding):
 - compile / recompile: { "action": "compile" | "recompile", "schema": { "fields": [...] }, "processingMode": "auto_confirm" | "review_required" | "blocked", "extractionSystemPrompt": "<live-generated extraction system prompt that would drive a live extraction against the schema; written per IDP best practices; non-empty>" }

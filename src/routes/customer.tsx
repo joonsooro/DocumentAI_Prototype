@@ -79,6 +79,7 @@ import {
 } from '@components/customer/agentClient';
 import { simulateDocumentRun } from '@domain/simulateDocumentRun';
 import { _writeProvisionalSignal } from '@domain/writeProvisionalSignal';
+import { isPromptDisplayIntent } from '@domain/promptDisplayIntent';
 import { DAEJOO_PDF_URL } from '@data/assets';
 
 type LoadingStage = 'idle' | 'compile' | 'capability' | 'readiness';
@@ -178,6 +179,43 @@ export default function CustomerRoute({
     return { state: applyChatTurn(prev, turn), counter: nextCounter };
   }
 
+  /**
+   * Cycle 3 SF (HAPPY-17 non-terminal) — emit a prompt_display bubble
+   * if the user's latest turn is a prompt-display intent AND a
+   * configuration with a non-empty A18 extractionSystemPrompt exists.
+   * Called from every non-terminal action branch (compile, recompile,
+   * clarify) so the customer sees the live prompt regardless of which
+   * branch the merged Compile Agent picked.
+   *
+   * The detection uses the same isPromptDisplayIntent helper that the
+   * COMPILE_SYSTEM_PROMPT enumerates in its FORBIDDEN success_summary
+   * triggers — single source of truth across the agent prompt and the
+   * route per the SF brief.
+   *
+   * Prefers vm.configuration.extractionSystemPrompt; falls back to
+   * the live decision payload's extractionSystemPrompt when the agent
+   * routed via action='compile'/'recompile' on this turn (the vm
+   * hasn't been updated yet inside the same handler call).
+   */
+  function maybeAppendPromptDisplay(
+    prev: ConversationState,
+    counter: number,
+    userMessage: string,
+    candidatePrompt: string | null,
+  ): { state: ConversationState; counter: number } {
+    if (!isPromptDisplayIntent(userMessage)) {
+      return { state: prev, counter };
+    }
+    const prompt =
+      (candidatePrompt && candidatePrompt.length > 0
+        ? candidatePrompt
+        : vm.configuration?.extractionSystemPrompt) ?? '';
+    if (prompt.length === 0) {
+      return { state: prev, counter };
+    }
+    return appendAssistantBubble(prev, counter, 'prompt_display', prompt);
+  }
+
   async function runCapabilityAndReadiness(
     intent: CustomerIntent,
     configuration: CompiledConfiguration,
@@ -268,6 +306,17 @@ export default function CustomerRoute({
           );
           conv = recordCompiledConfig(announce.state, configuration.id);
           counter = announce.counter;
+          // Cycle 3 SF (HAPPY-17 non-terminal): if the user's latest
+          // turn asked to see the prompt, emit a prompt_display bubble
+          // from the fresh extractionSystemPrompt.
+          const withPrompt = maybeAppendPromptDisplay(
+            conv,
+            counter,
+            content,
+            decision.extractionSystemPrompt,
+          );
+          conv = withPrompt.state;
+          counter = withPrompt.counter;
           setConversation(conv);
           setTurnCounter(counter);
 
@@ -283,6 +332,20 @@ export default function CustomerRoute({
           );
           conv = announce.state;
           counter = announce.counter;
+          // Cycle 3 SF (HAPPY-17 non-terminal): the agent may route a
+          // prompt-display ask to 'clarify' with a short
+          // acknowledgement. The route still emits the prompt bubble
+          // from the stored A18 extractionSystemPrompt so the customer
+          // sees the prompt body. Conversation stays open (status
+          // unchanged) — clarify is non-terminal by construction.
+          const withPrompt = maybeAppendPromptDisplay(
+            conv,
+            counter,
+            content,
+            null,
+          );
+          conv = withPrompt.state;
+          counter = withPrompt.counter;
           setConversation(conv);
           setTurnCounter(counter);
           break;

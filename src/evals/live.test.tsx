@@ -431,29 +431,40 @@ describe.skipIf(!HAS_LIVE_KEY)(
     }, LIVE_AGENT_TIMEOUT_MS);
 
     // -----------------------------------------------------------------------
-    // HAPPY-17 — stateful prompt_display request.
+    // HAPPY-17 — stateful prompt_display request (Cycle 3 SF tightened).
+    //
+    // Per docs/handoff-2026-05-28.md §6, "show me the prompt" is an
+    // informational, one-off request and the conversation MUST STAY OPEN
+    // afterward (step 4 → step 5: show prompt → "can you link this to
+    // S/4 HANA?"). After the Cycle 3 SF (HAPPY-17 non-terminal) tightening
+    // of COMPILE_SYSTEM_PROMPT, the merged agent MUST route prompt-display
+    // asks to a non-terminal action.
     //
     // v1 acceptable shapes for "show me the prompt" after a prior recompile:
     //   - compile        — agent regenerates + surfaces the extraction prompt
-    //                       directly in the payload.
-    //   - clarify        — agent offers options (surface vs. modify); route
-    //                       falls through to prompt_display from stored config.
-    //   - success_summary— agent treats the prior config + the prompt-ask as
-    //                       a wrap-up turn; route surfaces the stored prompt
-    //                       independently via prompt_display.
+    //                       directly in the payload; conversation stays open.
+    //   - clarify        — agent offers a short non-terminal acknowledgement;
+    //                       route emits the prompt_display bubble from the
+    //                       stored A18 extractionSystemPrompt.
+    // success_summary is EXPLICITLY FORBIDDEN — that action carries
+    // status='success' wrap-up semantics and structurally signals the
+    // conversation is done.
     //
-    // Observed v1 behavior (live SAP AI Core compile_or_reasoning_heavy):
-    //   - Cycle 2.5 smoke (2026-05-28, Probe D): clarify.
-    //   - Cycle 3 Run-1 (2026-05-28, this commit): success_summary.
-    //   - Cycle 3 Run-2 (2026-05-28, this commit): success_summary.
+    // Observed v1 behavior on the live SAP AI Core compile_or_reasoning_heavy
+    // deployment:
+    //   - Cycle 2.5 smoke (2026-05-28, Probe D, pre-SF): clarify.
+    //   - Cycle 3 commit 658fb59 Run-1/Run-2 (pre-SF): success_summary,
+    //     success_summary — the load-bearing observation that drove this SF.
+    //   - Cycle 3 SF Run-1 (post-SF, this commit): <captured during verify>.
+    //   - Cycle 3 SF Run-2 (post-SF, this commit): <captured during verify>.
     //
     // The route-side prompt_display turn shape (the load-bearing customer
     // affordance) is covered by unit tests against ChatPanel; the live test
-    // only asserts that the merged agent's decision lands in the v1
-    // acceptable-action set above. No D2-forbidden phrase may appear in
-    // any chat-visible payload string.
+    // only asserts that the merged agent's decision lands in the tightened
+    // {compile, clarify} non-terminal-action set above AND that no
+    // D2-forbidden phrase appears in any chat-visible payload string.
     // -----------------------------------------------------------------------
-    it('HAPPY-17 — stateful "show me the prompt" routes to compile | clarify | success_summary (v1 acceptable shapes)', async () => {
+    it('HAPPY-17 — stateful "show me the prompt" routes to compile | clarify (NEVER success_summary, post-SF)', async () => {
       const priorUser = makeTurn(
         't::happy17::1',
         'user',
@@ -477,7 +488,12 @@ describe.skipIf(!HAS_LIVE_KEY)(
       );
       const state = makeState([priorUser, priorAssistant, followUp]);
       const decision = await compileAgent(state);
-      expect(['compile', 'clarify', 'success_summary']).toContain(decision.action);
+      expect(['compile', 'clarify']).toContain(decision.action);
+      // success_summary is now explicitly forbidden on "show me the prompt"
+      // per Cycle 3 SF (HAPPY-17 non-terminal) — the action carries
+      // status='success' wrap-up semantics and would structurally end the
+      // conversation, breaking the §6 demo's step 4 → step 5 sequence.
+      expect(decision.action).not.toBe('success_summary');
       // Whichever branch the agent took, the chat-visible string must not
       // solicit a file/document/image share. Discriminate on action to pick
       // the right payload field and assert on it.
@@ -491,11 +507,6 @@ describe.skipIf(!HAS_LIVE_KEY)(
         expect(decision.clarificationContent.length).toBeGreaterThan(0);
         expect(decision.clarificationContent).not.toMatch(D2_SHARE_RE);
         expect(decision.clarificationContent).not.toMatch(D2_ATTACH_RE);
-      } else if (decision.action === 'success_summary') {
-        expect(typeof decision.summaryContent).toBe('string');
-        expect(decision.summaryContent.length).toBeGreaterThan(0);
-        expect(decision.summaryContent).not.toMatch(D2_SHARE_RE);
-        expect(decision.summaryContent).not.toMatch(D2_ATTACH_RE);
       }
     }, LIVE_AGENT_TIMEOUT_MS);
 
