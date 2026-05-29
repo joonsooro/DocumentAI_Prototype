@@ -9,11 +9,11 @@
   },
   "summary": {
     "decomposition_rows": 29,
-    "features_total": 31,
+    "features_total": 32,
     "verbatim_features": ["F-01","F-02","F-03","F-06","F-07","F-08","F-09","F-10","F-14","F-15","F-16","F-17","F-18","F-19","F-20"],
     "replaced_features": ["F-11","F-12","F-13"],
     "updated_features": ["F-04","F-05"],
-    "new_features": ["F-04b","F-21","F-22","F-23","F-24","F-25","F-26","F-27","F-29","F-30","F-31"]
+    "new_features": ["F-04b","F-21","F-22","F-23","F-24","F-25","F-26","F-27","F-29","F-30","F-31","F-32"]
   },
   "features": [
     {
@@ -539,6 +539,29 @@
         "D6 — the agent MUST NEVER auto-fire the signal write off the back of its own capability_class_question classification; the user's chat 'yes' is the load-bearing trigger"
       ],
       "notes": "Cycle 2 (2026-05-28) new feature — F-31 binds D6's chat-mediated consent. The pendingSignal field on ConversationState is added in Cycle 2 alongside the prompt_display ChatTurnKind. The _writeProvisionalSignal data-layer guard already existed from F-27; F-31 wires the route + ChatPanel consent affordance on top of it. The route uses _writeProvisionalSignal, NOT governProductSignals (which is the F-09 cluster-promotion layer for the second input stream introduced by F-29). Trace: D6 · N9 · HAPPY-12 · HAPPY-18 · RED-3 · EDGE-6."
+    },
+    {
+      "id": "F-32",
+      "name": "Agent I/O Dashboard (session-aggregate metrics over qualityMetricLog)",
+      "contract_pointer": "U28 (dashboard-narrowing clause)",
+      "acceptance": "New src/components/admin/AgentIOMetricsPanel.tsx (component lives under admin/ for historical reasons from the prior SF — the location is a module path, not a mount-surface claim) mounts inline on /internal ONLY under data-testid='agent-io-metrics-panel'; render emits exactly 5 enumerated-agent rows under data-testid='agent-io-metrics-row-<agent>' where <agent> is verbatim one of the hard-coded const readonly array ['compile', 'capability', 'readiness', 'operationalReasons', 'admin.recommend'] (note the literal dot in 'admin.recommend'); the panel computes 5 session-aggregate metrics over the F-18 qualityMetricLog stream: (1) calls per agent (5-row tally; empty rows preserved with count=0), (2) failure rate per agent (fraction + percentage; '—' when total=0), (3) p50 / p95 latency per agent (formatted ms<1s, s with one decimal otherwise; p95 falls back to max() when n<20), (4) session token total under data-testid='agent-io-metrics-token-total' summing ONLY non-null tokenUsage rows (readiness composite rows tokenUsage=null are correctly skipped per SF #2c), (5) failure histogram with positive empty state ('No failures this session.'); the readiness composite (recordCustom, tokenUsage=null, real latencyMs) is counted in Metric 1, contributes to Metric 3, and is skipped from Metric 4; subscribe lifecycle pattern is verbatim QualityMetricLogPanel idiom (subscribe in useEffect returning unsubscribe); render-time redaction belt strips 'system:', 'prompt:', '<|', AICORE_KEY_PATH-shaped paths, and the DAEJOO material-disposal phrase from any rendered field (defensive second layer over F-18's upstream stripping per N3 / N8); negative guard — on /admin and /customer screen.queryByTestId('agent-io-metrics-panel') returns null; D5 binds — /admin stays a theatrical governance surface and does not mount this session-aggregate panel",
+      "kill_switch": {
+        "window_minutes": 15,
+        "condition": "If the dashboard mounts on /admin or /customer in 2 of 3 smoke runs, halt (regression on D5 + the dashboard-narrowing clause of A16 / HAPPY-13 / U28)"
+      },
+      "output_paths": [
+        "src/components/admin/AgentIOMetricsPanel.tsx",
+        "src/routes/internal.tsx",
+        "src/routes/internal.session-metrics-live-update.test.tsx"
+      ],
+      "depends_on": ["F-18", "F-30"],
+      "status": "done",
+      "negative_contract_guards": [
+        "D5 — /admin stays a theatrical governance surface; does NOT mount the dashboard (only the F-30 Agent I/O Log entry point + the existing 5-tab object header + fixture-driven KPI strip + 3-rec queue)",
+        "N1 + N3 — /customer cannot mount the dashboard by construction (CustomerViewModel structural guard)",
+        "N8 — render-time redaction belt strips AICORE_KEY_PATH-shaped paths and the disposal phrase as a defensive second layer over F-18's upstream stripping"
+      ],
+      "notes": "S5 SF #2b (revision, 2026-05-29) — the previous SF #2b mounted the dashboard on BOTH /admin and /internal; this revision drops the /admin mount per D5 (admin stays theatrical; the session-aggregate posture is internal-product-intelligence concern only). Precursor commits already landed: (1) F-31 append wiring closing Cycle 2 S3 gap; (2) split operationalReasons from readiness in qualityMetricLog so the composite verdict and the inner spend row are distinct metric streams; (3) wire recordSuccess at the callAgent boundary closing the F-18 success-path gap; (4) wire recordCustom for readiness composite verdict so the readiness row carries a real latencyMs and tokenUsage=null by design; (5) SF #2d session memory for /customer state across navigation. F-30 (the Agent I/O Log) is unchanged — its entry point correctly lives on both /admin and /internal because the per-row log render is the right surface for /admin's theatrical trace-derived posture (D5). F-32 introduces NO new substrate (spec §9 closed list still binds — no new agent, no new data source, no new persistence layer) and adds zero new dependencies. Trace: A16 (dashboard narrowing) · HAPPY-13 (dashboard narrowing) · D5 · U28 (dashboard-narrowing clause) · F-18 (store reuse) · F-30 (sibling-panel pattern reuse)."
     }
   ]
 }

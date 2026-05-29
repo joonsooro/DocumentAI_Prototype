@@ -38,6 +38,7 @@ import { QualityMetricLogPanel } from '@components/internal/QualityMetricLogPane
 import { CapabilityGapAnalyticsPanel } from '@components/internal/CapabilityGapAnalyticsPanel';
 import { RoadmapSignalsPanel } from '@components/internal/RoadmapSignalsPanel';
 import { AgentIoLogPanel } from '@components/shared/AgentIoLogPanel';
+import { AgentIOMetricsPanel } from '@components/admin/AgentIOMetricsPanel';
 
 const OBJECT_HEADER_TABS: readonly ObjectHeaderTab[] = Object.freeze([
   { id: 'flywheel', label: 'Flywheel' },
@@ -102,6 +103,7 @@ export default function InternalRoute({
         </button>
       </div>
       <div style={contentStyle}>
+        <AgentIOMetricsPanel />
         {showAgentIoLog ? <AgentIoLogPanel /> : null}
         <FlywheelDiagram />
         {freeTextSignals.map((signal) => (
