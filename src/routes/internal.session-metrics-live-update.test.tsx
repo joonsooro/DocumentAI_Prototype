@@ -16,15 +16,15 @@
  * store AND the qualityMetricLog store — the assertion crosses store
  * boundaries.
  *
- * Test A — empty-state: /internal at first load shows 5 enumerated rows,
- *   all with count=0, no token usage, "No failures this session." empty
- *   state for the histogram.
+ * Test A — empty-state: /internal at first load shows 4 enumerated rows
+ *   (S5 SF #2e narrowed 5→4; admin.recommend dropped), all with count=0, no
+ *   token usage, "No failures this session." empty state for the histogram.
  *
  * Test B — live-update: fire a /customer chat turn that drives a full
  *   compile → capability → readiness path, then unmount and re-render at
  *   /internal; the dashboard reflects the new agent runs (row counts >= 1
- *   for the agents driven, session token total non-zero, p50 latency
- *   populated, admin.recommend row still at 0).
+ *   for the 4 driven agents, session token total non-zero, p50 latency
+ *   populated).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -134,18 +134,17 @@ describe('SF #2b (revision) — Agent I/O Dashboard live-update on /internal', (
   // -------------------------------------------------------------------------
   // Test A — empty state at first /internal load
   // -------------------------------------------------------------------------
-  it('renders the dashboard with 5 enumerated rows at count=0 on first /internal load', () => {
+  it('renders the dashboard with 4 enumerated rows at count=0 on first /internal load', () => {
     render(<InternalRoute />);
     const panel = screen.getByTestId('agent-io-metrics-panel');
     expect(panel).toBeTruthy();
 
-    // All 5 enumerated agent rows present.
+    // All 4 enumerated agent rows present (S5 SF #2e narrowed 5→4).
     const agents = [
       'compile',
       'capability',
       'readiness',
       'operationalReasons',
-      'admin.recommend',
     ];
     for (const a of agents) {
       const row = screen.getByTestId(`agent-io-metrics-row-${a}`);
@@ -271,8 +270,8 @@ describe('SF #2b (revision) — Agent I/O Dashboard live-update on /internal', (
     // 4. Dashboard renders the post-turn aggregates.
     expect(screen.getByTestId('agent-io-metrics-panel')).toBeTruthy();
 
-    // Row counts for the 4 driven agents (each at 1) and admin.recommend
-    // at 0 (no admin path triggered).
+    // Row counts for the 4 driven agents (each at 1) after S5 SF #2e
+    // narrowed the dashboard enumeration to 4.
     function countCellOf(agent: string): number {
       const row = screen.getByTestId(`agent-io-metrics-row-${agent}`);
       const cells = row.querySelectorAll('td');
@@ -283,7 +282,6 @@ describe('SF #2b (revision) — Agent I/O Dashboard live-update on /internal', (
     expect(countCellOf('capability')).toBe(1);
     expect(countCellOf('readiness')).toBe(1);
     expect(countCellOf('operationalReasons')).toBe(1);
-    expect(countCellOf('admin.recommend')).toBe(0);
 
     // p50 latency cell populated (not '— / —') for compile.
     const compileRow = screen.getByTestId('agent-io-metrics-row-compile');

@@ -3,43 +3,47 @@
  *
  * Read-only aggregate view over the F-18 qualityMetricLog stream. Subscribes
  * to the in-memory store and renders 5 session-aggregate metrics:
- *   1. Calls per agent (5-row tally; empty rows preserved)
+ *   1. Calls per agent (4-row tally; empty rows preserved)
  *   2. Failure rate per agent (fraction + percentage)
  *   3. p50 / p95 latency per agent (ms < 1s, s with one decimal otherwise)
  *   4. Session token total (input / output / total — null-skip)
  *   5. AgentFailure reason histogram (top 5; positive empty state)
  *
  * Architectural locks:
- *   - The 5 agent names are a HARD-CODED const readonly array, NOT derived
+ *   - The 4 agent names are a HARD-CODED const readonly array, NOT derived
  *     from the stream. The source-of-truth literals are:
  *       'compile'             (compileIntentToConfiguration.ts)
  *       'capability'          (assessCapabilities.ts)
  *       'readiness'           (decideReadiness.ts — composite verdict per SF #2c)
  *       'operationalReasons'  (generateOperationalReasons.ts)
- *       'admin.recommend'     (generateAdminRecommendations.ts — note the dot)
  *
  *   - The 'readiness' row counts COMPOSITE verdicts (recordCustom) and is
  *     emitted with tokenUsage=null by design — the inner 'operationalReasons'
  *     row carries the real spend. Metric 1 counts it; Metric 3 uses its
  *     latency; Metric 4 correctly skips it via the null-guard.
  *
- *   - 'admin.recommend' contains a literal dot. CSS attribute selectors
- *     [data-testid="agent-io-metrics-row-admin.recommend"] handle this fine;
- *     react-testing-library's screen.getByTestId also handles it.
- *
  *   - This is purely a render layer. No new data sources, no new domain
  *     types, no new dependencies. D5 binds.
  *
  *   - Render-time redaction belt is a defensive second layer; the F-18 store
  *     already strips forbidden substrings upstream (N3 / N8).
+ *
+ *   - S5 SF #2e (2026-05-29) — `admin.recommend` dropped from this
+ *     enumeration. The F-15 agent has no live caller in the v1 demo flow
+ *     (D5 keeps /admin theatrical with fixtures); the dashboard now
+ *     enumerates only the 4 agents the customer flow actually emits. The
+ *     agent name 'admin.recommend' remains the source-of-truth string at
+ *     src/domain/generateAdminRecommendations.ts:165 and remains callable;
+ *     only the dashboard's display enumeration narrows.
  */
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { QualityMetric } from '@domain/types';
 import { getMetrics, subscribe } from '@runtime/qualityMetricLog';
 
 // ---------------------------------------------------------------------------
-// The 5 enumerated agents — hard-coded source-of-truth literals.
+// The 4 enumerated agents — hard-coded source-of-truth literals.
 // Do NOT derive from the metrics stream. Do NOT shorten.
+// (S5 SF #2e narrowed this from 5→4; see docstring for rationale.)
 // ---------------------------------------------------------------------------
 
 const AGENT_NAMES = [
@@ -47,7 +51,6 @@ const AGENT_NAMES = [
   'capability',
   'readiness',
   'operationalReasons',
-  'admin.recommend',
 ] as const;
 
 type AgentName = (typeof AGENT_NAMES)[number];
@@ -102,7 +105,6 @@ function emptyCalls(): CallsByAgent {
     capability: 0,
     readiness: 0,
     operationalReasons: 0,
-    'admin.recommend': 0,
   };
 }
 
@@ -112,7 +114,6 @@ function emptyFailureRate(): FailureRate {
     capability: { fail: 0, total: 0 },
     readiness: { fail: 0, total: 0 },
     operationalReasons: { fail: 0, total: 0 },
-    'admin.recommend': { fail: 0, total: 0 },
   };
 }
 
@@ -122,7 +123,6 @@ function emptyPercentiles(): Percentiles {
     capability: { p50: null, p95: null },
     readiness: { p50: null, p95: null },
     operationalReasons: { p50: null, p95: null },
-    'admin.recommend': { p50: null, p95: null },
   };
 }
 
@@ -164,7 +164,6 @@ function computeLatencyPercentiles(metrics: readonly QualityMetric[]): Percentil
     capability: [],
     readiness: [],
     operationalReasons: [],
-    'admin.recommend': [],
   };
   for (const m of metrics) {
     if (isEnumeratedAgent(m.agent) && m.latencyMs !== null) {

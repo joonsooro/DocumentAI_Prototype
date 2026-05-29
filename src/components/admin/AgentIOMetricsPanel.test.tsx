@@ -11,6 +11,10 @@
  * Fixture injection goes through the real F-18 store API (recordSuccess /
  * recordFailure / recordCustom) — no module mocking. Each test resets the
  * store in beforeEach via the existing test-only helper.
+ *
+ * S5 SF #2e (2026-05-29): the dashboard enumerates 4 agents driven by the
+ * customer flow (compile, capability, readiness, operationalReasons);
+ * 'admin.recommend' is no longer enumerated.
  */
 import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { act, cleanup, render, screen } from '@testing-library/react';
@@ -66,7 +70,7 @@ describe('SF #2b AgentIOMetricsPanel', () => {
   // CASE 1 — empty state
   // -------------------------------------------------------------------------
   describe('empty state', () => {
-    it('renders the outer panel and all 5 enumerated agent rows with count=0', () => {
+    it('renders the outer panel and all 4 enumerated agent rows with count=0', () => {
       render(<AgentIOMetricsPanel />);
       expect(screen.getByTestId('agent-io-metrics-panel')).toBeTruthy();
 
@@ -75,7 +79,6 @@ describe('SF #2b AgentIOMetricsPanel', () => {
         'capability',
         'readiness',
         'operationalReasons',
-        'admin.recommend',
       ];
       for (const a of agents) {
         const row = screen.getByTestId(`agent-io-metrics-row-${a}`);
@@ -137,10 +140,9 @@ describe('SF #2b AgentIOMetricsPanel', () => {
         tokenUsage: null,
       });
 
-      // 0 admin.recommend
     }
 
-    it('Metric 1: calls tally counts each agent (readiness counted; admin.recommend = 0)', () => {
+    it('Metric 1: calls tally counts each agent (readiness counted; 4-agent enumeration after SF #2e)', () => {
       seedMixed();
       render(<AgentIOMetricsPanel />);
       expect(screen.getByTestId('agent-io-metrics-row-compile').textContent).toContain('3');
@@ -149,12 +151,9 @@ describe('SF #2b AgentIOMetricsPanel', () => {
       expect(
         screen.getByTestId('agent-io-metrics-row-operationalReasons').textContent,
       ).toContain('2');
-      expect(
-        screen.getByTestId('agent-io-metrics-row-admin.recommend').textContent,
-      ).toContain('0');
     });
 
-    it('Metric 2: failure rate shows fraction + percentage (capability 1/1 100%; admin.recommend —)', () => {
+    it('Metric 2: failure rate shows fraction + percentage (capability 1/1 100%)', () => {
       seedMixed();
       render(<AgentIOMetricsPanel />);
       expect(screen.getByTestId('agent-io-metrics-row-capability').textContent).toContain(
@@ -163,9 +162,6 @@ describe('SF #2b AgentIOMetricsPanel', () => {
       expect(screen.getByTestId('agent-io-metrics-row-compile').textContent).toContain(
         '0/3 (0.0%)',
       );
-      // admin.recommend has total=0; failure cell renders "—".
-      const adminRow = screen.getByTestId('agent-io-metrics-row-admin.recommend');
-      expect(adminRow.textContent).toContain('—');
     });
 
     it('Metric 3: p50 latency rendered for compile, operationalReasons, readiness', () => {

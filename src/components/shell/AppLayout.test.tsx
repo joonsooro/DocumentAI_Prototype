@@ -58,29 +58,28 @@ describe('F-21 AppLayout chrome', () => {
     expect(screen.getByTestId('internal-route-stub')).toBeTruthy();
   });
 
-  it('ShellBar exposes 3 route-nav buttons (Customer / Admin / Internal)', () => {
+  it('ShellBar exposes 2 route-nav buttons (Customer / Internal) after S5 SF #2e', () => {
     renderAt('/customer');
     expect(screen.getByTestId('shell-bar-nav-customer')).toBeTruthy();
-    expect(screen.getByTestId('shell-bar-nav-admin')).toBeTruthy();
     expect(screen.getByTestId('shell-bar-nav-internal')).toBeTruthy();
   });
 
   it('preserves HAPPY-6: chrome does NOT introduce foreign per-route testids', () => {
     // Mount /customer and assert no admin- / internal- per-route data-testid
-    // leaks in from chrome. The shell-bar-nav-{admin,internal} testids are
-    // navigation affordances and are explicitly NOT "per-route panel" testids
-    // (their prefix is `shell-bar-nav-`, not the route's own panel prefix).
+    // leaks in from chrome. The shell-bar-nav-internal testid is a navigation
+    // affordance and is explicitly NOT a "per-route panel" testid (its prefix
+    // is `shell-bar-nav-`, not the route's own panel prefix).
     renderAt('/customer');
     const root = screen.getByTestId('app-layout');
     const html = root.innerHTML;
-    // The chrome may legitimately reference 'admin' / 'internal' inside
-    // shell-bar-nav-admin / shell-bar-nav-internal. The HAPPY-6 invariant
-    // is that the CONTENT pane carries no foreign per-route data-testid.
+    // The chrome may legitimately reference 'internal' inside
+    // shell-bar-nav-internal. The HAPPY-6 invariant is that the CONTENT
+    // pane carries no foreign per-route data-testid.
     const content = screen.getByTestId('app-content');
     expect(content.querySelector('[data-testid^="admin-"]')).toBeNull();
     expect(content.querySelector('[data-testid^="internal-"]')).toBeNull();
     // sanity: app-layout root does contain the chrome navigation
-    expect(html).toContain('shell-bar-nav-admin');
+    expect(html).toContain('shell-bar-nav-internal');
   });
 });
 

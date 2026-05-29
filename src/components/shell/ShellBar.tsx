@@ -1,19 +1,22 @@
 /**
  * F-21 — ShellBar.
  *
- * Layout-only chrome. Renders the top sticky bar (48px navy) with three
- * route-nav buttons (Customer / Admin / Internal). Backgrounds read from
+ * Layout-only chrome. Renders the top sticky bar (48px navy) with two
+ * route-nav buttons (Customer / Internal). Backgrounds read from
  * F-26 tokens (--shell-bg) — no hard-coded color literal here.
  *
  * No per-route data-testid lives on this component, so the HAPPY-6
  * three-workspace separation invariant is preserved when ShellBar wraps
  * every route via AppLayout.
+ *
+ * S5 SF #2e (2026-05-29): the Admin tab is hidden from this v1 demo nav.
+ * The /admin route remains URL-reachable for HAPPY-6 and EDGE-4 walkthrough
+ * evals.
  */
 import { NavLink } from 'react-router-dom';
 
 const NAV_ITEMS = [
   { to: '/customer', label: 'Customer' },
-  { to: '/admin', label: 'Admin' },
   { to: '/internal', label: 'Internal' },
 ] as const;
 
