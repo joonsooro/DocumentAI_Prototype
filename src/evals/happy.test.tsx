@@ -17,6 +17,7 @@ import CustomerRoute from '@routes/customer';
 import InternalRoute from '@routes/internal';
 import { compileIntentToConfiguration } from '@domain/compileIntentToConfiguration';
 import { _resetClientForTests } from '@runtime/aiCoreClient';
+import { _resetForTests as _resetCustomerSessionForTests } from '@runtime/customerSessionStore';
 import {
   recordSuccess,
   _resetQualityMetricLogForTests,
@@ -52,6 +53,7 @@ beforeEach(() => {
   process.env.AICORE_KEY_PATH = keyPath;
   _resetClientForTests();
   _resetQualityMetricLogForTests();
+  _resetCustomerSessionForTests();
   vi.spyOn(console, 'info').mockImplementation(() => undefined);
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
 });
@@ -61,6 +63,7 @@ afterEach(() => {
   process.env.AICORE_KEY_PATH = origEnv;
   _resetClientForTests();
   _resetQualityMetricLogForTests();
+  _resetCustomerSessionForTests();
   vi.restoreAllMocks();
 });
 

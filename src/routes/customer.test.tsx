@@ -10,13 +10,23 @@
  * split is removed — no element matches data-testid='customer-clarification-
  * loop'").
  */
-import { describe, it, expect } from 'vitest';
-import { render } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { cleanup, render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import App from '../App';
 import CustomerRoute from './customer';
 import type { CustomerViewModel } from '@components/customer/viewModel';
 import type { CompiledConfiguration, CustomerIntent } from '@domain/types';
+import { _resetForTests as _resetCustomerSessionForTests } from '@runtime/customerSessionStore';
+
+beforeEach(() => {
+  cleanup();
+  _resetCustomerSessionForTests();
+});
+afterEach(() => {
+  cleanup();
+  _resetCustomerSessionForTests();
+});
 
 // ---------------------------------------------------------------------------
 // Fixtures — a populated view-model with every panel filled in

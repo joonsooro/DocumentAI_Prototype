@@ -29,6 +29,7 @@ import { MemoryRouter } from 'react-router-dom';
 import App from '../App';
 import type { CompiledConfiguration, CustomerIntent } from '@domain/types';
 import CustomerRoute from '@routes/customer';
+import { _resetForTests as _resetCustomerSessionForTests } from '@runtime/customerSessionStore';
 
 const ROUTES = ['/customer', '/admin', '/internal'] as const;
 
@@ -58,9 +59,11 @@ function runWalkthroughOnce(): number {
 
 beforeEach(() => {
   cleanup();
+  _resetCustomerSessionForTests();
 });
 afterEach(() => {
   cleanup();
+  _resetCustomerSessionForTests();
 });
 
 describe('F-20 walkthrough timing — EDGE-4 acceptance', () => {

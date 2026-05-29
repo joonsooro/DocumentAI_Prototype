@@ -34,6 +34,7 @@ vi.mock('@components/customer/agentClient', () => ({
 }));
 
 import CustomerRoute from './customer';
+import { _resetForTests as _resetCustomerSessionForTests } from '@runtime/customerSessionStore';
 import {
   EMPTY_CUSTOMER_VIEW_MODEL,
   type CustomerViewModel,
@@ -107,6 +108,7 @@ const RECOMPILE_DECISION = {
 describe('F-11 re-extract · Cycle 2 (merged Compile Agent · no regex shortcut)', () => {
   beforeEach(() => {
     cleanup();
+    _resetCustomerSessionForTests();
     postCompileMock.mockReset();
     postCapabilityMock.mockReset();
     postReadinessMock.mockReset();

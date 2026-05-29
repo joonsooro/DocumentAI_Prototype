@@ -38,6 +38,7 @@ import {
   _resetCorrectionStoreForTests,
   getProductSignals,
 } from '@domain/submitCorrection';
+import { _resetForTests as _resetCustomerSessionForTests } from '@runtime/customerSessionStore';
 
 type FetchMock = ReturnType<typeof vi.fn>;
 
@@ -83,6 +84,7 @@ describe('F-31 — route consent-write integration (closes Cycle 2 S3 gap)', () 
     // Reset it so each test starts at zero (the standard pattern from
     // edge.test.tsx / ThresholdGovernancePanel.test.tsx).
     _resetCorrectionStoreForTests();
+    _resetCustomerSessionForTests();
   });
   afterEach(() => vi.unstubAllGlobals());
 

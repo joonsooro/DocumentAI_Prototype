@@ -12,6 +12,7 @@ import { generateClarificationRequests } from '@domain/generateClarificationRequ
 import { runAgentWithFailureSurface } from '@domain/agentFailureSurface';
 import { generateAdminRecommendations } from '@domain/generateAdminRecommendations';
 import { _resetClientForTests } from '@runtime/aiCoreClient';
+import { _resetForTests as _resetCustomerSessionForTests } from '@runtime/customerSessionStore';
 import {
   countMetrics,
   _resetQualityMetricLogForTests,
@@ -45,6 +46,7 @@ beforeEach(() => {
   _resetClientForTests();
   _resetQualityMetricLogForTests();
   _resetCorrectionStoreForTests();
+  _resetCustomerSessionForTests();
   vi.spyOn(console, 'info').mockImplementation(() => undefined);
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
 });
@@ -55,6 +57,7 @@ afterEach(() => {
   _resetClientForTests();
   _resetQualityMetricLogForTests();
   _resetCorrectionStoreForTests();
+  _resetCustomerSessionForTests();
   vi.restoreAllMocks();
 });
 

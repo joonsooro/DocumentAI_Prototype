@@ -19,6 +19,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import CustomerRoute from './customer';
+import { _resetForTests as _resetCustomerSessionForTests } from '@runtime/customerSessionStore';
 
 type FetchMock = ReturnType<typeof vi.fn>;
 
@@ -89,7 +90,10 @@ const readinessSuccess = {
 };
 
 describe('F-11 chat-wiring · Cycle 2 acceptance #2 (compile decision drives capability + readiness)', () => {
-  beforeEach(() => cleanup());
+  beforeEach(() => {
+    cleanup();
+    _resetCustomerSessionForTests();
+  });
   afterEach(() => vi.unstubAllGlobals());
 
   it("a /api/compile decision action='compile' drives postCapability + postReadiness and appends a recompile_announcement bubble", async () => {
@@ -147,7 +151,10 @@ describe('F-11 chat-wiring · Cycle 2 acceptance #2 (compile decision drives cap
 });
 
 describe('F-11 chat-wiring · Cycle 2 acceptance #3 (capability_class_question surfaces consent affordance)', () => {
-  beforeEach(() => cleanup());
+  beforeEach(() => {
+    cleanup();
+    _resetCustomerSessionForTests();
+  });
   afterEach(() => vi.unstubAllGlobals());
 
   it("a /api/compile decision action='capability_class_question' appends a notify_team_question bubble and renders consent buttons", async () => {

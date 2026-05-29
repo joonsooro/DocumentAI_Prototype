@@ -16,6 +16,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import CustomerRoute from './customer';
+import { _resetForTests as _resetCustomerSessionForTests } from '@runtime/customerSessionStore';
 import {
   getCorrections,
   getProductSignals,
@@ -31,6 +32,7 @@ describe('F-11 CustomerRoute REBUILD — chrome + chat-first surface', () => {
     cleanup();
     _resetCorrectionStoreForTests();
     _resetQualityMetricLogForTests();
+    _resetCustomerSessionForTests();
     // Stub fetch so the chat-panel submit test's postChatTurnDecide call
     // does not hit the network; the user-turn bubble is appended
     // synchronously BEFORE the await, so the assertion still holds even

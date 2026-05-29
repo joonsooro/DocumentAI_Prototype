@@ -43,12 +43,17 @@
  * the awaiting_notify_decision status AND last-user-turn YES_RE pair
  * per N9 / RED-3.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   EMPTY_CUSTOMER_VIEW_MODEL,
   projectCapabilitiesForCustomerSurface,
   type CustomerViewModel,
 } from '@components/customer/viewModel';
+import {
+  getCustomerSession,
+  subscribe as subscribeCustomerSession,
+  updateCustomerSession,
+} from '@runtime/customerSessionStore';
 import { ObjectHeader, type ObjectHeaderTab } from '@components/shell/ObjectHeader';
 import { CompiledConfigPanel } from '@components/customer/CompiledConfigPanel';
 import { CapabilityStatusPanel } from '@components/customer/CapabilityStatusPanel';
@@ -60,7 +65,6 @@ import { ChatPanel } from '@components/customer/ChatPanel';
 import {
   applyChatTurn,
   clearPendingSignal,
-  createConversation,
   recordCompiledConfig,
   setPendingSignal,
 } from '@domain/chatReducer';
@@ -70,7 +74,6 @@ import type {
   CompiledConfiguration,
   ConversationState,
   CustomerIntent,
-  DocumentRun,
 } from '@domain/types';
 import {
   postCompile,
@@ -140,26 +143,39 @@ function buildCompiledConfiguration(
 export default function CustomerRoute({
   initialViewModel = EMPTY_CUSTOMER_VIEW_MODEL,
 }: CustomerRouteProps) {
-  const [vm, setVm] = useState<CustomerViewModel>(initialViewModel);
+  // SF #2d — session-critical state lives in customerSessionStore so it
+  // survives SPA nav-away/-back (the route component unmounts on
+  // navigation; React useState would be discarded). The component reads
+  // a snapshot on mount, subscribes for re-render on every store change,
+  // and pushes mutations through updateCustomerSession. Transient UI
+  // state (stage/requestError/toast) stays as local useState — it has
+  // no nav-survival contract.
+  //
+  // initialViewModel seeds the store ONLY when the route is mounted
+  // with the store still in its initial-empty state AND a non-default
+  // initialViewModel was supplied. This preserves the legacy test/eval
+  // ergonomic of `render(<CustomerRoute initialViewModel={…} />)` while
+  // never trampling state the operator has already built up.
+  const [snapshot, setSnapshot] = useState(() => {
+    const current = getCustomerSession();
+    if (initialViewModel !== EMPTY_CUSTOMER_VIEW_MODEL && current.viewModel === EMPTY_CUSTOMER_VIEW_MODEL) {
+      updateCustomerSession((prev) => ({ ...prev, viewModel: initialViewModel }));
+      return getCustomerSession();
+    }
+    return current;
+  });
+  useEffect(() => {
+    const unsub = subscribeCustomerSession(() => setSnapshot(getCustomerSession()));
+    return unsub;
+  }, []);
+  const { conversation, viewModel: vm, extractedRun, uploadedFile } = snapshot;
+
   const [stage, setStage] = useState<LoadingStage>('idle');
   const [requestError, setRequestError] = useState<string | null>(null);
-  const [conversation, setConversation] = useState<ConversationState>(() =>
-    createConversation('conv::customer::v0'),
-  );
   const [toast, setToast] = useState<string | null>(null);
-  const [turnCounter, setTurnCounter] = useState<number>(0);
-  // S5 SF-1: gates the PdfViewerPanel. Until UploadZonePanel fires its
-  // onUpload callback, the viewer renders an empty-state (no permanent
-  // DAEJOO preview). Fixes the regression where the preview was always
-  // visible regardless of upload, contradicting D2's honest-UI posture.
-  const [uploadedFile, setUploadedFile] = useState<{ name: string } | null>(null);
-  // S5 SF-2: captures the F-03 DocumentRun and feeds it to
-  // ExtractedFieldsPanel. The run is the EXISTING mock extractor
-  // output (N6 preserved — no live OCR, fixture-backed).
-  const [extractedRun, setExtractedRun] = useState<DocumentRun | null>(null);
 
-  function nextTurnId(): { id: string; counter: number } {
-    const counter = turnCounter + 1;
+  function nextTurnIdFromCounter(currentCounter: number): { id: string; counter: number } {
+    const counter = currentCounter + 1;
     return { id: `t::${counter}`, counter };
   }
 
@@ -207,10 +223,14 @@ export default function CustomerRoute({
     if (!isPromptDisplayIntent(userMessage)) {
       return { state: prev, counter };
     }
+    // Read configuration from the store (not the React closure) so the
+    // value reflects mutations applied within this async handler before
+    // the React re-render runs.
+    const liveConfig = getCustomerSession().viewModel.configuration;
     const prompt =
       (candidatePrompt && candidatePrompt.length > 0
         ? candidatePrompt
-        : vm.configuration?.extractionSystemPrompt) ?? '';
+        : liveConfig?.extractionSystemPrompt) ?? '';
     if (prompt.length === 0) {
       return { state: prev, counter };
     }
@@ -225,26 +245,38 @@ export default function CustomerRoute({
     const capResp = await postCapability({ intent, configuration });
     if (capResp.kind === 'success') {
       const assessments = projectCapabilitiesForCustomerSurface(capResp.assessments);
-      setVm((prev) => ({ ...prev, assessments }));
-    } else {
-      setVm((prev) => ({
+      updateCustomerSession((prev) => ({
         ...prev,
-        clarifications: [...prev.clarifications, capResp.clarification],
+        viewModel: { ...prev.viewModel, assessments },
+      }));
+    } else {
+      updateCustomerSession((prev) => ({
+        ...prev,
+        viewModel: {
+          ...prev.viewModel,
+          clarifications: [...prev.viewModel.clarifications, capResp.clarification],
+        },
       }));
     }
 
     setStage('readiness');
     const readyResp = await postReadiness({ intent, configuration });
     if (readyResp.kind === 'success') {
-      setVm((prev) => ({
+      updateCustomerSession((prev) => ({
         ...prev,
-        readiness: readyResp.readiness,
-        clarifications: [...prev.clarifications, ...readyResp.clarifications],
+        viewModel: {
+          ...prev.viewModel,
+          readiness: readyResp.readiness,
+          clarifications: [...prev.viewModel.clarifications, ...readyResp.clarifications],
+        },
       }));
     } else {
-      setVm((prev) => ({
+      updateCustomerSession((prev) => ({
         ...prev,
-        clarifications: [...prev.clarifications, readyResp.clarification],
+        viewModel: {
+          ...prev.viewModel,
+          clarifications: [...prev.viewModel.clarifications, readyResp.clarification],
+        },
       }));
     }
   }
@@ -252,7 +284,13 @@ export default function CustomerRoute({
   async function handleChatSubmit(content: string): Promise<void> {
     setRequestError(null);
 
-    const { id: userTurnId, counter: counterAfterUser } = nextTurnId();
+    // Read the latest conversation + turnCounter from the store so the
+    // handler is robust against React closure staleness across awaits.
+    const startSnap = getCustomerSession();
+    const startCounter = startSnap.turnCounter;
+    const startConversation = startSnap.conversation;
+
+    const { id: userTurnId, counter: counterAfterUser } = nextTurnIdFromCounter(startCounter);
     const userTurn: ChatTurn = {
       id: userTurnId,
       role: 'user',
@@ -260,19 +298,21 @@ export default function CustomerRoute({
       timestamp: new Date().toISOString(),
       kind: 'message',
     };
-    let conv = applyChatTurn(conversation, userTurn);
+    let conv = applyChatTurn(startConversation, userTurn);
     let counter = counterAfterUser;
-    setConversation(conv);
-    setTurnCounter(counter);
+    updateCustomerSession((prev) => ({ ...prev, conversation: conv, turnCounter: counter }));
 
     try {
       setStage('compile');
       const compileResp = await postCompile({ conversation: conv });
 
       if (compileResp.kind === 'failure') {
-        setVm((prev) => ({
+        updateCustomerSession((prev) => ({
           ...prev,
-          clarifications: [...prev.clarifications, compileResp.clarification],
+          viewModel: {
+            ...prev.viewModel,
+            clarifications: [...prev.viewModel.clarifications, compileResp.clarification],
+          },
         }));
         const fail = appendAssistantBubble(
           conv,
@@ -282,8 +322,7 @@ export default function CustomerRoute({
         );
         conv = fail.state;
         counter = fail.counter;
-        setConversation(conv);
-        setTurnCounter(counter);
+        updateCustomerSession((prev) => ({ ...prev, conversation: conv, turnCounter: counter }));
         return;
       }
 
@@ -294,8 +333,12 @@ export default function CustomerRoute({
           const intent = synthesizeIntent(conv);
           const versionIdx = conv.compiledConfigVersionRefs.length + 1;
           const configuration = buildCompiledConfiguration(intent, decision, versionIdx);
-          setVm((prev) => ({ ...prev, intent, configuration }));
-          setExtractedRun(simulateDocumentRun(DAEJOO_PDF_URL, configuration));
+          const documentRun = simulateDocumentRun(DAEJOO_PDF_URL, configuration);
+          updateCustomerSession((prev) => ({
+            ...prev,
+            viewModel: { ...prev.viewModel, intent, configuration },
+            extractedRun: documentRun,
+          }));
 
           const announce = appendAssistantBubble(
             conv,
@@ -318,8 +361,7 @@ export default function CustomerRoute({
           );
           conv = withPrompt.state;
           counter = withPrompt.counter;
-          setConversation(conv);
-          setTurnCounter(counter);
+          updateCustomerSession((prev) => ({ ...prev, conversation: conv, turnCounter: counter }));
 
           await runCapabilityAndReadiness(intent, configuration);
           break;
@@ -347,8 +389,7 @@ export default function CustomerRoute({
           );
           conv = withPrompt.state;
           counter = withPrompt.counter;
-          setConversation(conv);
-          setTurnCounter(counter);
+          updateCustomerSession((prev) => ({ ...prev, conversation: conv, turnCounter: counter }));
           break;
         }
         case 'capability_class_question': {
@@ -368,8 +409,7 @@ export default function CustomerRoute({
           );
           conv = announce.state;
           counter = announce.counter;
-          setConversation(conv);
-          setTurnCounter(counter);
+          updateCustomerSession((prev) => ({ ...prev, conversation: conv, turnCounter: counter }));
           break;
         }
         case 'success_summary': {
@@ -381,8 +421,7 @@ export default function CustomerRoute({
           );
           conv = announce.state;
           counter = announce.counter;
-          setConversation(conv);
-          setTurnCounter(counter);
+          updateCustomerSession((prev) => ({ ...prev, conversation: conv, turnCounter: counter }));
           break;
         }
       }
@@ -404,10 +443,13 @@ export default function CustomerRoute({
    * _writeProvisionalSignal (yes) or clears the pendingSignal (no).
    */
   function handleConsent(yes: boolean): void {
-    const pending = conversation.pendingSignal;
+    // Read the latest snapshot from the store; pendingSignal must be
+    // present (the consent affordance only renders when it is).
+    const startSnap = getCustomerSession();
+    const pending = startSnap.conversation.pendingSignal;
     if (!pending) return;
 
-    const { id: userTurnId, counter: counterAfterUser } = nextTurnId();
+    const { id: userTurnId, counter: counterAfterUser } = nextTurnIdFromCounter(startSnap.turnCounter);
     const userTurn: ChatTurn = {
       id: userTurnId,
       role: 'user',
@@ -415,7 +457,7 @@ export default function CustomerRoute({
       timestamp: new Date().toISOString(),
       kind: 'message',
     };
-    let conv = applyChatTurn(conversation, userTurn);
+    let conv = applyChatTurn(startSnap.conversation, userTurn);
     let counter = counterAfterUser;
 
     if (yes) {
@@ -440,8 +482,7 @@ export default function CustomerRoute({
         );
         conv = fail.state;
         counter = fail.counter;
-        setConversation(conv);
-        setTurnCounter(counter);
+        updateCustomerSession((prev) => ({ ...prev, conversation: conv, turnCounter: counter }));
         return;
       }
 
@@ -472,8 +513,7 @@ export default function CustomerRoute({
       counter = confirm.counter;
     }
 
-    setConversation(conv);
-    setTurnCounter(counter);
+    updateCustomerSession((prev) => ({ ...prev, conversation: conv, turnCounter: counter }));
   }
 
   function handleFooterAction(label: string) {
@@ -498,16 +538,19 @@ export default function CustomerRoute({
           <UploadZonePanel
             configuration={vm.configuration}
             onUpload={(f) => {
-              setUploadedFile(f);
+              updateCustomerSession((prev) => ({ ...prev, uploadedFile: f }));
               // If a configuration already exists, re-run capability +
               // readiness so the demo never sits idle on a second drop.
               // When there is no configuration yet, only the
-              // PdfViewerPanel + upload-announcement update (SF-1).
-              if (vm.configuration && vm.intent) {
-                void runCapabilityAndReadiness(vm.intent, vm.configuration);
+              // PdfViewerPanel + upload-announcement update (SF-1). Read
+              // the live vm from the store so a recent recompile is
+              // not missed.
+              const live = getCustomerSession().viewModel;
+              if (live.configuration && live.intent) {
+                void runCapabilityAndReadiness(live.intent, live.configuration);
               }
             }}
-            onDocumentRun={(run) => setExtractedRun(run)}
+            onDocumentRun={(run) => updateCustomerSession((prev) => ({ ...prev, extractedRun: run }))}
           />
           <PdfViewerPanel hasUpload={uploadedFile !== null} />
           <ExtractedFieldsPanel run={extractedRun} />

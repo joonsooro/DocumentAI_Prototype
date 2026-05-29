@@ -2,8 +2,8 @@
 /**
  * F-19 — RED-1, RED-2 eval cases.
  */
-import { describe, it, expect } from 'vitest';
-import { render } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { cleanup, render } from '@testing-library/react';
 import CustomerRoute from '@routes/customer';
 import InternalRoute from '@routes/internal';
 import { filterRecommendationsForAdminSurface } from '@components/admin/viewModel';
@@ -15,6 +15,16 @@ import {
   CLEAN_ADMIN_REC,
 } from './fixtures';
 import type { AdminRecommendation, AdminRecommendationType } from '@domain/types';
+import { _resetForTests as _resetCustomerSessionForTests } from '@runtime/customerSessionStore';
+
+beforeEach(() => {
+  cleanup();
+  _resetCustomerSessionForTests();
+});
+afterEach(() => {
+  cleanup();
+  _resetCustomerSessionForTests();
+});
 
 // ===========================================================================
 // RED-1 — recommendations contain no 'threshold_lower' entries; readiness for
