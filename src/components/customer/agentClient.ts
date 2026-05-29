@@ -26,19 +26,21 @@ import type {
   QualityMetric,
   ReadinessDecision,
 } from '@domain/types';
+import { recordCustom } from '@runtime/qualityMetricLog';
 
 type AgentFailureWire = {
   readonly kind: 'failure';
   readonly clarification: ClarificationRequest;
   readonly metric: QualityMetric;
+  readonly metrics: readonly QualityMetric[];
 };
 
 export type CompileResponse =
-  | { readonly kind: 'success'; readonly decision: CompileAgentDecision }
+  | { readonly kind: 'success'; readonly decision: CompileAgentDecision; readonly metrics: readonly QualityMetric[] }
   | AgentFailureWire;
 
 export type CapabilityResponse =
-  | { readonly kind: 'success'; readonly assessments: readonly CapabilityAssessment[] }
+  | { readonly kind: 'success'; readonly assessments: readonly CapabilityAssessment[]; readonly metrics: readonly QualityMetric[] }
   | AgentFailureWire;
 
 export type ReadinessResponse =
@@ -46,6 +48,7 @@ export type ReadinessResponse =
       readonly kind: 'success';
       readonly readiness: ReadinessDecision;
       readonly clarifications: readonly ClarificationRequest[];
+      readonly metrics: readonly QualityMetric[];
     }
   | AgentFailureWire;
 
@@ -65,22 +68,58 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   return (await resp.json()) as T;
 }
 
+/**
+ * SF #2f — replay mirrored sidecar QualityMetric rows into the browser-side
+ * qualityMetricLog so the Agent I/O Dashboard on /internal reflects what
+ * really fired. Fire-and-forget: a malformed row, or a response payload that
+ * predates the SF #2f wire (missing metrics field, e.g. from older test
+ * stubs), never breaks the agent path. Mirrors the pattern at
+ * aiCoreClient.ts:419-422.
+ */
+function replayMetricsToBrowserStore(metrics: readonly QualityMetric[] | undefined): void {
+  if (!metrics || !Array.isArray(metrics)) return;
+  for (const row of metrics) {
+    try {
+      recordCustom(
+        {
+          agent: row.agent,
+          status: row.status,
+          latencyMs: row.latencyMs,
+          tokenUsage: row.tokenUsage,
+          model: row.model,
+          maxTokens: row.maxTokens,
+          error: row.error,
+        },
+        { nowIso: row.loggedAt },
+      );
+    } catch {
+      // observability must never break the agent path
+    }
+  }
+}
+
 export async function postCompile(args: {
   readonly conversation: ConversationState;
 }): Promise<CompileResponse> {
-  return postJson<CompileResponse>('/api/compile', args);
+  const response = await postJson<CompileResponse>('/api/compile', args);
+  replayMetricsToBrowserStore(response.metrics);
+  return response;
 }
 
 export async function postCapability(args: {
   readonly intent: CustomerIntent;
   readonly configuration: CompiledConfiguration;
 }): Promise<CapabilityResponse> {
-  return postJson<CapabilityResponse>('/api/capability', args);
+  const response = await postJson<CapabilityResponse>('/api/capability', args);
+  replayMetricsToBrowserStore(response.metrics);
+  return response;
 }
 
 export async function postReadiness(args: {
   readonly intent: CustomerIntent;
   readonly configuration: CompiledConfiguration;
 }): Promise<ReadinessResponse> {
-  return postJson<ReadinessResponse>('/api/readiness', args);
+  const response = await postJson<ReadinessResponse>('/api/readiness', args);
+  replayMetricsToBrowserStore(response.metrics);
+  return response;
 }

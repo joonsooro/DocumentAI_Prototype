@@ -296,3 +296,225 @@ describe('SF #2b (revision) — Agent I/O Dashboard live-update on /internal', (
     expect(tokens.textContent).toContain(totalStr);
   });
 });
+
+// ===========================================================================
+// SF #2f — Sidecar metrics mirror back to browser via /api/* response payload
+// ===========================================================================
+// Proof-of-shape: when the sidecar's /api/* response carries metrics: [...]
+// in its payload, the browser's agentClient replays each row into the
+// qualityMetricLog via recordCustom, and the dashboard ticks accordingly.
+// ===========================================================================
+import {
+  postCompile,
+  postCapability,
+  postReadiness,
+} from '@components/customer/agentClient';
+import type { QualityMetric } from '@domain/types';
+
+function metric(
+  agent: string,
+  overrides: Partial<QualityMetric> = {},
+): QualityMetric {
+  return {
+    id: `qm::${agent}::test::2026-05-29T00:00:00Z`,
+    agent,
+    status: 'success',
+    latencyMs: 123,
+    tokenUsage: { input: 50, output: 25 },
+    model: 'd-test',
+    maxTokens: 1000,
+    error: null,
+    loggedAt: '2026-05-29T00:00:00Z',
+    ...overrides,
+  };
+}
+
+function countCellOf(agent: string): number {
+  const row = screen.getByTestId(`agent-io-metrics-row-${agent}`);
+  const cells = row.querySelectorAll('td');
+  expect(cells.length).toBeGreaterThanOrEqual(2);
+  return Number(cells[1].textContent ?? '0');
+}
+
+describe('SF #2f — sidecar metrics mirror back to browser via /api/* response payload', () => {
+  beforeEach(() => {
+    _resetQualityMetricLogForTests();
+    cleanup();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    _resetQualityMetricLogForTests();
+    cleanup();
+  });
+
+  it('compile success response with metrics:[1 row] ticks the compile dashboard row to 1 call', async () => {
+    vi.stubGlobal(
+      'fetch',
+      makeFetchMock({
+        '/api/compile': [
+          {
+            kind: 'success',
+            decision: COMPILE_DECISION,
+            metrics: [metric('compile', { latencyMs: 180 })],
+          },
+        ],
+      }),
+    );
+
+    // Drive the real browser-side agentClient — its replay path lands rows
+    // in the browser qualityMetricLog.
+    const response = await postCompile({
+      conversation: { messages: [], lastSubmittedAt: null } as never,
+    });
+    expect(response.kind).toBe('success');
+
+    render(<InternalRoute />);
+    expect(screen.getByTestId('agent-io-metrics-panel')).toBeTruthy();
+
+    expect(countCellOf('compile')).toBe(1);
+    expect(countCellOf('capability')).toBe(0);
+    expect(countCellOf('readiness')).toBe(0);
+    expect(countCellOf('operationalReasons')).toBe(0);
+  });
+
+  it('readiness success response with metrics:[2 rows] ticks BOTH operationalReasons AND readiness dashboard rows', async () => {
+    vi.stubGlobal(
+      'fetch',
+      makeFetchMock({
+        '/api/readiness': [
+          {
+            kind: 'success',
+            readiness: readinessSuccess.readiness,
+            clarifications: [],
+            metrics: [
+              metric('operationalReasons', { latencyMs: 510, tokenUsage: { input: 200, output: 320 } }),
+              metric('readiness', { latencyMs: 440, tokenUsage: null }),
+            ],
+          },
+        ],
+      }),
+    );
+
+    const response = await postReadiness({
+      intent: { fields: [], freeTextConditions: [] } as never,
+      configuration: { schema: { fields: [] } } as never,
+    });
+    expect(response.kind).toBe('success');
+
+    render(<InternalRoute />);
+    expect(countCellOf('operationalReasons')).toBe(1);
+    expect(countCellOf('readiness')).toBe(1);
+    expect(countCellOf('compile')).toBe(0);
+    expect(countCellOf('capability')).toBe(0);
+  });
+
+  it('failure response with metrics:[1 row, status:fail] increments the failure-rate cell on the compile row', async () => {
+    const failMetric = metric('compile', {
+      status: 'fail',
+      latencyMs: null,
+      tokenUsage: null,
+      model: null,
+      maxTokens: null,
+      error: 'http_error: simulated upstream failure',
+    });
+    vi.stubGlobal(
+      'fetch',
+      makeFetchMock({
+        '/api/compile': [
+          {
+            kind: 'failure',
+            clarification: {
+              id: 'clar::test::compile::2026-05-29T00:00:00Z',
+              kind: 'agent_failure_surface',
+              field: null,
+              documentRunId: null,
+              prompts: {
+                fieldMeaning: 'q1',
+                postingReviewReportingImpact: 'q2',
+                supplierScopeApplicability: 'q3',
+              },
+              operatorFacingError: 'compile failed',
+              raisedAt: '2026-05-29T00:00:00Z',
+            },
+            metric: failMetric,
+            metrics: [failMetric],
+          },
+        ],
+      }),
+    );
+
+    const response = await postCompile({
+      conversation: { messages: [], lastSubmittedAt: null } as never,
+    });
+    expect(response.kind).toBe('failure');
+
+    render(<InternalRoute />);
+    // compile row total now 1 call.
+    expect(countCellOf('compile')).toBe(1);
+    // Failure-rate cell at index 2 carries the fail tick: '1/1 (100.0%)'.
+    const compileRow = screen.getByTestId('agent-io-metrics-row-compile');
+    const compileCells = compileRow.querySelectorAll('td');
+    expect(compileCells[2]?.textContent).toContain('1/1');
+    expect(compileCells[2]?.textContent).toContain('100.0%');
+  });
+
+  it('full chat-turn chain (compile + capability + readiness fetched in sequence) ticks all 4 rows', async () => {
+    vi.stubGlobal(
+      'fetch',
+      makeFetchMock({
+        '/api/compile': [
+          {
+            kind: 'success',
+            decision: COMPILE_DECISION,
+            metrics: [metric('compile', { latencyMs: 180 })],
+          },
+        ],
+        '/api/capability': [
+          {
+            kind: 'success',
+            assessments: capabilitySuccess.assessments,
+            metrics: [metric('capability', { latencyMs: 220, tokenUsage: { input: 70, output: 130 } })],
+          },
+        ],
+        '/api/readiness': [
+          {
+            kind: 'success',
+            readiness: readinessSuccess.readiness,
+            clarifications: [],
+            metrics: [
+              metric('operationalReasons', { latencyMs: 510, tokenUsage: { input: 200, output: 320 } }),
+              metric('readiness', { latencyMs: 440, tokenUsage: null }),
+            ],
+          },
+        ],
+      }),
+    );
+
+    const c1 = await postCompile({
+      conversation: { messages: [], lastSubmittedAt: null } as never,
+    });
+    expect(c1.kind).toBe('success');
+    const c2 = await postCapability({
+      intent: { fields: [], freeTextConditions: [] } as never,
+      configuration: { schema: { fields: [] } } as never,
+    });
+    expect(c2.kind).toBe('success');
+    const c3 = await postReadiness({
+      intent: { fields: [], freeTextConditions: [] } as never,
+      configuration: { schema: { fields: [] } } as never,
+    });
+    expect(c3.kind).toBe('success');
+
+    render(<InternalRoute />);
+    expect(countCellOf('compile')).toBe(1);
+    expect(countCellOf('capability')).toBe(1);
+    expect(countCellOf('readiness')).toBe(1);
+    expect(countCellOf('operationalReasons')).toBe(1);
+
+    // Session token total reflects the mirrored rows (compile 50/25 + capability 70/130 + operationalReasons 200/320; readiness tokenUsage=null is skipped).
+    const tokens = screen.getByTestId('agent-io-metrics-token-total');
+    const expectedInput = 50 + 70 + 200;
+    const expectedOutput = 25 + 130 + 320;
+    expect(tokens.textContent).toContain((expectedInput + expectedOutput).toLocaleString('en-US'));
+  });
+});

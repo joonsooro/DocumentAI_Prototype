@@ -45,6 +45,7 @@ import { decideReadiness } from '@domain/decideReadiness';
 import { generateClarificationRequests } from '@domain/generateClarificationRequests';
 import { simulateDocumentRun } from '@domain/simulateDocumentRun';
 import { runAgentWithFailureSurface } from '@domain/agentFailureSurface';
+import { captureMetricsDuring } from '@runtime/qualityMetricLog';
 import { DAEJOO_PDF_URL } from '@data/assets';
 
 // ---------------------------------------------------------------------------
@@ -62,11 +63,12 @@ interface ChainRequest {
   readonly configuration: CompiledConfiguration;
 }
 
-type AgentSuccess<T extends object> = { readonly kind: 'success' } & T;
+type AgentSuccess<T extends object> = { readonly kind: 'success'; readonly metrics: readonly QualityMetric[] } & T;
 type AgentFailureWire = {
   readonly kind: 'failure';
   readonly clarification: ClarificationRequest;
   readonly metric: QualityMetric;
+  readonly metrics: readonly QualityMetric[];
 };
 
 export type CompileResponse =
@@ -88,52 +90,66 @@ export type ReadinessResponse =
 // ---------------------------------------------------------------------------
 
 export async function handleCompile(body: CompileRequest): Promise<CompileResponse> {
-  const outcome = await runAgentWithFailureSurface(
-    'compile',
-    () => compileAgent(body.conversation),
+  const { result: outcome, metrics } = await captureMetricsDuring(() =>
+    runAgentWithFailureSurface(
+      'compile',
+      () => compileAgent(body.conversation),
+    ),
   );
 
   if (outcome.kind === 'success') {
-    return { kind: 'success', decision: outcome.value };
+    return { kind: 'success', decision: outcome.value, metrics };
   }
-  return { kind: 'failure', clarification: outcome.clarification, metric: outcome.metric };
+  return { kind: 'failure', clarification: outcome.clarification, metric: outcome.metric, metrics };
 }
 
 export async function handleCapability(body: ChainRequest): Promise<CapabilityResponse> {
-  const outcome = await runAgentWithFailureSurface(
-    'capability',
-    () => assessCapabilities(body.intent, body.configuration),
+  const { result: outcome, metrics } = await captureMetricsDuring(() =>
+    runAgentWithFailureSurface(
+      'capability',
+      () => assessCapabilities(body.intent, body.configuration),
+    ),
   );
 
   if (outcome.kind === 'success') {
-    return { kind: 'success', assessments: outcome.value };
+    return { kind: 'success', assessments: outcome.value, metrics };
   }
-  return { kind: 'failure', clarification: outcome.clarification, metric: outcome.metric };
+  return { kind: 'failure', clarification: outcome.clarification, metric: outcome.metric, metrics };
 }
 
 export async function handleReadiness(body: ChainRequest): Promise<ReadinessResponse> {
   // F-03 mock extractor runs server-side. Path is the canonical DAEJOO asset
   // — keeping the browser free of @domain/* imports means the client never
-  // names the document path either.
-  const run = simulateDocumentRun(DAEJOO_PDF_URL, body.configuration);
+  // names the document path either. captureMetricsDuring wraps both the
+  // readiness reasoning call AND the deterministic clarification generation
+  // inside one capture scope so any push from either path mirrors back to
+  // the browser dashboard.
+  const { result, metrics } = await captureMetricsDuring(async () => {
+    const run = simulateDocumentRun(DAEJOO_PDF_URL, body.configuration);
+    const outcome = await runAgentWithFailureSurface(
+      'readiness',
+      () => decideReadiness(run, body.configuration),
+    );
+    // F-07 missed/low-confidence clarifications are pure-deterministic and run
+    // regardless of the readiness reasoning outcome — same as the eval surface.
+    const f07Clarifications = generateClarificationRequests(run, body.configuration);
+    return { outcome, f07Clarifications };
+  });
 
-  const outcome = await runAgentWithFailureSurface(
-    'readiness',
-    () => decideReadiness(run, body.configuration),
-  );
-
-  // F-07 missed/low-confidence clarifications are pure-deterministic and run
-  // regardless of the readiness reasoning outcome — same as the eval surface.
-  const f07Clarifications = generateClarificationRequests(run, body.configuration);
-
-  if (outcome.kind === 'success') {
+  if (result.outcome.kind === 'success') {
     return {
       kind: 'success',
-      readiness: outcome.value,
-      clarifications: f07Clarifications,
+      readiness: result.outcome.value,
+      clarifications: result.f07Clarifications,
+      metrics,
     };
   }
-  return { kind: 'failure', clarification: outcome.clarification, metric: outcome.metric };
+  return {
+    kind: 'failure',
+    clarification: result.outcome.clarification,
+    metric: result.outcome.metric,
+    metrics,
+  };
 }
 
 // ---------------------------------------------------------------------------

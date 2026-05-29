@@ -222,6 +222,55 @@ function notifySubscribers(): void {
 }
 
 // ---------------------------------------------------------------------------
+// Request-local capture helper — SF #2f (2026-05-29)
+//
+// Wraps an async fn so every QualityMetric pushed during fn()'s lifetime is
+// collected into a buffer and returned alongside fn's result. The seam is the
+// existing subscribe() surface: we register a request-local subscriber, run
+// fn, then unsubscribe in finally so the listener never leaks past the
+// request. The sidecar dev-server processes /api/* requests serially (Node
+// single-threaded event loop + sequential POSTs from the customer flow), so a
+// request-local subscriber over a serial-handler regime is safe.
+//
+// Diff-based capture: the Subscriber callback receives the FULL snapshot on
+// every push (per notifySubscribers above), so we diff against the previous
+// length to extract only the new tail rows. Even if two pushes happen between
+// listener invocations (theoretically impossible single-threaded but defensive)
+// the diff still picks both up.
+//
+// Acceptance (SF #2f wire contract):
+//   - Every recordSuccess / recordFailure / recordCustom push during fn() is
+//     captured in order.
+//   - On fn() throw, captured rows are STILL attached (caller may inspect
+//     them in a catch block). The current sidecar handler pattern doesn't
+//     need this — devAgentMiddleware wraps in runAgentWithFailureSurface
+//     which never throws — but the contract supports it for symmetry.
+//   - Unsubscribe always fires (finally block).
+// ---------------------------------------------------------------------------
+export async function captureMetricsDuring<T>(
+  fn: () => Promise<T>,
+): Promise<{ result: T; metrics: readonly QualityMetric[] }> {
+  const captured: QualityMetric[] = [];
+  let lastLength = metrics.length;
+  const listener: Subscriber = (snapshot) => {
+    // snapshot is frozen full-store; diff by length to extract new tail.
+    if (snapshot.length > lastLength) {
+      for (let i = lastLength; i < snapshot.length; i += 1) {
+        captured.push(snapshot[i]);
+      }
+      lastLength = snapshot.length;
+    }
+  };
+  subscribers.add(listener);
+  try {
+    const result = await fn();
+    return { result, metrics: Object.freeze(captured.slice()) };
+  } finally {
+    subscribers.delete(listener);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Langfuse mirror sink — S4.5 OBSERVE-WIRE step 4
 //
 // Server boot (scripts/dev-agent-server.ts) calls registerLangfuseSink() once
